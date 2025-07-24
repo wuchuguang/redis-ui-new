@@ -1,56 +1,5 @@
 <template>
   <div class="connection-explorer">
-    <!-- 连接列表 -->
-    <div class="connections-section">
-      <div class="connections-header">
-        <span>连接列表</span>
-        <span class="connections-count">({{ connections.length }})</span>
-      </div>
-      
-      <div class="connections-list">
-        <div
-          v-for="conn in connections"
-          :key="conn.id"
-          class="connection-item"
-          :class="{ active: currentConnection?.id === conn.id }"
-          @click="selectConnection(conn)"
-        >
-          <div class="connection-info">
-            <div class="connection-name">{{ conn.name }}</div>
-            <div class="connection-details">
-              {{ conn.host }}:{{ conn.port }}
-              <el-tag 
-                :type="conn.status === 'connected' ? 'success' : 'danger'"
-                size="small"
-                class="status-tag"
-              >
-                {{ conn.status === 'connected' ? '已连接' : '未连接' }}
-              </el-tag>
-            </div>
-          </div>
-          <div class="connection-actions">
-            <el-button 
-              v-if="conn.status !== 'connected'"
-              type="primary" 
-              size="small" 
-              @click.stop="reconnectConnection(conn)"
-              :loading="reconnectingConnections.includes(conn.id)"
-            >
-              连接
-            </el-button>
-            <el-button 
-              v-else
-              type="danger" 
-              size="small" 
-              @click.stop="disconnectConnection(conn)"
-            >
-              断开
-            </el-button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- 当前连接标题 -->
     <div class="current-connection-header" v-if="currentConnection">
       <h3 class="connection-title">{{ currentConnection.name }}</h3>
@@ -361,12 +310,11 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['select-database', 'add-key', 'search-keys', 'select-key', 'select-connection'])
+const emit = defineEmits(['select-database', 'add-key', 'search-keys', 'select-key'])
 
 const connectionStore = useConnectionStore()
 
 // 计算属性
-const connections = computed(() => connectionStore.connections)
 const currentConnection = computed(() => props.connection)
 
 // 响应式数据
@@ -376,7 +324,7 @@ const showAddKeyDialog = ref(false)
 const showConfigDialog = ref(false)
 const expandedGroups = ref([])
 const selectedKey = ref(null)
-const reconnectingConnections = ref([])
+
 const searchTimer = ref(null)
 const maxKeysPerGroup = ref(100)
 const currentListMode = ref(false)
@@ -500,45 +448,7 @@ const stopAutoRefresh = () => {
   }
 }
 
-const selectConnection = (connection) => {
-  emit('select-connection', connection)
-}
 
-const reconnectConnection = async (connection) => {
-  reconnectingConnections.value.push(connection.id)
-  try {
-    const success = await connectionStore.reconnect(connection.id)
-    if (success) {
-      // 重新获取连接列表
-      await connectionStore.fetchConnections()
-    }
-  } finally {
-    const index = reconnectingConnections.value.indexOf(connection.id)
-    if (index > -1) {
-      reconnectingConnections.value.splice(index, 1)
-    }
-  }
-}
-
-const disconnectConnection = async (connection) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要断开连接 "${connection.name}" 吗？`,
-      '确认断开',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    // 这里可以添加断开连接的逻辑
-    // 目前只是显示确认对话框
-    ElMessage.success('连接已断开')
-  } catch (error) {
-    // 用户取消操作
-  }
-}
 
 const goUp = () => {
   console.log('返回上级')
@@ -747,13 +657,7 @@ watch(() => props.connection, async (newConnection) => {
   }
 }, { immediate: true })
 
-// 监听连接列表变化
-watch(() => connections.value, async (newConnections) => {
-  // 如果当前连接不在列表中，清空当前连接
-  if (props.connection && !newConnections.find(conn => conn.id === props.connection.id)) {
-    emit('select-connection', null)
-  }
-}, { deep: true })
+
 
 // 监听配置变化
 watch(() => maxKeysPerGroup.value, (newValue) => {
@@ -777,70 +681,7 @@ onUnmounted(() => {
   padding: 15px;
 }
 
-.connections-section {
-  margin-bottom: 15px;
-}
 
-.connections-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 10px;
-  font-weight: 600;
-  color: #ffffff;
-}
-
-.connections-count {
-  color: #909399;
-  font-size: 12px;
-}
-
-.connections-list {
-  max-height: 200px;
-  overflow-y: auto;
-  border: 1px solid #404040;
-  border-radius: 4px;
-}
-
-.connection-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 12px;
-  border-bottom: 1px solid #404040;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.connection-item:last-child {
-  border-bottom: none;
-}
-
-.connection-item:hover {
-  background-color: #2d2d2d;
-}
-
-.connection-item.active {
-  background-color: #409eff;
-  color: #ffffff;
-}
-
-.connection-info {
-  flex: 1;
-}
-
-.connection-name {
-  font-weight: 500;
-  margin-bottom: 4px;
-}
-
-.connection-details {
-  font-size: 12px;
-  color: #909399;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
 
 .status-tag {
   margin-left: 8px;

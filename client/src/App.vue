@@ -3,12 +3,13 @@
     <!-- 顶部工具栏 -->
     <div class="top-toolbar">
       <div class="toolbar-left">
+        <el-button type="primary" class="connection-manager-btn" @click="openConnectionManagerDialog">
+          <el-icon><Setting /></el-icon>
+          连接管理
+        </el-button>
         <el-button type="success" class="new-connection-btn" @click="openNewConnectionDialog">
           <el-icon><Plus /></el-icon>
           新建连接
-        </el-button>
-        <el-button type="text" class="toolbar-btn">
-          <el-icon><Setting /></el-icon>
         </el-button>
         <el-button type="text" class="toolbar-btn">
           <el-icon><Clock /></el-icon>
@@ -54,21 +55,12 @@
       <!-- 右侧主内容区 -->
       <div class="right-content">
         <KeyValueDisplay 
-          v-if="currentConnection && selectedKey"
           :connection="currentConnection"
           :selected-key="selectedKey"
           :database="currentDatabase"
           @key-deleted="handleKeyDeleted"
           @key-updated="handleKeyUpdated"
         />
-        <RedisOverview 
-          v-else-if="currentConnection"
-          :connection="currentConnection"
-          :redis-info="redisInfo"
-        />
-        <div v-else class="no-content">
-          <el-empty description="请选择连接和键来查看详细信息" />
-        </div>
       </div>
     </div>
 
@@ -77,22 +69,32 @@
       v-model="showNewConnectionDialog"
       @connection-created="handleConnectionCreated"
     />
+
+    <!-- 连接管理对话框 -->
+    <ConnectionManagerDialog 
+      v-model="showConnectionManagerDialog"
+      @connection-selected="handleConnectionSelected"
+      @connection-deleted="handleConnectionDeleted"
+      @connection-updated="handleConnectionUpdated"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, nextTick } from 'vue'
 import { Plus, Setting, Clock, Close, Refresh } from '@element-plus/icons-vue'
 import { useConnectionStore } from './stores/connection'
 import ConnectionExplorer from './components/ConnectionExplorer.vue'
 import RedisOverview from './components/RedisOverview.vue'
 import NewConnectionDialog from './components/NewConnectionDialog.vue'
 import KeyValueDisplay from './components/KeyValueDisplay.vue'
+import ConnectionManagerDialog from './components/ConnectionManagerDialog.vue'
 
 const connectionStore = useConnectionStore()
 
 // 响应式数据
 const showNewConnectionDialog = ref(false)
+const showConnectionManagerDialog = ref(false)
 const autoRefresh = ref(true)
 const currentConnection = ref(null)
 const redisInfo = ref(null)
@@ -102,6 +104,10 @@ const currentDatabase = ref(0)
 // 方法
 const openNewConnectionDialog = () => {
   showNewConnectionDialog.value = true
+}
+
+const openConnectionManagerDialog = () => {
+  showConnectionManagerDialog.value = true
 }
 
 const closeConnection = () => {
@@ -121,6 +127,27 @@ const handleConnectionCreated = (connection) => {
   refreshData()
 }
 
+const handleConnectionSelected = (connection) => {
+  currentConnection.value = connection
+  refreshData()
+}
+
+const handleConnectionDeleted = (connectionId) => {
+  // 如果删除的是当前连接，清空当前连接
+  if (currentConnection.value && currentConnection.value.id === connectionId) {
+    currentConnection.value = null
+    redisInfo.value = null
+    selectedKey.value = null
+  }
+}
+
+const handleConnectionUpdated = (connection) => {
+  // 如果更新的是当前连接，更新当前连接
+  if (currentConnection.value && currentConnection.value.id === connection.id) {
+    currentConnection.value = connection
+  }
+}
+
 const handleDatabaseSelect = (database) => {
   currentDatabase.value = database
   selectedKey.value = null // 切换数据库时清空选中的键
@@ -135,9 +162,12 @@ const handleSearchKeys = (searchTerm) => {
   console.log('搜索键:', searchTerm)
 }
 
-const handleSelectKey = (key) => {
-  selectedKey.value = key
+const handleSelectKey = async (key) => {
   console.log('选择键:', key)
+  // 使用 nextTick 确保 DOM 更新完成
+  await nextTick()
+  // 确保 key 对象是响应式的
+  selectedKey.value = { ...key }
 }
 
 const handleKeyDeleted = (keyName) => {
@@ -149,7 +179,11 @@ const handleKeyDeleted = (keyName) => {
 const handleKeyUpdated = (updateInfo) => {
   // 更新选中的键名
   if (selectedKey.value && selectedKey.value.name === updateInfo.oldKey) {
-    selectedKey.value.name = updateInfo.newKey
+    // 创建新的对象来触发响应式更新
+    selectedKey.value = {
+      ...selectedKey.value,
+      name: updateInfo.newKey
+    }
   }
   console.log('键已更新:', updateInfo)
 }
@@ -209,6 +243,17 @@ onMounted(async () => {
   display: flex;
   align-items: center;
   gap: 10px;
+}
+
+.connection-manager-btn {
+  background-color: #409eff;
+  border-color: #409eff;
+  color: white;
+}
+
+.connection-manager-btn:hover {
+  background-color: #66b1ff;
+  border-color: #66b1ff;
 }
 
 .new-connection-btn {

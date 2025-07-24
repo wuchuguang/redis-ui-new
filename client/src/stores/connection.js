@@ -55,6 +55,29 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 更新连接
+  const updateConnection = async (connectionData) => {
+    loading.value = true
+    try {
+      const response = await axios.put(`/api/connections/${connectionData.id}`, connectionData)
+      if (response.data.success) {
+        const updatedConnection = response.data.data
+        const index = connections.value.findIndex(conn => conn.id === connectionData.id)
+        if (index > -1) {
+          connections.value[index] = updatedConnection
+        }
+        ElMessage.success('连接更新成功')
+        return updatedConnection
+      }
+    } catch (error) {
+      console.error('更新连接失败:', error)
+      ElMessage.error(error.response?.data?.message || '更新连接失败')
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
   // 删除连接
   const deleteConnection = async (connectionId) => {
     try {
@@ -236,6 +259,7 @@ export const useConnectionStore = defineStore('connection', () => {
     totalCount,
     fetchConnections,
     createConnection,
+    updateConnection,
     deleteConnection,
     testConnection,
     reconnect,

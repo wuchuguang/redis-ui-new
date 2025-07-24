@@ -10,6 +10,8 @@
             <el-option label="List" value="list" />
             <el-option label="Set" value="set" />
             <el-option label="ZSet" value="zset" />
+            <el-option label="Unknown" value="unknown" />
+            <el-option label="Error" value="error" />
           </el-select>
         </div>
         <div class="key-name-editor">
@@ -82,7 +84,10 @@
 
     <!-- 键值内容 -->
     <div class="key-content">
-      <div v-if="!keyData.key" class="no-key-selected">
+      <div v-if="!props.connection" class="no-connection">
+        <el-empty description="请选择连接来查看详细信息" />
+      </div>
+      <div v-else-if="!props.selectedKey" class="no-key-selected">
         <el-empty description="请选择一个键来查看其值" />
       </div>
       
@@ -90,7 +95,26 @@
         <el-skeleton :rows="5" animated />
       </div>
       
+      <div v-else-if="keyData.type === 'error'" class="error-content">
+        <el-result
+          icon="error"
+          title="加载失败"
+          sub-title="无法加载键值，请检查连接状态或重试"
+        >
+          <template #extra>
+            <el-button type="primary" @click="loadKeyValue">重试</el-button>
+          </template>
+        </el-result>
+      </div>
+      
       <div v-else class="value-content">
+        <!-- 调试信息 -->
+        <div v-if="keyData.type === 'unknown'" class="debug-info">
+          <p>调试信息:</p>
+          <p>keyData: {{ JSON.stringify(keyData, null, 2) }}</p>
+          <p>props.selectedKey: {{ JSON.stringify(props.selectedKey, null, 2) }}</p>
+          <p>props.connection: {{ props.connection ? '已连接' : '未连接' }}</p>
+        </div>
         <!-- String类型 -->
         <div v-if="keyData.type === 'string'" class="string-value">
           <el-input
@@ -419,7 +443,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   CopyDocument, 
@@ -455,7 +479,7 @@ const emit = defineEmits(['key-deleted', 'key-updated'])
 // 响应式数据
 const keyData = ref({
   key: '',
-  type: '',
+  type: 'unknown',
   value: null,
   ttl: -1,
   size: 0
@@ -537,8 +561,15 @@ const filteredSetData = computed(() => {
 
 // 方法
 const loadKeyValue = async () => {
+  console.log('loadKeyValue called:', { 
+    connection: props.connection?.id, 
+    selectedKey: props.selectedKey?.name,
+    database: props.database 
+  })
+  
   if (!props.connection || !props.selectedKey) {
-    keyData.value = { key: '', type: '', value: null, ttl: -1, size: 0 }
+    console.log('loadKeyValue - missing connection or selectedKey')
+    keyData.value = { key: '', type: 'unknown', value: null, ttl: -1, size: 0 }
     return
   }
 
@@ -550,11 +581,47 @@ const loadKeyValue = async () => {
       props.selectedKey.name
     )
     
+    console.log('loadKeyValue - received data:', data)
+    
     if (data) {
-      keyData.value = data
+      console.log('KeyValueDisplay - setting keyData to:', data)
+      keyData.value = { ...data }
+      // 确保 editingKeyName 也更新
+      if (!isEditingKeyName.value) {
+        editingKeyName.value = data.key
+      }
+    } else {
+      // 如果没有数据，设置默认值
+      const defaultData = { 
+        key: props.selectedKey.name, 
+        type: 'unknown', 
+        value: null, 
+        ttl: -1, 
+        size: 0 
+      }
+      console.log('KeyValueDisplay - setting default keyData to:', defaultData)
+      keyData.value = defaultData
+      // 确保 editingKeyName 也更新
+      if (!isEditingKeyName.value) {
+        editingKeyName.value = defaultData.key
+      }
     }
   } catch (error) {
     console.error('加载键值失败:', error)
+    // 设置错误状态
+    const errorData = { 
+      key: props.selectedKey.name, 
+      type: 'error', 
+      value: null, 
+      ttl: -1, 
+      size: 0 
+    }
+    console.log('KeyValueDisplay - setting error keyData to:', errorData)
+    keyData.value = errorData
+    // 确保 editingKeyName 也更新
+    if (!isEditingKeyName.value) {
+      editingKeyName.value = errorData.key
+    }
   } finally {
     loading.value = false
   }
@@ -729,7 +796,11 @@ const handleEditSave = async () => {
       
       if (result) {
         const oldKeyName = keyData.value.key
-        keyData.value.key = newKeyName
+        // 更新本地数据
+        keyData.value = {
+          ...keyData.value,
+          key: newKeyName
+        }
         ElMessage.success(`键名已更新: ${oldKeyName} → ${newKeyName}`)
         emit('key-updated', { oldKey: oldKeyName, newKey: newKeyName })
         showEditDialog.value = false
@@ -830,30 +901,71 @@ const removeZSetItem = (index) => {
 }
 
 // 监听选中键的变化
-watch(() => props.selectedKey, (newKey) => {
-  if (newKey) {
-    loadKeyValue()
-  } else {
-    keyData.value = { key: '', type: '', value: null, ttl: -1, size: 0 }
+watch(() => props.selectedKey, async (newKey, oldKey) => {
+  console.log('KeyValueDisplay - selectedKey changed:', { newKey, oldKey })
+  try {
+    if (newKey && props.connection) {
+      console.log('KeyValueDisplay - calling loadKeyValue')
+      await loadKeyValue()
+      console.log('KeyValueDisplay - loadKeyValue completed, keyData:', keyData.value)
+    } else {
+      console.log('KeyValueDisplay - resetting keyData to unknown')
+      keyData.value = { key: '', type: 'unknown', value: null, ttl: -1, size: 0 }
+      editingKeyName.value = ''
+    }
+    // 重置编辑状态和筛选状态
+    isEditingKeyName.value = false
+    hashFilter.value = ''
+    setFilter.value = ''
+  } catch (error) {
+    console.error('KeyValueDisplay - watch error:', error)
   }
-  // 重置编辑状态和筛选状态
-  isEditingKeyName.value = false
+}, { immediate: true })
+
+// 监听连接变化
+watch(() => props.connection, async (newConnection, oldConnection) => {
+  console.log('KeyValueDisplay - connection changed:', { newConnection, oldConnection })
+  try {
+    if (!newConnection) {
+      keyData.value = { key: '', type: 'unknown', value: null, ttl: -1, size: 0 }
+      editingKeyName.value = ''
+    } else if (props.selectedKey) {
+      await loadKeyValue()
+    }
+  } catch (error) {
+    console.error('KeyValueDisplay - connection watch error:', error)
+  }
+}, { immediate: true })
+
+// 组件卸载时的清理
+onUnmounted(() => {
+  // 清理所有响应式数据
+  keyData.value = { key: '', type: 'unknown', value: null, ttl: -1, size: 0 }
+  loading.value = false
+  showRawDialog.value = false
+  showEditDialog.value = false
   editingKeyName.value = ''
+  isEditingKeyName.value = false
   hashFilter.value = ''
   setFilter.value = ''
-}, { immediate: true })
+})
 
 // 监听键数据变化
 watch(() => keyData.value.key, (newKey) => {
-  if (!isEditingKeyName.value) {
+  console.log('KeyValueDisplay - keyData.key changed:', newKey)
+  if (!isEditingKeyName.value && newKey) {
     editingKeyName.value = newKey
   }
 })
 
 // 监听数据库变化
-watch(() => props.database, () => {
+watch(() => props.database, async () => {
   if (props.selectedKey) {
-    loadKeyValue()
+    try {
+      await loadKeyValue()
+    } catch (error) {
+      console.error('KeyValueDisplay - database watch error:', error)
+    }
   }
 })
 </script>

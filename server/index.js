@@ -87,6 +87,89 @@ app.post('/api/connections', async (req, res) => {
   }
 });
 
+// 更新连接
+app.put('/api/connections/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, host, port, password, database = 0 } = req.body;
+    
+    // 验证连接配置
+    const validation = configManager.validateConnection({ name, host, port, database });
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: validation.errors.join(', ')
+      });
+    }
+
+    // 检查连接是否存在
+    const existingConnection = configManager.getConnectionById(id);
+    if (!existingConnection) {
+      return res.status(404).json({
+        success: false,
+        message: '连接不存在'
+      });
+    }
+
+    // 如果连接正在使用，先断开
+    const activeConnection = redisConnections.get(id);
+    if (activeConnection && activeConnection.client.isReady) {
+      await activeConnection.client.disconnect();
+      redisConnections.delete(id);
+    }
+
+    const updatedConnectionConfig = {
+      id,
+      name,
+      host,
+      port: parseInt(port),
+      password: password || null,
+      database: parseInt(database),
+      status: 'connecting'
+    };
+
+    // 创建新的Redis客户端
+    const redisClient = createClient({
+      socket: {
+        host,
+        port: parseInt(port)
+      },
+      password: password || undefined,
+      database: parseInt(database)
+    });
+
+    // 连接Redis
+    await redisClient.connect();
+    
+    // 测试连接
+    await redisClient.ping();
+    
+    updatedConnectionConfig.status = 'connected';
+    redisConnections.set(id, {
+      client: redisClient,
+      config: updatedConnectionConfig
+    });
+
+    // 更新配置文件
+    await configManager.updateConnection(id, updatedConnectionConfig);
+
+    console.log(`Redis连接更新成功: ${name} (${host}:${port})`);
+    
+    res.json({
+      success: true,
+      message: 'Redis连接更新成功',
+      data: updatedConnectionConfig
+    });
+
+  } catch (error) {
+    console.error('Redis连接更新失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `连接更新失败: ${error.message}`
+    });
+  }
+});
+
 // 获取所有连接
 app.get('/api/connections', async (req, res) => {
   try {
