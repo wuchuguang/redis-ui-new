@@ -102,36 +102,37 @@
       </div>
     </div>
 
+    <!-- 键列表标题 -->
+    <div class="keys-header">
+      <div class="keys-header-left">
+        <span class="keys-title">键列表</span>
+        <span class="keys-count">({{ filteredKeys.length }})</span>
+      </div>
+      <div class="keys-header-right">
+        <el-button 
+          type="primary" 
+          size="small" 
+          @click="showAddKeyDialog = true"
+          :disabled="!connection"
+          class="add-key-btn"
+        >
+          <el-icon><Plus /></el-icon>
+          新增Key
+        </el-button>
+        <el-button 
+          type="default" 
+          size="small" 
+          @click="showConfigDialog = true"
+          title="显示配置"
+        >
+          <el-icon><Setting /></el-icon>
+        </el-button>
+      </div>
+    </div>
+
     <!-- 键列表 -->
-                <div class="keys-section">
-        <div class="keys-header">
-          <div class="keys-header-left">
-            <span class="keys-title">键列表</span>
-            <span class="keys-count">({{ filteredKeys.length }})</span>
-          </div>
-          <div class="keys-header-right">
-            <el-button 
-              type="primary" 
-              size="small" 
-              @click="showAddKeyDialog = true"
-              :disabled="!connection"
-              class="add-key-btn"
-            >
-              <el-icon><Plus /></el-icon>
-              新增Key
-            </el-button>
-            <el-button 
-              type="default" 
-              size="small" 
-              @click="showConfigDialog = true"
-              title="显示配置"
-            >
-              <el-icon><Setting /></el-icon>
-            </el-button>
-          </div>
-        </div>
-        
-        <div v-loading="keysLoading" class="keys-tree">
+    <div class="keys-section">
+      <div v-loading="keysLoading" class="keys-tree">
           <div v-if="!connection" class="no-connection-tip">
             <el-empty description="请先创建Redis连接" />
           </div>
@@ -862,7 +863,7 @@ onUnmounted(() => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 15px;
+  padding: 10px;
   overflow: hidden;
 }
 
@@ -881,8 +882,8 @@ onUnmounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 15px;
-  padding-bottom: 10px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
   border-bottom: 1px solid #404040;
 }
 
@@ -914,7 +915,7 @@ onUnmounted(() => {
 }
 
 .database-selector {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .database-select {
@@ -935,7 +936,7 @@ onUnmounted(() => {
 }
 
 .search-section {
-  margin-bottom: 15px;
+  margin-bottom: 10px;
 }
 
 .search-input {
@@ -946,15 +947,17 @@ onUnmounted(() => {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
+  min-height: 0;
 }
 
 .keys-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 4px 10px 0;
+  padding: 0 4px 8px 0;
   border-bottom: 1px solid #404040;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
+  flex-shrink: 0;
 }
 .keys-header-left {
   display: flex;
