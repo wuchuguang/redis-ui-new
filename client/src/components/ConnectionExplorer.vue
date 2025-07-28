@@ -169,79 +169,87 @@
             <div
               v-for="keyGroup in filteredKeys"
               :key="keyGroup.prefix"
-              class="key-group"
             >
-              <div class="key-group-header">
-                <div class="key-group-info" @click="toggleKeyGroup(keyGroup.prefix)">
-                  <el-icon class="expand-icon" :class="{ expanded: expandedGroups.includes(keyGroup.prefix) }">
-                    <ArrowRight />
-                  </el-icon>
-                  <span class="key-prefix">{{ keyGroup.prefix }}</span>
-                  <span class="key-count">({{ keyGroup.count }})</span>
-                </div>
-                <div class="key-group-actions">
-                  <el-button 
-                    type="text" 
-                    size="small" 
-                    @click="refreshKeyGroup(keyGroup.prefix)"
-                    title="刷新组"
-                  >
-                    <el-icon><Refresh /></el-icon>
-                  </el-button>
-                  <el-button 
-                    type="text" 
-                    size="small" 
-                    @click="convertToList(keyGroup.prefix)"
-                    title="转成列表"
-                  >
-                    <el-icon><List /></el-icon>
-                  </el-button>
-                  <el-button 
-                    type="text" 
-                    size="small" 
-                    @click="deleteKeyGroup(keyGroup.prefix)"
-                    title="删除组"
-                    class="delete-btn"
-                  >
-                    <el-icon><Delete /></el-icon>
-                  </el-button>
-                </div>
+              <!-- 如果组内只有一个键，直接显示为单个键项 -->
+              <div v-if="keyGroup.count === 1" class="key-item" @click="selectKey(keyGroup.keys[0])" :class="{ active: selectedKey?.name === keyGroup.keys[0].name }">
+                <el-icon class="key-icon"><Document /></el-icon>
+                <span class="key-name">{{ keyGroup.keys[0].name }}</span>
               </div>
               
-              <div v-if="expandedGroups.includes(keyGroup.prefix)" class="key-list">
-                <div class="key-list-header">
-                  <span>显示前 {{ loadedKeyCounts[keyGroup.prefix] || keyGroup.keys.length }} 条键</span>
-                  <el-button 
-                    type="text" 
-                    size="small" 
-                    @click="loadMoreKeys(keyGroup.prefix)"
-                    :loading="loadingMoreKeys[keyGroup.prefix]"
-                    v-if="keyGroup.hasMore"
-                  >
-                    加载更多
-                  </el-button>
-                </div>
-                <div
-                  v-for="key in keyGroup.keys"
-                  :key="key.name"
-                  class="key-item"
-                  @click="selectKey(key)"
-                  :class="{ active: selectedKey?.name === key.name }"
-                >
-                  <el-icon class="key-icon"><Document /></el-icon>
-                  <span class="key-name">{{ key.name }}</span>
-                </div>
-                <div v-if="keyGroup.hasMore" class="key-list-footer">
-                  <span 
-                    class="remaining-keys-text"
-                    :class="{ 'loading': loadingMoreKeys[keyGroup.prefix] }"
-                    @click="loadMoreKeys(keyGroup.prefix)"
-                  >
-                    <el-icon v-if="loadingMoreKeys[keyGroup.prefix]" class="loading-icon">
-                      <Loading />
+              <!-- 如果组内有多个键，显示为可展开的组 -->
+              <div v-else class="key-group">
+                <div class="key-group-header">
+                  <div class="key-group-info" @click="toggleKeyGroup(keyGroup.prefix)">
+                    <el-icon class="expand-icon" :class="{ expanded: expandedGroups.includes(keyGroup.prefix) }">
+                      <ArrowRight />
                     </el-icon>
-                    还有 {{ keyGroup.count - (loadedKeyCounts[keyGroup.prefix] || keyGroup.keys.length) }} 条键未显示
-                  </span>
+                    <span class="key-prefix">{{ keyGroup.prefix }}</span>
+                    <span class="key-count">({{ keyGroup.count }})</span>
+                  </div>
+                  <div class="key-group-actions">
+                    <el-button 
+                      type="text" 
+                      size="small" 
+                      @click="refreshKeyGroup(keyGroup.prefix)"
+                      title="刷新组"
+                    >
+                      <el-icon><Refresh /></el-icon>
+                    </el-button>
+                    <el-button 
+                      type="text" 
+                      size="small" 
+                      @click="convertToList(keyGroup.prefix)"
+                      title="转成列表"
+                    >
+                      <el-icon><List /></el-icon>
+                    </el-button>
+                    <el-button 
+                      type="text" 
+                      size="small" 
+                      @click="deleteKeyGroup(keyGroup.prefix)"
+                      title="删除组"
+                      class="delete-btn"
+                    >
+                      <el-icon><Delete /></el-icon>
+                    </el-button>
+                  </div>
+                </div>
+                
+                <div v-if="expandedGroups.includes(keyGroup.prefix)" class="key-list">
+                  <div class="key-list-header">
+                    <span>显示前 {{ loadedKeyCounts[keyGroup.prefix] || keyGroup.keys.length }} 条键</span>
+                    <el-button 
+                      type="text" 
+                      size="small" 
+                      @click="loadMoreKeys(keyGroup.prefix)"
+                      :loading="loadingMoreKeys[keyGroup.prefix]"
+                      v-if="keyGroup.hasMore"
+                    >
+                      加载更多
+                    </el-button>
+                  </div>
+                  <div
+                    v-for="key in keyGroup.keys"
+                    :key="key.name"
+                    class="key-item"
+                    @click="selectKey(key)"
+                    :class="{ active: selectedKey?.name === key.name }"
+                  >
+                    <el-icon class="key-icon"><Document /></el-icon>
+                    <span class="key-name">{{ key.name }}</span>
+                  </div>
+                  <div v-if="keyGroup.hasMore" class="key-list-footer">
+                    <span 
+                      class="remaining-keys-text"
+                      :class="{ 'loading': loadingMoreKeys[keyGroup.prefix] }"
+                      @click="loadMoreKeys(keyGroup.prefix)"
+                    >
+                      <el-icon v-if="loadingMoreKeys[keyGroup.prefix]" class="loading-icon">
+                        <Loading />
+                      </el-icon>
+                      还有 {{ keyGroup.count - (loadedKeyCounts[keyGroup.prefix] || keyGroup.keys.length) }} 条键未显示
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
