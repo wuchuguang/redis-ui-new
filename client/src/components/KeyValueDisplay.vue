@@ -997,13 +997,7 @@ watch(() => props.database, async () => {
   min-width: 300px;
 }
 
-.key-name-editor :deep(.el-input__wrapper) {
-  background-color: #2d2d2d;
-  border-color: #404040;
-}
-
 .key-name-editor :deep(.el-input__inner) {
-  color: #ffffff;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
 }
@@ -1034,14 +1028,7 @@ watch(() => props.database, async () => {
   width: 100%;
 }
 
-.filter-input :deep(.el-input__wrapper) {
-  background-color: #2d2d2d;
-  border-color: #404040;
-}
-
-.filter-input :deep(.el-input__inner) {
-  color: #ffffff;
-}
+/* 筛选输入框样式已由全局样式处理 */
 
 .set-items {
   display: flex;
@@ -1175,9 +1162,6 @@ watch(() => props.database, async () => {
 }
 
 .string-value :deep(.el-textarea__inner) {
-  background-color: #2d2d2d;
-  border-color: #404040;
-  color: #ffffff;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   line-height: 1.5;
@@ -1189,28 +1173,7 @@ watch(() => props.database, async () => {
   height: 100%;
 }
 
-.hash-value :deep(.el-table),
-.list-value :deep(.el-table),
-.zset-value :deep(.el-table) {
-  background-color: transparent;
-  color: #ffffff;
-}
-
-.hash-value :deep(.el-table th),
-.list-value :deep(.el-table th),
-.zset-value :deep(.el-table th) {
-  background-color: #2d2d2d;
-  color: #ffffff;
-  border-color: #404040;
-}
-
-.hash-value :deep(.el-table td),
-.list-value :deep(.el-table td),
-.zset-value :deep(.el-table td) {
-  background-color: #1e1e1e;
-  color: #ffffff;
-  border-color: #404040;
-}
+/* 表格样式已由全局样式处理 */
 
 .set-value {
   display: flex;
@@ -1229,8 +1192,6 @@ watch(() => props.database, async () => {
 }
 
 .raw-data {
-  background-color: #2d2d2d;
-  color: #ffffff;
   padding: 16px;
   border-radius: 4px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;

@@ -238,34 +238,5 @@ const formatNumber = (num) => {
   padding-bottom: 0;
 }
 
-/* 自定义表格样式 */
-:deep(.el-table) {
-  background-color: transparent;
-  border: 1px solid #404040;
-}
-
-:deep(.el-table th) {
-  background-color: #2d2d2d !important;
-  color: #ffffff !important;
-  border-bottom: 1px solid #404040;
-}
-
-:deep(.el-table td) {
-  background-color: #1e1e1e !important;
-  color: #ffffff !important;
-  border-bottom: 1px solid #404040;
-}
-
-:deep(.el-table--border) {
-  border-color: #404040;
-}
-
-:deep(.el-table--border th),
-:deep(.el-table--border td) {
-  border-right-color: #404040;
-}
-
-:deep(.el-table__body tr:hover > td) {
-  background-color: #404040 !important;
-}
+/* 表格样式已由全局样式处理 */
 </style> 

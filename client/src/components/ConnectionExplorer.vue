@@ -758,7 +758,6 @@ onUnmounted(() => {
 }
 
 .connection-actions .el-button {
-  color: #ffffff;
   background: transparent;
   border: none;
   padding: 4px;
@@ -873,7 +872,6 @@ onUnmounted(() => {
 }
 
 .key-group-actions .el-button {
-  color: #ffffff;
   background: transparent;
   border: none;
   padding: 4px;
