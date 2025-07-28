@@ -1266,4 +1266,73 @@ watch(() => props.database, async () => {
 }
 
 /* 值单元格样式已移至FormattedValue组件 */
+
+/* 滚动条样式 */
+.key-content {
+  scrollbar-width: thin;
+  scrollbar-color: #606266 transparent;
+}
+
+.key-content::-webkit-scrollbar {
+  width: 2px;
+}
+
+.key-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.key-content::-webkit-scrollbar-thumb {
+  background: #606266;
+  border-radius: 1px;
+}
+
+.key-content::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+.raw-data {
+  scrollbar-width: thin;
+  scrollbar-color: #606266 transparent;
+}
+
+.raw-data::-webkit-scrollbar {
+  width: 2px;
+}
+
+.raw-data::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.raw-data::-webkit-scrollbar-thumb {
+  background: #606266;
+  border-radius: 1px;
+}
+
+.raw-data::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+/* 表格滚动条 */
+:deep(.el-table__body-wrapper) {
+  scrollbar-width: thin;
+  scrollbar-color: #606266 transparent;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar) {
+  width: 2px;
+  height: 2px;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-track) {
+  background: transparent;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb) {
+  background: #606266;
+  border-radius: 1px;
+}
+
+:deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover) {
+  background: #909399;
+}
 </style> 

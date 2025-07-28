@@ -245,6 +245,25 @@ watch(() => props.value, () => {
   background-color: var(--el-bg-color);
   border: 1px solid var(--el-border-color);
   border-radius: 4px;
+  scrollbar-width: thin;
+  scrollbar-color: #606266 transparent;
+}
+
+.value-text::-webkit-scrollbar {
+  width: 2px;
+}
+
+.value-text::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.value-text::-webkit-scrollbar-thumb {
+  background: #606266;
+  border-radius: 1px;
+}
+
+.value-text::-webkit-scrollbar-thumb:hover {
+  background: #909399;
 }
 
 .action-buttons {

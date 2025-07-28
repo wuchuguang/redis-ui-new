@@ -253,6 +253,37 @@ onMounted(async () => {
   --el-fill-color-darker: #1e1e1e;
 }
 
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #606266;
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #909399;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Firefox 滚动条样式 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #606266 transparent;
+}
+
 /* Element Plus 组件深色主题覆盖 */
 .el-button {
   color: var(--el-text-color-primary) !important;
