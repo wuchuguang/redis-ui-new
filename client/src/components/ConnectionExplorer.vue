@@ -18,7 +18,7 @@
         <el-button type="text" size="small" @click="refreshKeys">
           <el-icon><Folder /></el-icon>
         </el-button>
-        <el-button type="text" size="small" @click="refreshKeys">
+        <el-button type="text" size="small" @click="handleRefresh">
           <el-icon><Refresh /></el-icon>
         </el-button>
         <el-button type="text" size="small" @click="goUp">
@@ -400,6 +400,54 @@ const refreshKeys = async () => {
   }
 }
 
+const handleRefresh = async () => {
+  if (!props.connection) return
+  
+  // 如果当前是列表模式，刷新当前key下的数据
+  if (currentListMode.value && currentListPrefix.value) {
+    await refreshListModeData(false)
+  } else {
+    // 否则刷新分组数据
+    await refreshKeys()
+  }
+}
+
+const refreshListModeData = async (isConverting = false) => {
+  if (!props.connection || !currentListPrefix.value) return
+  
+  keysLoading.value = true
+  try {
+    // 构建搜索模式，包含搜索词
+    let pattern = `${currentListPrefix.value}:*`
+    if (searchTerm.value && searchTerm.value.trim()) {
+      pattern = `${currentListPrefix.value}:*${searchTerm.value.trim()}*`
+    }
+    
+    const data = await connectionStore.getKeys(props.connection.id, selectedDatabase.value, pattern)
+    if (data && data.groups && data.groups.length > 0) {
+      // 将单个组的数据设置为当前显示
+      keysData.value = data.groups
+      // 重置已加载的键数
+      for (const group of data.groups) {
+        loadedKeyCounts.value[group.prefix] = group.keys.length
+      }
+    }
+    // 只有在非转换模式下才显示成功消息
+    if (!isConverting) {
+      ElMessage.success(`已刷新 ${currentListPrefix.value} 的列表数据`)
+    }
+  } catch (error) {
+    ElMessage.error('刷新列表数据失败')
+    // 如果是转换模式失败，退出列表模式
+    if (isConverting) {
+      currentListMode.value = false
+      currentListPrefix.value = ''
+    }
+  } finally {
+    keysLoading.value = false
+  }
+}
+
 const refreshDatabases = async () => {
   if (!props.connection) return
   
@@ -436,7 +484,12 @@ const startAutoRefresh = () => {
   autoRefreshTimer.value = setInterval(async () => {
     await refreshDatabases()
     if (props.connection) {
-      await refreshKeys()
+      // 如果当前是列表模式，刷新当前key下的数据
+      if (currentListMode.value && currentListPrefix.value) {
+        await refreshListModeData(false)
+      } else {
+        await refreshKeys()
+      }
     }
   }, 10000) // 10秒
 }
@@ -514,7 +567,12 @@ const selectKey = (key) => {
 }
 
 const refreshKeyGroup = async (prefix) => {
-  await refreshKeys()
+  // 如果当前是列表模式且是当前key，刷新列表数据
+  if (currentListMode.value && currentListPrefix.value === prefix) {
+    await refreshListModeData(false)
+  } else {
+    await refreshKeys()
+  }
 }
 
 const deleteKeyGroup = async (prefix) => {
@@ -562,27 +620,8 @@ const convertToList = async (prefix) => {
   currentListPrefix.value = prefix
   
   // 加载该组的所有键
-  keysLoading.value = true
-  try {
-    // 构建搜索模式，包含搜索词
-    let pattern = `${prefix}:*`
-    if (searchTerm.value && searchTerm.value.trim()) {
-      pattern = `${prefix}:*${searchTerm.value.trim()}*`
-    }
-    
-    const data = await connectionStore.getKeys(props.connection.id, selectedDatabase.value, pattern)
-    if (data && data.groups && data.groups.length > 0) {
-      // 将单个组的数据设置为当前显示
-      keysData.value = data.groups
-    }
-    ElMessage.success(`已切换到 ${prefix} 的列表模式`)
-  } catch (error) {
-    ElMessage.error('加载列表数据失败')
-    currentListMode.value = false
-    currentListPrefix.value = ''
-  } finally {
-    keysLoading.value = false
-  }
+  await refreshListModeData(true)
+  ElMessage.success(`已切换到 ${prefix} 的列表模式`)
 }
 
 const loadMoreKeys = async (prefix) => {
