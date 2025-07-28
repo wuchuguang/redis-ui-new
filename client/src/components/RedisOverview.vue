@@ -105,10 +105,10 @@
             :header-cell-style="{ backgroundColor: '#2d2d2d', color: '#ffffff' }"
             :cell-style="{ backgroundColor: '#1e1e1e', color: '#ffffff' }"
           >
-            <el-table-column prop="db" label="DB" width="50" />
-            <el-table-column prop="keys" label="Keys" width="70" />
-            <el-table-column prop="expires" label="Expires" width="70" />
-            <el-table-column label="Avg TTL" min-width="70">
+            <el-table-column prop="db" label="DB" width="60" />
+            <el-table-column prop="keys" label="Keys" width="120" />
+            <el-table-column prop="expires" label="Expires" width="120" />
+            <el-table-column label="Avg TTL" min-width="120">
               <template #default="{ row }">
                 {{ formatAvgTtl(row.avgTtl) }}
               </template>
@@ -124,10 +124,10 @@
             :header-cell-style="{ backgroundColor: '#2d2d2d', color: '#ffffff' }"
             :cell-style="{ backgroundColor: '#1e1e1e', color: '#ffffff' }"
           >
-            <el-table-column prop="db" label="DB" width="50" />
-            <el-table-column prop="keys" label="Keys" width="70" />
-            <el-table-column prop="expires" label="Expires" width="70" />
-            <el-table-column label="Avg TTL" min-width="70">
+            <el-table-column prop="db" label="DB" width="60" />
+            <el-table-column prop="keys" label="Keys" width="120" />
+            <el-table-column prop="expires" label="Expires" width="120" />
+            <el-table-column label="Avg TTL" min-width="120">
               <template #default="{ row }">
                 {{ formatAvgTtl(row.avgTtl) }}
               </template>
