@@ -48,19 +48,6 @@
       </el-select>
     </div>
 
-    <!-- 添加键按钮 -->
-    <div class="add-key-section">
-      <el-button 
-        type="primary" 
-        size="small" 
-        @click="showAddKeyDialog = true"
-        :disabled="!connection"
-      >
-        <el-icon><Plus /></el-icon>
-        新增Key
-      </el-button>
-    </div>
-
     <!-- 搜索框 -->
     <div class="search-section">
       <div class="search-container">
@@ -123,6 +110,16 @@
             <span class="keys-count">({{ filteredKeys.length }})</span>
           </div>
           <div class="keys-header-right">
+            <el-button 
+              type="primary" 
+              size="small" 
+              @click="showAddKeyDialog = true"
+              :disabled="!connection"
+              class="add-key-btn"
+            >
+              <el-icon><Plus /></el-icon>
+              新增Key
+            </el-button>
             <el-button 
               type="text" 
               size="small" 
@@ -275,7 +272,7 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="showConfigDialog = false">取消</el-button>
+          <el-button type="primary" @click="showConfigDialog = false">取消</el-button>
           <el-button type="primary" @click="handleConfigSave">确定</el-button>
         </div>
       </template>
@@ -324,7 +321,7 @@
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="showAddKeyDialog = false">取消</el-button>
+          <el-button type="primary" @click="showAddKeyDialog = false">取消</el-button>
           <el-button type="primary" @click="handleAddKey">确定</el-button>
         </div>
       </template>
@@ -1459,55 +1456,6 @@ onUnmounted(() => {
   border-color: var(--el-border-color) !important;
 }
 
-/* 最高优先级覆盖 - 修复白色背景问题 */
-:deep(.database-selector .el-select .el-input__inner),
-:deep(.search-section .el-input .el-input__inner) {
-  color: #ffffff !important;
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-:deep(.database-selector .el-select .el-input__wrapper),
-:deep(.search-section .el-input .el-input__wrapper) {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-/* 强制覆盖所有输入框的白色背景 */
-:deep(.el-input__inner) {
-  color: #ffffff !important;
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-:deep(.el-input__wrapper) {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-:deep(.el-select .el-input__inner) {
-  color: #ffffff !important;
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-:deep(.el-select .el-input__wrapper) {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-/* 覆盖所有可能的输入框变体 */
-:deep(.el-input.is-disabled .el-input__inner) {
-  color: #909399 !important;
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-:deep(.el-input.is-disabled .el-input__wrapper) {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
 /* 确保选择框的图标也是可见的 */
 :deep(.el-select .el-input__suffix) {
   color: #ffffff !important;
@@ -1515,22 +1463,6 @@ onUnmounted(() => {
 
 :deep(.el-select .el-input__suffix .el-icon) {
   color: #ffffff !important;
-}
-
-/* 全局强制覆盖所有输入框样式 */
-:deep(.el-input__inner),
-:deep(.el-textarea__inner),
-:deep(.el-input-number .el-input__inner) {
-  color: #ffffff !important;
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-:deep(.el-input__wrapper),
-:deep(.el-textarea__wrapper),
-:deep(.el-input-number .el-input__wrapper) {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
 }
 
 /* 强制覆盖所有下拉菜单样式 */

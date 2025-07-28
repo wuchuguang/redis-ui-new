@@ -52,8 +52,8 @@
 
     <template #footer>
       <div class="dialog-footer">
-        <el-button @click="handleClose">取消</el-button>
-        <el-button @click="testConnection" :loading="testing">
+        <el-button type="primary" @click="handleClose">取消</el-button>
+        <el-button type="primary" @click="testConnection" :loading="testing">
           测试连接
         </el-button>
         <el-button type="primary" @click="handleCreate" :loading="creating">
@@ -178,4 +178,6 @@ watch(() => props.modelValue, (newValue) => {
 .dialog-footer {
   text-align: right;
 }
+
+
 </style> 

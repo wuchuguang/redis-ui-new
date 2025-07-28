@@ -1,8 +1,18 @@
 <template>
   <div class="key-value-display">
-    <!-- 顶部工具栏 -->
+        <!-- 顶部工具栏 -->
     <div class="key-toolbar">
       <div class="key-info">
+        <el-button 
+          type="text" 
+          size="small" 
+          @click="goBack"
+          title="返回服务器信息"
+          class="back-btn"
+        >
+          <el-icon><ArrowLeft /></el-icon>
+          返回
+        </el-button>
         <div class="key-type-selector">
           <el-select v-model="keyData.type" placeholder="数据类型" disabled>
             <el-option label="String" value="string" />
@@ -485,7 +495,8 @@ import {
   Delete, 
   Edit, 
   Document,
-  Search
+  Search,
+  ArrowLeft
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import FormattedValue from './FormattedValue.vue'
@@ -509,7 +520,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['key-deleted', 'key-updated'])
+const emit = defineEmits(['key-deleted', 'key-updated', 'go-back'])
 
 // 响应式数据
 const keyData = ref({
@@ -977,6 +988,11 @@ watch(() => props.connection, async (newConnection, oldConnection) => {
   }
 }, { immediate: true })
 
+// 返回服务器信息视图
+const goBack = () => {
+  emit('go-back')
+}
+
 // 组件卸载时的清理
 onUnmounted(() => {
   // 清理所有响应式数据
@@ -1069,6 +1085,8 @@ watch(() => props.database, async () => {
 }
 
 /* 筛选输入框样式已由全局样式处理 */
+
+
 
 .set-items {
   display: flex;
@@ -1177,6 +1195,16 @@ watch(() => props.database, async () => {
 
 .key-actions .delete-btn:hover {
   color: #f56c6c;
+}
+
+.back-btn {
+  color: #409eff;
+  margin-right: 12px;
+}
+
+.back-btn:hover {
+  color: #66b1ff;
+  background-color: #2d2d2d;
 }
 
 .key-content {

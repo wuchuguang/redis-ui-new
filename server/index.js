@@ -624,7 +624,7 @@ app.delete('/api/connections/:id/:db/keys/group/:prefix', async (req, res) => {
   }
 });
 
-// 获取Redis信息
+// 获取Redis服务器信息
 app.get('/api/connections/:id/info', async (req, res) => {
   try {
     const { id } = req.params;
@@ -637,14 +637,73 @@ app.get('/api/connections/:id/info', async (req, res) => {
       });
     }
 
-    const info = await connection.client.info();
-    const dbsize = await connection.client.dbSize();
+    // 获取Redis INFO命令的原始数据
+    const infoRaw = await connection.client.info();
+    
+    // 解析INFO数据为结构化对象
+    const infoObj = {};
+    const lines = infoRaw.split('\r\n');
+    for (const line of lines) {
+      if (line && !line.startsWith('#')) {
+        const [key, value] = line.split(':');
+        if (key && value !== undefined) {
+          infoObj[key] = value;
+        }
+      }
+    }
+
+    // 获取当前数据库的键数量
+    const currentDbSize = await connection.client.dbSize();
+    
+    // 获取所有数据库的统计信息
+    const dbStats = [];
+    for (let i = 0; i <= 15; i++) {
+      try {
+        // 切换到指定数据库
+        await connection.client.select(i);
+        const dbSize = await connection.client.dbSize();
+        
+        // 获取数据库的过期键信息
+        const info = await connection.client.info('keyspace');
+        const keyspaceInfo = {};
+        const keyspaceLines = info.split('\r\n');
+        for (const line of keyspaceLines) {
+          if (line.startsWith(`db${i}:`)) {
+            const match = line.match(/keys=(\d+),expires=(\d+),avg_ttl=(\d+)/);
+            if (match) {
+              keyspaceInfo.keys = parseInt(match[1]);
+              keyspaceInfo.expires = parseInt(match[2]);
+              keyspaceInfo.avgTtl = parseInt(match[3]);
+            }
+          }
+        }
+        
+        dbStats.push({
+          db: `db${i}`,
+          keys: keyspaceInfo.keys || dbSize,
+          expires: keyspaceInfo.expires || 0,
+          avgTtl: keyspaceInfo.avgTtl || 0
+        });
+      } catch (error) {
+        // 如果某个数据库访问失败，仍然添加但键数为0
+        dbStats.push({
+          db: `db${i}`,
+          keys: 0,
+          expires: 0,
+          avgTtl: 0
+        });
+      }
+    }
+    
+    // 切换回原始数据库
+    await connection.client.select(connection.config.database);
     
     res.json({
       success: true,
       data: {
-        info,
-        dbsize,
+        redisInfo: infoObj,
+        currentDbSize,
+        dbStats,
         status: connection.client.isReady ? 'connected' : 'disconnected'
       }
     });

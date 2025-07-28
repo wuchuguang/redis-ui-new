@@ -54,12 +54,20 @@
 
       <!-- 右侧主内容区 -->
       <div class="right-content">
+        <RedisOverview 
+          v-if="!selectedKey"
+          :connection="currentConnection"
+          :redis-info="redisInfo"
+          @refresh="refreshData"
+        />
         <KeyValueDisplay 
+          v-else
           :connection="currentConnection"
           :selected-key="selectedKey"
           :database="currentDatabase"
           @key-deleted="handleKeyDeleted"
           @key-updated="handleKeyUpdated"
+          @go-back="handleGoBack"
         />
       </div>
     </div>
@@ -117,7 +125,11 @@ const closeConnection = () => {
 
 const refreshData = async () => {
   if (currentConnection.value) {
-    redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
+    try {
+      redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
+    } catch (error) {
+      console.error('刷新Redis信息失败:', error)
+    }
   }
 }
 
@@ -170,6 +182,10 @@ const handleSelectKey = async (key) => {
   selectedKey.value = { ...key }
 }
 
+const handleGoBack = () => {
+  selectedKey.value = null
+}
+
 const handleKeyDeleted = (keyName) => {
   selectedKey.value = null
   // 这里可以刷新键列表
@@ -213,7 +229,6 @@ onMounted(async () => {
 * {
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
 }
 
 #app {
@@ -297,19 +312,118 @@ onMounted(async () => {
   background-color: var(--el-fill-color) !important;
 }
 
-.el-input__inner {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
+/* 输入框基础样式 - 最高优先级 */
+.el-input__inner,
+.el-input__wrapper,
+.el-textarea__inner,
+.el-textarea__wrapper,
+.el-input-number .el-input__inner,
+.el-input-number .el-input__wrapper,
+.el-select .el-input__inner,
+.el-select .el-input__wrapper,
+.el-autocomplete .el-input__inner,
+.el-autocomplete .el-input__wrapper {
+  color: #ffffff !important;
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
 }
 
-.el-input__wrapper {
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
+/* 输入框占位符 */
+.el-input__inner::placeholder,
+.el-textarea__inner::placeholder {
+  color: #909399 !important;
 }
 
-.el-select .el-input__inner {
-  color: var(--el-text-color-primary) !important;
+/* 输入框聚焦状态 */
+.el-input__inner:focus,
+.el-textarea__inner:focus,
+.el-input-number .el-input__inner:focus {
+  border-color: #409eff !important;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
+}
+
+/* 输入框禁用状态 */
+.el-input__inner:disabled,
+.el-textarea__inner:disabled,
+.el-input-number .el-input__inner:disabled {
+  background-color: #1e1e1e !important;
+  color: #606266 !important;
+  border-color: #404040 !important;
+}
+
+/* 选择框图标 */
+.el-select .el-input__suffix,
+.el-select .el-input__suffix .el-icon {
+  color: #ffffff !important;
+}
+
+/* 强制覆盖所有输入框样式 - 最高优先级 */
+.el-input .el-input__inner,
+.el-input .el-input__wrapper,
+.el-textarea .el-textarea__inner,
+.el-textarea .el-textarea__wrapper,
+.el-input-number .el-input .el-input__inner,
+.el-input-number .el-input .el-input__wrapper,
+.el-select .el-input .el-input__inner,
+.el-select .el-input .el-input__wrapper,
+.el-autocomplete .el-input .el-input__inner,
+.el-autocomplete .el-input .el-input__wrapper {
+  color: #ffffff !important;
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+}
+
+/* 强制覆盖所有输入框占位符 */
+.el-input .el-input__inner::placeholder,
+.el-textarea .el-textarea__inner::placeholder {
+  color: #909399 !important;
+}
+
+/* 强制覆盖所有输入框聚焦状态 */
+.el-input .el-input__inner:focus,
+.el-textarea .el-textarea__inner:focus,
+.el-input-number .el-input .el-input__inner:focus {
+  border-color: #409eff !important;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
+}
+
+/* 最终强制覆盖 - 使用更具体的选择器 */
+.el-input .el-input__inner,
+.el-input .el-input__wrapper,
+.el-textarea .el-textarea__inner,
+.el-textarea .el-textarea__wrapper,
+.el-input-number .el-input .el-input__inner,
+.el-input-number .el-input .el-input__wrapper,
+.el-select .el-input .el-input__inner,
+.el-select .el-input .el-input__wrapper,
+.el-autocomplete .el-input .el-input__inner,
+.el-autocomplete .el-input .el-input__wrapper,
+.el-form-item .el-input .el-input__inner,
+.el-form-item .el-input .el-input__wrapper,
+.el-form-item .el-textarea .el-textarea__inner,
+.el-form-item .el-textarea .el-textarea__wrapper,
+.el-form-item .el-input-number .el-input .el-input__inner,
+.el-form-item .el-input-number .el-input .el-input__wrapper,
+.el-form-item .el-select .el-input .el-input__inner,
+.el-form-item .el-select .el-input .el-input__wrapper {
+  color: #ffffff !important;
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+}
+
+/* 最终强制覆盖占位符 */
+.el-input .el-input__inner::placeholder,
+.el-textarea .el-textarea__inner::placeholder {
+  color: #909399 !important;
+}
+
+/* 最终强制覆盖聚焦状态 */
+.el-input .el-input__inner:focus,
+.el-textarea .el-textarea__inner:focus,
+.el-input-number .el-input .el-input__inner:focus,
+.el-select .el-input .el-input__inner:focus {
+  border-color: #409eff !important;
+  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
 }
 
 .el-select-dropdown {
@@ -465,17 +579,28 @@ onMounted(async () => {
   color: var(--el-text-color-secondary) !important;
 }
 
-/* 确保所有文字在深色背景下清晰可见 */
-.el-textarea__inner {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
+/* 自动完成下拉框 */
+.el-autocomplete-suggestion {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
 }
 
-.el-input-number .el-input__inner {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
+.el-autocomplete-suggestion__list {
+  background-color: #2d2d2d !important;
+}
+
+.el-autocomplete-suggestion__list li {
+  color: #ffffff !important;
+  background-color: #2d2d2d !important;
+}
+
+.el-autocomplete-suggestion__list li:hover {
+  background-color: #404040 !important;
+}
+
+.el-autocomplete-suggestion__list li.highlighted {
+  background-color: #409eff !important;
+  color: #ffffff !important;
 }
 
 .el-switch__label {
@@ -660,20 +785,23 @@ onMounted(async () => {
   flex: 1;
   display: flex;
   overflow: hidden;
+  min-height: 0;
 }
 
 .left-sidebar {
   width: 300px;
   background-color: #2d2d2d;
   border-right: 1px solid #404040;
-  overflow-y: auto;
+  overflow: hidden;
+  min-width: 300px;
+  max-width: 300px;
 }
 
 .right-content {
   flex: 1;
   background-color: #1e1e1e;
-  overflow-y: auto;
-  padding: 20px;
+  overflow: hidden;
+  padding: 0;
 }
 
 .no-content {

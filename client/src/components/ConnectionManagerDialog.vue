@@ -16,7 +16,7 @@
           <el-icon><Delete /></el-icon>
           删除选中
         </el-button>
-        <el-button @click="refreshConnections">
+        <el-button type="primary" @click="refreshConnections">
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
@@ -112,7 +112,7 @@
       </el-form>
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="showEditDialog = false">取消</el-button>
+          <el-button type="primary" @click="showEditDialog = false">取消</el-button>
           <el-button type="primary" @click="saveConnection" :loading="saving">
             保存
           </el-button>
@@ -332,4 +332,6 @@ watch(dialogVisible, (visible) => {
   justify-content: flex-end;
   gap: 8px;
 }
+
+
 </style> 
