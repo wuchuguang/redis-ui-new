@@ -106,7 +106,7 @@
                 <div class="keys-section">
         <div class="keys-header">
           <div class="keys-header-left">
-            <span>键列表</span>
+            <span class="keys-title">键列表</span>
             <span class="keys-count">({{ filteredKeys.length }})</span>
           </div>
           <div class="keys-header-right">
@@ -121,7 +121,7 @@
               新增Key
             </el-button>
             <el-button 
-              type="text" 
+              type="default" 
               size="small" 
               @click="showConfigDialog = true"
               title="显示配置"
@@ -863,6 +863,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   padding: 15px;
+  overflow: hidden;
 }
 
 
@@ -944,26 +945,36 @@ onUnmounted(() => {
 .keys-section {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .keys-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
-  font-weight: 600;
-  color: #ffffff;
+  padding: 0 4px 10px 0;
+  border-bottom: 1px solid #404040;
+  margin-bottom: 8px;
 }
-
 .keys-header-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-
+.keys-title {
+  font-weight: bold;
+  font-size: 15px;
+  color: #fff;
+}
 .keys-header-right {
   display: flex;
   align-items: center;
+  gap: 10px;
+}
+.add-key-btn {
+  font-weight: 500;
+  letter-spacing: 1px;
+  min-width: 90px;
 }
 
 .keys-count {
