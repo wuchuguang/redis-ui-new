@@ -117,13 +117,13 @@
         </div>
         <!-- String类型 -->
         <div v-if="keyData.type === 'string'" class="string-value">
-          <el-input
-            v-model="keyData.value"
-            type="textarea"
-            :rows="10"
-            readonly
-            placeholder="字符串值"
-          />
+          <div class="string-value-container">
+            <FormattedValue 
+              :value="keyData.value" 
+              :row-key="'string_value'"
+              @formatted="handleFormatted"
+            />
+          </div>
         </div>
 
         <!-- Hash类型 -->
@@ -143,7 +143,15 @@
           </div>
           <el-table :data="filteredHashTableData" stripe>
             <el-table-column prop="field" label="字段" width="200" />
-            <el-table-column prop="value" label="值" />
+            <el-table-column label="值" min-width="300">
+              <template #default="{ row }">
+                <FormattedValue 
+                  :value="row.value" 
+                  :row-key="`${row.field}`"
+                  @formatted="handleFormatted"
+                />
+              </template>
+            </el-table-column>
           </el-table>
         </div>
 
@@ -151,7 +159,15 @@
         <div v-else-if="keyData.type === 'list'" class="list-value">
           <el-table :data="listTableData" stripe>
             <el-table-column prop="index" label="索引" width="80" />
-            <el-table-column prop="value" label="值" />
+            <el-table-column label="值" min-width="300">
+              <template #default="{ row }">
+                <FormattedValue 
+                  :value="row.value" 
+                  :row-key="`${row.index}`"
+                  @formatted="handleFormatted"
+                />
+              </template>
+            </el-table-column>
           </el-table>
         </div>
 
@@ -171,15 +187,25 @@
             </el-input>
           </div>
           <div class="set-items">
-            <el-tag
+            <div
               v-for="(item, index) in filteredSetData"
               :key="index"
-              class="set-item"
-              closable
-              @close="removeSetItem(index)"
+              class="set-item-container"
             >
-              {{ item }}
-            </el-tag>
+              <FormattedValue 
+                :value="item" 
+                :row-key="`set_${index}`"
+                @formatted="handleFormatted"
+              />
+              <el-button 
+                type="danger" 
+                size="small" 
+                @click="removeSetItem(index)"
+                class="remove-btn"
+              >
+                <el-icon><Delete /></el-icon>
+              </el-button>
+            </div>
           </div>
         </div>
 
@@ -188,7 +214,15 @@
           <el-table :data="zsetTableData" stripe>
             <el-table-column prop="rank" label="排名" width="80" />
             <el-table-column prop="score" label="分数" width="100" />
-            <el-table-column prop="member" label="成员" />
+            <el-table-column label="成员" min-width="300">
+              <template #default="{ row }">
+                <FormattedValue 
+                  :value="row.member" 
+                  :row-key="`${row.rank}`"
+                  @formatted="handleFormatted"
+                />
+              </template>
+            </el-table-column>
           </el-table>
         </div>
 
@@ -454,6 +488,7 @@ import {
   Search
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
+import FormattedValue from './FormattedValue.vue'
 
 const connectionStore = useConnectionStore()
 
@@ -505,6 +540,11 @@ const newListItem = ref('')
 const newSetMember = ref('')
 const newZSetMember = ref('')
 const newZSetScore = ref(0)
+
+// 格式化事件处理
+const handleFormatted = (data) => {
+  console.log('格式化完成:', data)
+}
 
 // 计算属性
 const hashTableData = computed(() => {
@@ -618,10 +658,10 @@ const loadKeyValue = async () => {
     }
     console.log('KeyValueDisplay - setting error keyData to:', errorData)
     keyData.value = errorData
-    // 确保 editingKeyName 也更新
-    if (!isEditingKeyName.value) {
-      editingKeyName.value = errorData.key
-    }
+          // 确保 editingKeyName 也更新
+      if (!isEditingKeyName.value) {
+        editingKeyName.value = errorData.key
+      }
   } finally {
     loading.value = false
   }
@@ -1159,12 +1199,15 @@ watch(() => props.database, async () => {
 
 .string-value {
   height: 100%;
+  padding: 16px;
 }
 
-.string-value :deep(.el-textarea__inner) {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  line-height: 1.5;
+.string-value-container {
+  background-color: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  padding: 16px;
+  min-height: 200px;
 }
 
 .hash-value,
@@ -1177,14 +1220,33 @@ watch(() => props.database, async () => {
 
 .set-value {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 8px;
 }
 
-.set-item {
-  background-color: #409eff;
-  border-color: #409eff;
-  color: #ffffff;
+.set-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.set-item-container {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--el-bg-color-overlay);
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+}
+
+.set-item-container .formatted-value {
+  flex: 1;
+}
+
+.remove-btn {
+  flex-shrink: 0;
+  margin-top: 4px;
 }
 
 .unknown-value {
@@ -1202,4 +1264,6 @@ watch(() => props.database, async () => {
   max-height: 400px;
   overflow-y: auto;
 }
+
+/* 值单元格样式已移至FormattedValue组件 */
 </style> 
