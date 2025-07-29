@@ -132,7 +132,7 @@
 
     <!-- 键列表 -->
     <div class="keys-section">
-      <div v-loading="keysLoading" class="keys-tree">
+      <div class="keys-tree">
           <div v-if="!connection" class="no-connection-tip">
             <el-empty description="请先创建Redis连接" />
           </div>
@@ -433,10 +433,12 @@ const filteredKeys = computed(() => {
 const isListMode = computed(() => currentListMode.value && currentListPrefix.value)
 
 // 方法
-const refreshKeys = async () => {
+const refreshKeys = async (showLoading = false) => {
   if (!props.connection) return
   
-  keysLoading.value = true
+  if (showLoading) {
+    keysLoading.value = true
+  }
   try {
     // 构建搜索模式
     let pattern = '*'
@@ -454,7 +456,9 @@ const refreshKeys = async () => {
       }
     }
   } finally {
-    keysLoading.value = false
+    if (showLoading) {
+      keysLoading.value = false
+    }
   }
 }
 
@@ -465,8 +469,8 @@ const handleRefresh = async () => {
   if (currentListMode.value && currentListPrefix.value) {
     await refreshListModeData(false)
   } else {
-    // 否则刷新分组数据
-    await refreshKeys()
+    // 否则刷新分组数据，不显示加载状态
+    await refreshKeys(false)
   }
 }
 
@@ -546,7 +550,7 @@ const startAutoRefresh = () => {
       if (currentListMode.value && currentListPrefix.value) {
         await refreshListModeData(false)
       } else {
-        await refreshKeys()
+        await refreshKeys(false)
       }
     }
   }, 10000) // 10秒
@@ -568,7 +572,7 @@ const goUp = () => {
 const handleDatabaseChange = async (dbId) => {
   selectedDatabase.value = dbId
   emit('select-database', dbId)
-  await refreshKeys()
+  await refreshKeys(true)
 }
 
 const handleSearchInput = () => {
@@ -585,7 +589,7 @@ const handleSearchInput = () => {
   
   // 设置1秒延时搜索
   searchTimer.value = setTimeout(() => {
-    refreshKeys()
+    refreshKeys(false)
   }, 1000)
 }
 
@@ -605,7 +609,7 @@ const handleSearchEnter = () => {
   // 添加到搜索历史
   addToSearchHistory(searchTerm.value)
   
-  refreshKeys()
+  refreshKeys(false)
 }
 
 // 搜索历史相关方法
@@ -641,7 +645,7 @@ const selectSearchHistory = (value) => {
   // 添加到搜索历史
   addToSearchHistory(value)
   // 立即搜索
-  refreshKeys()
+  refreshKeys(false)
 }
 
 const clearAllSearchHistory = () => {
@@ -682,7 +686,7 @@ const deleteSearchHistory = (searchTerm) => {
 
 const handleSearch = async (value) => {
   emit('search-keys', value)
-  await refreshKeys()
+  await refreshKeys(false)
 }
 
 const toggleKeyGroup = (prefix) => {
@@ -704,7 +708,7 @@ const refreshKeyGroup = async (prefix) => {
   if (currentListMode.value && currentListPrefix.value === prefix) {
     await refreshListModeData(false)
   } else {
-    await refreshKeys()
+    await refreshKeys(false)
   }
 }
 
@@ -724,7 +728,7 @@ const deleteKeyGroup = async (prefix) => {
     
     const success = await connectionStore.deleteKeyGroup(props.connection.id, selectedDatabase.value, prefix)
     if (success) {
-      await refreshKeys()
+      await refreshKeys(false)
     }
   } catch (error) {
     // 用户取消删除
@@ -742,7 +746,7 @@ const handleConfigSave = async () => {
   showConfigDialog.value = false
   
   // 重新加载数据以应用新的配置
-  await refreshKeys()
+  await refreshKeys(false)
   ElMessage.success('配置已保存')
 }
 
@@ -814,7 +818,7 @@ const backToGroups = async () => {
   currentListPrefix.value = ''
   
   // 重新加载分组数据
-  await refreshKeys()
+  await refreshKeys(true)
   ElMessage.success('已返回分组模式')
 }
 
@@ -822,7 +826,7 @@ const backToGroups = async () => {
 watch(() => props.connection, async (newConnection) => {
   if (newConnection) {
     await refreshDatabases()
-    await refreshKeys()
+    await refreshKeys(true)
     startAutoRefresh()
   } else {
     stopAutoRefresh()
