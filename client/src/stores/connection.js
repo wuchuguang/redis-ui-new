@@ -295,7 +295,46 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
-  // 重新连接
+  // 检查是否是连接错误
+  const isConnectionError = (error) => {
+    return error.response?.status === 500 && 
+           error.response?.data?.message?.includes('连接不存在或未连接')
+  }
+
+  // 自动重连（静默重连，不显示错误信息）
+  const autoReconnect = async (connectionId) => {
+    try {
+      console.log('开始自动重连:', connectionId)
+      const response = await axios.post(`/api/connections/${connectionId}/reconnect`)
+      if (response.data.success) {
+        console.log('自动重连成功:', connectionId)
+        // 更新连接状态
+        const index = connections.value.findIndex(conn => conn.id === connectionId)
+        if (index > -1) {
+          connections.value[index] = response.data.data
+        }
+        return true
+      }
+    } catch (error) {
+      console.error('自动重连失败:', connectionId, error.message)
+      return false
+    }
+  }
+
+  // 处理连接错误的通用函数
+  const handleConnectionError = async (connectionId, operation, retryFunction) => {
+    console.log(`检测到连接断开，尝试自动重连... (操作: ${operation})`)
+    const success = await autoReconnect(connectionId)
+    if (success) {
+      console.log(`重连成功，重新执行操作: ${operation}`)
+      return await retryFunction()
+    } else {
+      console.log('重连失败，停止自动重试')
+      return null
+    }
+  }
+
+  // 手动重新连接（显示错误信息）
   const reconnect = async (connectionId) => {
     try {
       const response = await axios.post(`/api/connections/${connectionId}/reconnect`)
@@ -385,7 +424,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('获取键列表失败:', error)
-      ElMessage.error(error.response?.data?.message || '获取键列表失败')
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        return await handleConnectionError(connectionId, '获取键列表', () => 
+          getKeys(connectionId, database, pattern, limit)
+        )
+      }
+      
+      // 其他错误不显示给用户，静默处理
       return null
     }
   }
@@ -401,7 +448,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('加载更多键失败:', error)
-      ElMessage.error(error.response?.data?.message || '加载更多键失败')
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        return await handleConnectionError(connectionId, '加载更多键', () => 
+          loadMoreKeys(connectionId, database, prefix, offset, limit)
+        )
+      }
+      
+      // 其他错误不显示给用户，静默处理
       return null
     }
   }
@@ -416,7 +471,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('获取键值失败:', error)
-      ElMessage.error(error.response?.data?.message || '获取键值失败')
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        return await handleConnectionError(connectionId, '获取键值', () => 
+          getKeyValue(connectionId, database, keyName)
+        )
+      }
+      
+      // 其他错误不显示给用户，静默处理
       return null
     }
   }
@@ -433,6 +496,14 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('重命名键失败:', error)
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        return await handleConnectionError(connectionId, '重命名键', () => 
+          renameKey(connectionId, database, oldKeyName, newKeyName)
+        )
+      }
+      
       ElMessage.error(error.response?.data?.message || '重命名键失败')
       return null
     }
@@ -448,6 +519,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('删除键组失败:', error)
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        const result = await handleConnectionError(connectionId, '删除键组', () => 
+          deleteKeyGroup(connectionId, database, prefix)
+        )
+        return result !== null
+      }
+      
       ElMessage.error(error.response?.data?.message || '删除键组失败')
       return false
     }
@@ -464,6 +544,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('删除Hash字段失败:', error)
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        const result = await handleConnectionError(connectionId, '删除Hash字段', () => 
+          deleteHashField(connectionId, database, keyName, field)
+        )
+        return result !== null
+      }
+      
       ElMessage.error(error.response?.data?.message || '删除Hash字段失败')
       return false
     }
@@ -480,6 +569,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('批量删除Hash字段失败:', error)
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        const result = await handleConnectionError(connectionId, '批量删除Hash字段', () => 
+          batchDeleteHashFields(connectionId, database, keyName, fields)
+        )
+        return result !== null
+      }
+      
       ElMessage.error(error.response?.data?.message || '批量删除Hash字段失败')
       return false
     }
@@ -498,6 +596,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('更新Hash字段失败:', error)
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        const result = await handleConnectionError(connectionId, '更新Hash字段', () => 
+          updateHashField(connectionId, database, keyName, oldField, newField, value)
+        )
+        return result !== null
+      }
+      
       ElMessage.error(error.response?.data?.message || '更新Hash字段失败')
       return false
     }
@@ -514,6 +621,15 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('更新String值失败:', error)
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        const result = await handleConnectionError(connectionId, '更新String值', () => 
+          updateStringValue(connectionId, database, keyName, value)
+        )
+        return result !== null
+      }
+      
       ElMessage.error(error.response?.data?.message || '更新String值失败')
       return false
     }
@@ -528,6 +644,14 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('获取连接信息失败:', error)
+      
+      // 检查是否是连接问题
+      if (isConnectionError(error)) {
+        return await handleConnectionError(connectionId, '获取连接信息', () => 
+          getConnectionInfo(connectionId)
+        )
+      }
+      
       ElMessage.error('获取连接信息失败')
       return null
     }
@@ -708,6 +832,7 @@ export const useConnectionStore = defineStore('connection', () => {
     setCurrentConnection,
     getCurrentConnection,
     autoSelectConnection,
-    initializeConnections
+    initializeConnections,
+    autoReconnect
   }
 }) 

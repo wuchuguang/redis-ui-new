@@ -240,14 +240,20 @@ const deleteConnection = async (id) => {
 
 // 重新连接
 const reconnectConnection = async (id, savedConfig) => {
+  console.log(`尝试重新连接: ${savedConfig.name} (${savedConfig.host}:${savedConfig.port})`);
+
   // 如果连接正在使用，先断开
   const activeConnection = redisConnections.get(id);
-  if (activeConnection && activeConnection.client.isReady) {
-    await activeConnection.client.disconnect();
+  if (activeConnection && activeConnection.client) {
+    try {
+      if (activeConnection.client.isReady) {
+        await activeConnection.client.disconnect();
+      }
+    } catch (error) {
+      console.log('断开旧连接时出错:', error.message);
+    }
     redisConnections.delete(id);
   }
-
-  console.log(`尝试重新连接: ${savedConfig.name} (${savedConfig.host}:${savedConfig.port})`);
 
   try {
     const redisClient = await createRedisConnection(savedConfig);
@@ -267,6 +273,13 @@ const reconnectConnection = async (id, savedConfig) => {
     return updatedConfig;
   } catch (error) {
     console.error('重新连接失败:', error.message);
+    
+    // 即使重连失败，也要更新状态为断开
+    const failedConfig = {
+      ...savedConfig,
+      status: 'disconnected'
+    };
+    
     throw error;
   }
 };
