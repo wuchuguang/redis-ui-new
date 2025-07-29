@@ -15,8 +15,8 @@
         <el-button type="text" size="small" @click="refreshKeys">
           <el-icon><House /></el-icon>
         </el-button>
-        <el-button type="text" size="small" @click="refreshKeys">
-          <el-icon><Folder /></el-icon>
+        <el-button type="text" size="small" @click="openConversionRules" title="转换规则管理">
+          <el-icon><Setting /></el-icon>
         </el-button>
         <el-button type="text" size="small" @click="handleRefresh">
           <el-icon><Refresh /></el-icon>
@@ -353,7 +353,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['select-database', 'add-key', 'search-keys', 'select-key'])
+const emit = defineEmits(['select-database', 'add-key', 'search-keys', 'select-key', 'open-conversion-rules'])
 
 const connectionStore = useConnectionStore()
 
@@ -472,6 +472,10 @@ const handleRefresh = async () => {
     // 否则刷新分组数据，不显示加载状态
     await refreshKeys(false)
   }
+}
+
+const openConversionRules = () => {
+  emit('open-conversion-rules')
 }
 
 const refreshListModeData = async (isConverting = false) => {

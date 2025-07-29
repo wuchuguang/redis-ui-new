@@ -35,6 +35,7 @@
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Setting, CopyDocument } from '@element-plus/icons-vue'
+import { conversionEngine } from '../utils/conversionEngine'
 
 // Props
 const props = defineProps({
@@ -45,6 +46,18 @@ const props = defineProps({
   rowKey: {
     type: String,
     required: true
+  },
+  keyName: {
+    type: String,
+    default: ''
+  },
+  dataType: {
+    type: String,
+    default: 'string'
+  },
+  fieldName: {
+    type: String,
+    default: ''
   }
 })
 
@@ -53,14 +66,17 @@ const emit = defineEmits(['formatted'])
 
 // 复制功能
 const handleCopy = async () => {
+  // 复制当前显示的值（可能是转换后的值）
+  const textToCopy = displayValue.value
+  
   try {
-    await navigator.clipboard.writeText(displayValue.value)
+    await navigator.clipboard.writeText(textToCopy)
     ElMessage.success('已复制到剪贴板')
   } catch (error) {
     // 如果clipboard API不可用，使用传统方法
     try {
       const textArea = document.createElement('textarea')
-      textArea.value = displayValue.value
+      textArea.value = textToCopy
       document.body.appendChild(textArea)
       textArea.select()
       document.execCommand('copy')
@@ -75,13 +91,23 @@ const handleCopy = async () => {
 // 响应式数据
 const formattedValue = ref(null)
 const currentFormat = ref('original')
+const conversionResult = ref(null)
 
 // 计算属性
 const displayValue = computed(() => {
-  return formattedValue.value || props.value
+  // 如果有用户选择的格式化，优先显示格式化后的值
+  if (formattedValue.value) {
+    return formattedValue.value
+  }
+  // 如果有转换规则，应用转换规则
+  if (conversionResult.value && conversionResult.value.rule) {
+    return applyConversionRule(conversionResult.value.rule)
+  }
+  // 否则显示原始值
+  return props.value
 })
 
-// 检测方法
+// 检测方法 - 始终基于原始值进行检测
 const isUnixTimestamp = computed(() => {
   if (!props.value || typeof props.value !== 'string') return false
   const num = parseInt(props.value)
@@ -120,8 +146,104 @@ const isHex = computed(() => {
   return /^[0-9A-Fa-f]+$/.test(props.value) && props.value.length % 2 === 0
 })
 
+// 应用转换规则
+const applyConversionRules = () => {
+  if (!props.keyName || !props.value) return
+  
+  try {
+    conversionResult.value = conversionEngine.convert(
+      props.keyName,
+      props.dataType,
+      props.value,
+      props.fieldName
+    )
+  } catch (error) {
+    console.error('应用转换规则失败:', error)
+    conversionResult.value = null
+  }
+}
+
+// 应用转换规则到值
+const applyConversionRule = (rule) => {
+  if (!rule || !props.value) return props.value
+  
+  try {
+    switch (rule.convertType) {
+      case 'unix_timestamp_seconds':
+        const timestamp = parseInt(props.value)
+        if (!isNaN(timestamp)) {
+          const date = new Date(timestamp * 1000)
+          return date.toLocaleString('zh-CN')
+        }
+        break
+      case 'unix_timestamp_milliseconds':
+        const timestampMs = parseInt(props.value)
+        if (!isNaN(timestampMs)) {
+          const date = new Date(timestampMs)
+          return date.toLocaleString('zh-CN')
+        }
+        break
+      case 'large_number':
+        const num = parseInt(props.value)
+        if (!isNaN(num)) {
+          if (num >= 1000000000) return (num / 1000000000).toFixed(1) + 'B'
+          if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M'
+          if (num >= 1000) return (num / 1000).toFixed(1) + 'K'
+          return num.toString()
+        }
+        break
+      case 'hex_to_text':
+        try {
+          const hex = props.value.replace(/\s/g, '')
+          return String.fromCharCode(...hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)))
+        } catch {
+          return props.value
+        }
+      case 'base64_decode':
+        try {
+          return atob(props.value)
+        } catch {
+          return props.value
+        }
+      case 'json_format':
+        try {
+          const parsed = JSON.parse(props.value)
+          return JSON.stringify(parsed, null, 2)
+        } catch {
+          return props.value
+        }
+      case 'status_mapping':
+        const statusMap = {
+          '1': '在线',
+          '0': '离线',
+          '2': '忙碌',
+          'active': '活跃',
+          'inactive': '非活跃'
+        }
+        return statusMap[props.value] || props.value
+      case 'custom_mapping':
+        if (rule.mappingConfig) {
+          try {
+            const mapping = typeof rule.mappingConfig === 'string' 
+              ? JSON.parse(rule.mappingConfig) 
+              : rule.mappingConfig
+            return mapping[props.value] || props.value
+          } catch {
+            return props.value
+          }
+        }
+        break
+    }
+  } catch (error) {
+    console.error('应用转换规则失败:', error)
+  }
+  
+  return props.value
+}
+
 // 格式化方法
 const handleFormat = (command) => {
+  // 始终基于原始值进行格式化
   let result = props.value
   
   try {
@@ -222,6 +344,11 @@ watch(() => props.value, () => {
   formattedValue.value = null
   currentFormat.value = 'original'
 })
+
+// 监听keyName、dataType、fieldName变化，应用转换规则
+watch([() => props.keyName, () => props.dataType, () => props.fieldName, () => props.value], () => {
+  applyConversionRules()
+}, { immediate: true })
 </script>
 
 <style scoped>

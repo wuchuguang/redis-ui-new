@@ -46,8 +46,8 @@
           <el-button 
             type="text" 
             size="small" 
-            @click="copyValue"
-            title="复制值"
+            @click="copyKeyName"
+            title="复制键名"
           >
             <el-icon><CopyDocument /></el-icon>
             复制
@@ -127,16 +127,18 @@
         </div>
         <!-- String类型 -->
         <div v-if="keyData.type === 'string'" class="string-value">
-          <el-table :data="[{ value: keyData.value }]" stripe>
-            <el-table-column label="值" min-width="300">
-              <template #default="{ row }">
-                <FormattedValue 
-                  :value="row.value" 
-                  :row-key="'string_value'"
-                  @formatted="handleFormatted"
-                />
-              </template>
-            </el-table-column>
+                      <el-table :data="[{ value: keyData.value }]" stripe>
+              <el-table-column label="值" min-width="300">
+                <template #default="{ row }">
+                  <FormattedValue 
+                    :value="row.value" 
+                    :row-key="'string_value'"
+                    :key-name="keyData.key"
+                    :data-type="'string'"
+                    @formatted="handleFormatted"
+                  />
+                </template>
+              </el-table-column>
             <el-table-column label="操作" width="120" fixed="right">
               <template #default>
                 <el-button 
@@ -193,6 +195,9 @@
                 <FormattedValue 
                   :value="row.value" 
                   :row-key="`${row.field}`"
+                  :key-name="keyData.key"
+                  :data-type="'hash'"
+                  :field-name="row.field"
                   @formatted="handleFormatted"
                 />
               </template>
@@ -253,6 +258,8 @@
                 <FormattedValue 
                   :value="row.value" 
                   :row-key="`${row.index}`"
+                  :key-name="keyData.key"
+                  :data-type="'list'"
                   @formatted="handleFormatted"
                 />
               </template>
@@ -301,6 +308,8 @@
               <FormattedValue 
                 :value="item" 
                 :row-key="`set_${index}`"
+                :key-name="keyData.key"
+                :data-type="'set'"
                 @formatted="handleFormatted"
               />
               <el-button 
@@ -325,6 +334,8 @@
                 <FormattedValue 
                   :value="row.member" 
                   :row-key="`${row.rank}`"
+                  :key-name="keyData.key"
+                  :data-type="'zset'"
                   @formatted="handleFormatted"
                 />
               </template>
@@ -1234,6 +1245,16 @@ const copyValue = () => {
   
   navigator.clipboard.writeText(textToCopy).then(() => {
     ElMessage.success('已复制到剪贴板')
+  }).catch(() => {
+    ElMessage.error('复制失败')
+  })
+}
+
+const copyKeyName = () => {
+  if (!keyData.value.key) return
+  
+  navigator.clipboard.writeText(keyData.value.key).then(() => {
+    ElMessage.success('键名已复制到剪贴板')
   }).catch(() => {
     ElMessage.error('复制失败')
   })

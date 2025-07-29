@@ -49,6 +49,7 @@
           @search-keys="handleSearchKeys"
           @select-connection="handleSelectConnection"
           @select-key="handleSelectKey"
+          @open-conversion-rules="handleOpenConversionRules"
         />
       </div>
 
@@ -85,6 +86,12 @@
       @connection-deleted="handleConnectionDeleted"
       @connection-updated="handleConnectionUpdated"
     />
+
+    <!-- 转换规则管理器 -->
+    <ConversionRulesManager 
+      v-model="showConversionRulesManager"
+      @rules-changed="handleRulesChanged"
+    />
   </div>
 </template>
 
@@ -97,12 +104,14 @@ import RedisOverview from './components/RedisOverview.vue'
 import NewConnectionDialog from './components/NewConnectionDialog.vue'
 import KeyValueDisplay from './components/KeyValueDisplay.vue'
 import ConnectionManagerDialog from './components/ConnectionManagerDialog.vue'
+import ConversionRulesManager from './components/ConversionRulesManager.vue'
 
 const connectionStore = useConnectionStore()
 
 // 响应式数据
 const showNewConnectionDialog = ref(false)
 const showConnectionManagerDialog = ref(false)
+const showConversionRulesManager = ref(false)
 const autoRefresh = ref(true)
 const currentConnection = ref(null)
 const redisInfo = ref(null)
@@ -211,6 +220,19 @@ const handleSelectConnection = (connection) => {
   } else {
     redisInfo.value = null
   }
+}
+
+const handleOpenConversionRules = () => {
+  showConversionRulesManager.value = true
+}
+
+const handleRulesChanged = (rules) => {
+  // 保存规则到本地存储
+  localStorage.setItem('conversionRules', JSON.stringify(rules))
+  console.log('转换规则已更新:', rules)
+  
+  // 通知所有组件规则已更新
+  // 这里可以触发全局事件或更新全局状态
 }
 
 // 生命周期
