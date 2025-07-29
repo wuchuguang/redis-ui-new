@@ -182,11 +182,20 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { username } = req.user;
-    const userConnections = redisService.getUserAllConnections(username);
+    const userConnections = userService.getUserAllConnections(username);
+    
+    // 获取连接状态
+    const connectionsWithStatus = userConnections.map(conn => {
+      const redisConnection = redisService.getConnectionById(conn.id);
+      return {
+        ...conn,
+        status: redisConnection ? redisConnection.status : 'disconnected'
+      };
+    });
     
     res.json({
       success: true,
-      data: userConnections
+      data: connectionsWithStatus
     });
   } catch (error) {
     console.error('获取连接列表失败:', error.message);
@@ -347,6 +356,59 @@ router.post('/:id/close', async (req, res) => {
     res.status(500).json({
       success: false,
       message: `关闭连接失败: ${error.message}`
+    });
+  }
+});
+
+// 分享连接
+router.post('/:id/share', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { username } = req.user;
+    
+    const result = await userService.shareConnection(username, id);
+    
+    res.json({
+      success: true,
+      message: '连接分享成功',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('分享连接失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `分享连接失败: ${error.message}`
+    });
+  }
+});
+
+// 加入分享的连接
+router.post('/join', authenticateToken, async (req, res) => {
+  try {
+    const { joinCode } = req.body;
+    const { username } = req.user;
+    
+    if (!joinCode) {
+      return res.status(400).json({
+        success: false,
+        message: '分享码不能为空'
+      });
+    }
+    
+    const result = await userService.joinSharedConnection(username, joinCode);
+    
+    res.json({
+      success: true,
+      message: '成功加入分享的连接',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('加入分享连接失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `加入分享连接失败: ${error.message}`
     });
   }
 });

@@ -87,6 +87,14 @@ class OperationLogger {
     this.log('connect', `关闭Redis连接: ${connection.name}`, 'info', { connectionId: connection.id })
   }
 
+  logConnectionShared(connection) {
+    this.log('share', `分享Redis连接: ${connection.name}`, 'info', { connectionId: connection.id })
+  }
+
+  logConnectionJoined(connection) {
+    this.log('join', `加入分享连接: ${connection.name}`, 'info', { connectionId: connection.id, owner: connection.owner })
+  }
+
   // Key相关操作
   logKeySelected(key, connection) {
     this.log('query', `选择Key: ${key.name}`, 'info', { key, connection: connection?.name })

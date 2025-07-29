@@ -137,7 +137,9 @@ const initializeDefaultAdmin = async () => {
       role: USER_ROLES.ADMIN,
       nickname: '管理员',
       avatar: '',
-      connections: [], // 初始化空的连接列表
+      connections: [], // 自己的连接列表
+      shareConnections: [], // 分享的连接列表 {id, joinCode, sharedAt}
+      friendConnections: [], // 好友分享的连接列表 {id, ownerUsername, sharedAt}
       createdAt: new Date().toISOString()
     };
     
@@ -179,7 +181,9 @@ const registerUser = async (userData) => {
     role: USER_ROLES.USER,
     nickname: username,
     avatar: '',
-    connections: [], // 初始化空的连接列表
+    connections: [], // 自己的连接列表
+    shareConnections: [], // 分享的连接列表 {id, joinCode, sharedAt}
+    friendConnections: [], // 好友分享的连接列表 {id, ownerUsername, sharedAt}
     createdAt: new Date().toISOString()
   };
   
@@ -285,6 +289,131 @@ const changePassword = async (username, oldPassword, newPassword) => {
   return true;
 };
 
+// 生成分享码
+const generateJoinCode = () => {
+  return Math.random().toString(36).substr(2, 8).toUpperCase();
+};
+
+// 分享连接
+const shareConnection = async (username, connectionId) => {
+  const user = users.get(username);
+  if (!user) {
+    throw new Error('用户不存在');
+  }
+
+  // 检查连接是否属于该用户
+  const connection = user.connections.find(conn => conn.id === connectionId);
+  if (!connection) {
+    throw new Error('连接不存在或不属于该用户');
+  }
+
+  // 生成分享码
+  const joinCode = generateJoinCode();
+  
+  // 添加到分享列表
+  const shareInfo = {
+    id: connectionId,
+    joinCode,
+    sharedAt: new Date().toISOString()
+  };
+
+  user.shareConnections.push(shareInfo);
+  await saveUserToFile(username);
+
+  console.log(`用户 ${username} 分享了连接: ${connection.name}, 分享码: ${joinCode}`);
+  
+  return { joinCode, connection };
+};
+
+// 加入分享的连接
+const joinSharedConnection = async (username, joinCode) => {
+  // 查找分享码对应的连接
+  let sharedConnection = null;
+  let ownerUsername = null;
+
+  for (const [userKey, user] of users.entries()) {
+    const shareInfo = user.shareConnections.find(share => share.joinCode === joinCode);
+    if (shareInfo) {
+      const connection = user.connections.find(conn => conn.id === shareInfo.id);
+      if (connection) {
+        sharedConnection = connection;
+        ownerUsername = userKey;
+        break;
+      }
+    }
+  }
+
+  if (!sharedConnection) {
+    throw new Error('分享码无效或已过期');
+  }
+
+  // 检查是否已经加入过
+  const targetUser = users.get(username);
+  if (!targetUser) {
+    throw new Error('用户不存在');
+  }
+
+  const alreadyJoined = targetUser.friendConnections.find(fc => fc.id === sharedConnection.id);
+  if (alreadyJoined) {
+    throw new Error('已经加入过此连接');
+  }
+
+  // 添加到好友连接列表
+  const friendConnection = {
+    id: sharedConnection.id,
+    ownerUsername,
+    sharedAt: new Date().toISOString()
+  };
+
+  targetUser.friendConnections.push(friendConnection);
+  await saveUserToFile(username);
+
+  console.log(`用户 ${username} 加入了 ${ownerUsername} 分享的连接: ${sharedConnection.name}`);
+  
+  return { connection: sharedConnection, ownerUsername };
+};
+
+// 获取用户的所有连接（包括分享的和好友的）
+const getUserAllConnections = (username) => {
+  const user = users.get(username);
+  if (!user) {
+    return [];
+  }
+
+  const allConnections = [];
+
+  // 添加自己的连接
+  user.connections.forEach(conn => {
+    allConnections.push({
+      ...conn,
+      owner: username,
+      isOwner: true,
+      canEdit: true,
+      canDelete: true
+    });
+  });
+
+  // 添加好友分享的连接
+  user.friendConnections.forEach(fc => {
+    const ownerUser = users.get(fc.ownerUsername);
+    if (ownerUser) {
+      const connection = ownerUser.connections.find(conn => conn.id === fc.id);
+      if (connection) {
+        allConnections.push({
+          ...connection,
+          owner: fc.ownerUsername,
+          isOwner: false,
+          canEdit: false,
+          canDelete: true,
+          sharedAt: fc.sharedAt
+        });
+      }
+    }
+  });
+
+  return allConnections;
+};
+
 // 获取所有用户（管理员功能）
 const getAllUsers = () => {
   return Array.from(users.values()).map(user => {
@@ -379,5 +508,8 @@ module.exports = {
   updateUserRole,
   deleteUser,
   getUserConnections,
-  saveUserConnections
+  saveUserConnections,
+  shareConnection,
+  joinSharedConnection,
+  getUserAllConnections
 }; 

@@ -560,6 +560,28 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 分享连接
+  const shareConnection = async (connectionId) => {
+    try {
+      const response = await axios.post(`/api/connections/${connectionId}/share`)
+      return response.data
+    } catch (error) {
+      console.error('分享连接失败:', error)
+      throw error
+    }
+  }
+
+  // 加入分享的连接
+  const joinSharedConnection = async (joinCode) => {
+    try {
+      const response = await axios.post('/api/connections/join', { joinCode })
+      return response.data
+    } catch (error) {
+      console.error('加入分享连接失败:', error)
+      throw error
+    }
+  }
+
   // 设置当前连接
   const setCurrentConnection = (connection) => {
     currentConnection.value = connection
@@ -681,6 +703,8 @@ export const useConnectionStore = defineStore('connection', () => {
     getConnectionInfo,
     pingConnection,
     closeConnection,
+    shareConnection,
+    joinSharedConnection,
     setCurrentConnection,
     getCurrentConnection,
     autoSelectConnection,

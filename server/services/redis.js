@@ -158,6 +158,15 @@ const getConnection = (id) => {
   return redisConnections.get(id);
 };
 
+// 根据ID获取连接
+const getConnectionById = (connectionId) => {
+  const connection = redisConnections.get(connectionId);
+  if (!connection) {
+    return null;
+  }
+  return connection;
+};
+
 // 获取所有连接
 const getAllConnections = () => {
   return Array.from(redisConnections.values()).map(conn => conn.config);
@@ -727,6 +736,7 @@ module.exports = {
   convertTempToFormalConnection,
   updateConnection,
   getConnection,
+  getConnectionById,
   getAllConnections,
   getUserAllConnections,
   deleteConnection,
