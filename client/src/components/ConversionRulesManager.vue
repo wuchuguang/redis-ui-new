@@ -415,7 +415,8 @@ watch(dialogVisible, (visible) => {
 
 .pattern-text {
   font-family: monospace;
-  background-color: #f5f5f5;
+  background-color: var(--el-fill-color-light);
+  color: var(--el-text-color-primary);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
@@ -431,4 +432,6 @@ watch(dialogVisible, (visible) => {
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* 输入框样式已由全局样式处理 */
 </style> 

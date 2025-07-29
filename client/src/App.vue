@@ -298,6 +298,15 @@ onMounted(async () => {
   --el-fill-color-extra-light: #2d2d2d;
   --el-fill-color-dark: #1e1e1e;
   --el-fill-color-darker: #1e1e1e;
+  
+  /* 输入框专用变量 */
+  --el-input-bg-color: #2d2d2d;
+  --el-input-border-color: #404040;
+  --el-input-text-color: hwb(245 2% 66% / 0.4);
+  --el-input-placeholder-color: #909399;
+  
+  /* 对话框专用变量 */
+  --el-dialog-text-color: #ffffff;
 }
 
 /* 自定义滚动条样式 */
@@ -344,137 +353,149 @@ onMounted(async () => {
   background-color: var(--el-fill-color) !important;
 }
 
-/* 输入框基础样式 - 最高优先级 */
+/* 移除强制覆盖，使用Element Plus默认深色主题 */
+
+/* 强制覆盖所有输入框样式 - 最高优先级 */
 .el-input__inner,
-.el-input__wrapper,
 .el-textarea__inner,
-.el-textarea__wrapper,
 .el-input-number .el-input__inner,
-.el-input-number .el-input__wrapper,
 .el-select .el-input__inner,
-.el-select .el-input__wrapper,
 .el-autocomplete .el-input__inner,
-.el-autocomplete .el-input__wrapper {
-  color: #ffffff !important;
+.el-cascader .el-input__inner,
+.el-date-editor .el-input__inner,
+.el-time-picker .el-input__inner,
+.el-color-picker .el-input__inner {
   background-color: #2d2d2d !important;
   border-color: #404040 !important;
+  color: #ffffff !important;
 }
 
-/* 输入框占位符 */
+/* 强制覆盖所有输入框占位符 */
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
   color: #909399 !important;
 }
 
-/* 输入框聚焦状态 */
-.el-input__inner:focus,
-.el-textarea__inner:focus,
-.el-input-number .el-input__inner:focus {
-  border-color: #409eff !important;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
-}
-
-/* 输入框禁用状态 */
-.el-input__inner:disabled,
-.el-textarea__inner:disabled,
-.el-input-number .el-input__inner:disabled {
-  background-color: #1e1e1e !important;
-  color: #606266 !important;
-  border-color: #404040 !important;
-}
-
-/* 选择框图标 */
-.el-select .el-input__suffix,
-.el-select .el-input__suffix .el-icon {
-  color: #ffffff !important;
-}
-
-/* 强制覆盖所有输入框样式 - 最高优先级 */
-.el-input .el-input__inner,
-.el-input .el-input__wrapper,
-.el-textarea .el-textarea__inner,
-.el-textarea .el-textarea__wrapper,
-.el-input-number .el-input .el-input__inner,
-.el-input-number .el-input .el-input__wrapper,
-.el-select .el-input .el-input__inner,
-.el-select .el-input .el-input__wrapper,
-.el-autocomplete .el-input .el-input__inner,
-.el-autocomplete .el-input .el-input__wrapper {
-  color: #ffffff !important;
+/* 强制覆盖所有输入框包装器 */
+.el-input__wrapper,
+.el-textarea__wrapper {
   background-color: #2d2d2d !important;
   border-color: #404040 !important;
 }
 
-/* 强制覆盖所有输入框占位符 */
-.el-input .el-input__inner::placeholder,
-.el-textarea .el-textarea__inner::placeholder {
+/* 强制覆盖所有select组件 */
+.el-select .el-input__inner,
+.el-select .el-input__wrapper {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+/* 强制覆盖所有数字输入框 */
+.el-input-number .el-input__inner,
+.el-input-number .el-input__wrapper {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+/* 强制覆盖对话框中的所有输入框 */
+.el-dialog .el-input__inner,
+.el-dialog .el-textarea__inner,
+.el-dialog .el-input-number .el-input__inner,
+.el-dialog .el-select .el-input__inner,
+.el-dialog .el-autocomplete .el-input__inner {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-input__inner::placeholder,
+.el-dialog .el-textarea__inner::placeholder {
   color: #909399 !important;
+}
+
+/* 强制覆盖所有可能的输入框场景 */
+input[type="text"],
+input[type="number"],
+input[type="password"],
+input[type="email"],
+input[type="search"],
+input[type="tel"],
+input[type="url"] {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
 }
 
 /* 强制覆盖所有输入框聚焦状态 */
-.el-input .el-input__inner:focus,
-.el-textarea .el-textarea__inner:focus,
-.el-input-number .el-input .el-input__inner:focus {
+.el-input__inner:focus,
+.el-textarea__inner:focus,
+.el-input-number .el-input__inner:focus,
+.el-select .el-input__inner:focus {
   border-color: #409eff !important;
   box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
 }
 
-/* 最终强制覆盖 - 使用更具体的选择器 */
-.el-input .el-input__inner,
-.el-input .el-input__wrapper,
-.el-textarea .el-textarea__inner,
-.el-textarea .el-textarea__wrapper,
-.el-input-number .el-input .el-input__inner,
-.el-input-number .el-input .el-input__wrapper,
-.el-select .el-input .el-input__inner,
-.el-select .el-input .el-input__wrapper,
-.el-autocomplete .el-input .el-input__inner,
-.el-autocomplete .el-input .el-input__wrapper,
-.el-form-item .el-input .el-input__inner,
-.el-form-item .el-input .el-input__wrapper,
-.el-form-item .el-textarea .el-textarea__inner,
-.el-form-item .el-textarea .el-textarea__wrapper,
-.el-form-item .el-input-number .el-input .el-input__inner,
-.el-form-item .el-input-number .el-input .el-input__wrapper,
-.el-form-item .el-select .el-input .el-input__inner,
-.el-form-item .el-select .el-input .el-input__wrapper {
-  color: #ffffff !important;
+/* 强制覆盖所有输入框悬停状态 */
+.el-input__wrapper:hover,
+.el-textarea__wrapper:hover {
+  border-color: #606266 !important;
+}
+
+/* 强制覆盖下拉菜单样式 */
+.el-select-dropdown {
   background-color: #2d2d2d !important;
   border-color: #404040 !important;
 }
 
-/* 最终强制覆盖占位符 */
-.el-input .el-input__inner::placeholder,
-.el-textarea .el-textarea__inner::placeholder {
-  color: #909399 !important;
-}
-
-/* 最终强制覆盖聚焦状态 */
-.el-input .el-input__inner:focus,
-.el-textarea .el-textarea__inner:focus,
-.el-input-number .el-input .el-input__inner:focus,
-.el-select .el-input .el-input__inner:focus {
-  border-color: #409eff !important;
-  box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
-}
-
-.el-select-dropdown {
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
 .el-select-dropdown__item {
-  color: var(--el-text-color-primary) !important;
+  color: #ffffff !important;
+  background-color: #2d2d2d !important;
 }
 
 .el-select-dropdown__item:hover {
-  background-color: var(--el-fill-color) !important;
+  background-color: #404040 !important;
 }
 
 .el-select-dropdown__item.selected {
-  background-color: var(--el-color-primary) !important;
+  background-color: #409eff !important;
   color: #ffffff !important;
 }
+
+/* 强制覆盖数字输入框的按钮 */
+.el-input-number .el-input-number__decrease,
+.el-input-number .el-input-number__increase {
+  background-color: #404040 !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.el-input-number .el-input-number__decrease:hover,
+.el-input-number .el-input-number__increase:hover {
+  background-color: #606266 !important;
+}
+
+/* 确保下拉选择框正确显示 */
+.el-select-dropdown {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+}
+
+.el-select-dropdown__item {
+  color: #ffffff !important;
+}
+
+.el-select-dropdown__item:hover {
+  background-color: #404040 !important;
+}
+
+.el-select-dropdown__item.selected {
+  background-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+/* 数字输入框按钮样式已由上面的强制覆盖处理 */
 
 .el-table {
   background-color: transparent !important;
@@ -534,7 +555,7 @@ onMounted(async () => {
 }
 
 .el-dialog__body {
-  color: var(--el-text-color-primary) !important;
+  color: var(--el-dialog-text-color) !important;
 }
 
 .el-dialog__footer {

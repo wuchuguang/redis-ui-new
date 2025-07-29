@@ -1412,108 +1412,14 @@ onUnmounted(() => {
   width: 100%;
 }
 
-:deep(.database-select .el-input__inner) {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
-:deep(.database-select .el-input__wrapper) {
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
 /* 搜索框样式 */
 .search-input {
   width: 100%;
 }
 
-:deep(.search-input .el-input__inner) {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
+/* 输入框样式已由全局样式处理 */
 
-:deep(.search-input .el-input__wrapper) {
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
-/* 数据库选项样式 */
-:deep(.el-select-dropdown .el-select-dropdown__item) {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-}
-
-:deep(.el-select-dropdown .el-select-dropdown__item:hover) {
-  background-color: var(--el-fill-color) !important;
-}
-
-:deep(.el-select-dropdown .el-select-dropdown__item.selected) {
-  background-color: var(--el-color-primary) !important;
-  color: #ffffff !important;
-}
-
-/* 确保所有输入框都有正确的样式 */
-:deep(.el-input__inner) {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
-:deep(.el-input__wrapper) {
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
-:deep(.el-input__inner::placeholder) {
-  color: #909399 !important;
-}
-
-/* 强制覆盖所有选择框样式 */
-:deep(.el-select) {
-  width: 100%;
-}
-
-:deep(.el-select .el-input__inner) {
-  color: var(--el-text-color-primary) !important;
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
-:deep(.el-select .el-input__wrapper) {
-  background-color: var(--el-bg-color-overlay) !important;
-  border-color: var(--el-border-color) !important;
-}
-
-/* 确保选择框的图标也是可见的 */
-:deep(.el-select .el-input__suffix) {
-  color: #ffffff !important;
-}
-
-:deep(.el-select .el-input__suffix .el-icon) {
-  color: #ffffff !important;
-}
-
-/* 强制覆盖所有下拉菜单样式 */
-:deep(.el-select-dropdown) {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-}
-
-:deep(.el-select-dropdown__item) {
-  color: #ffffff !important;
-  background-color: #2d2d2d !important;
-}
-
-:deep(.el-select-dropdown__item:hover) {
-  background-color: #404040 !important;
-}
-
-:deep(.el-select-dropdown__item.selected) {
-  background-color: #409eff !important;
-  color: #ffffff !important;
-}
+/* 移除强制覆盖，使用Element Plus默认深色主题 */
 
 /* 数据库选项内部样式 */
 .db-keys-count {
