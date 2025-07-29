@@ -92,6 +92,9 @@
       </div>
     </div>
 
+    <!-- 操作锁定组件 -->
+    <OperationLock ref="operationLockRef" />
+
     <!-- 键值内容 -->
     <div class="key-content">
       <div v-if="!props.connection" class="no-connection">
@@ -675,7 +678,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, nextTick, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   CopyDocument, 
@@ -687,10 +690,13 @@ import {
   ArrowLeft
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
+import { useUserStore } from '../stores/user'
 import { operationLogger } from '../utils/operationLogger'
 import FormattedValue from './FormattedValue.vue'
+import OperationLock from './OperationLock.vue'
 
 const connectionStore = useConnectionStore()
+const userStore = useUserStore()
 
 // Props
 const props = defineProps({
@@ -727,6 +733,7 @@ const showEditStringDialog = ref(false)
 const editingKeyName = ref('')
 const isEditingKeyName = ref(false)
 const keyNameInputRef = ref(null)
+const operationLockRef = ref(null)
 const hashFilter = ref('')
 const setFilter = ref('')
 
@@ -1272,25 +1279,42 @@ const copyKeyName = () => {
 const deleteKey = async () => {
   if (!keyData.value.key) return
   
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除键 "${keyData.value.key}" 吗？此操作不可恢复！`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
+  // 使用操作锁定执行删除操作
+  const success = await operationLockRef.value.executeProtectedOperation(
+    'delete',
+    keyData.value.key,
+    async () => {
+      try {
+        const result = await connectionStore.deleteKey(
+          props.connection.id,
+          props.database,
+          keyData.value.key
+        )
+        
+        if (result) {
+          ElMessage.success('键删除成功')
+          // 记录操作日志
+          operationLogger.logKeyDeleted(keyData.value.key, props.connection)
+          emit('key-deleted', keyData.value.key)
+          return true
+        } else {
+          ElMessage.error('键删除失败')
+          return false
+        }
+      } catch (error) {
+        console.error('删除键失败:', error)
+        ElMessage.error('删除键失败: ' + error.message)
+        return false
       }
-    )
-    
-    // 这里可以添加删除键的逻辑
-    ElMessage.success('键删除成功')
-    // 记录操作日志
-    operationLogger.logKeyDeleted(keyData.value.key, props.connection)
-    emit('key-deleted', keyData.value.key)
-  } catch (error) {
-    // 用户取消删除
-  }
+    },
+    {
+      confirmTitle: '确认删除',
+      confirmMessage: `确定要删除键 "${keyData.value.key}" 吗？此操作不可恢复！`,
+      confirmType: 'danger',
+      confirmButtonText: '删除',
+      requireConfirm: true
+    }
+  )
 }
 
 const editKey = () => {
@@ -1354,32 +1378,48 @@ const handleKeyNameChange = async () => {
     return
   }
   
-  try {
-    const oldKeyName = keyData.value.key
-    const result = await connectionStore.renameKey(
-      props.connection.id,
-      props.database,
-      oldKeyName,
-      newKeyName
-    )
-    
-    if (result) {
-      keyData.value.key = newKeyName
-      isEditingKeyName.value = false
-      
-      ElMessage.success(`键名已更新: ${oldKeyName} → ${newKeyName}`)
-      // 记录操作日志
-      operationLogger.logKeyRenamed(oldKeyName, newKeyName, props.connection)
-      emit('key-updated', { oldKey: oldKeyName, newKey: newKeyName })
-    } else {
-      editingKeyName.value = oldKeyName
-      isEditingKeyName.value = false
+  // 使用操作锁定执行重命名操作
+  const success = await operationLockRef.value.executeProtectedOperation(
+    'rename',
+    keyData.value.key,
+    async () => {
+      try {
+        const oldKeyName = keyData.value.key
+        const result = await connectionStore.renameKey(
+          props.connection.id,
+          props.database,
+          oldKeyName,
+          newKeyName
+        )
+        
+        if (result) {
+          keyData.value.key = newKeyName
+          isEditingKeyName.value = false
+          ElMessage.success(`键名已更新: ${oldKeyName} → ${newKeyName}`)
+          // 记录操作日志
+          operationLogger.logKeyRenamed(oldKeyName, newKeyName, props.connection)
+          emit('key-updated', { oldKey: oldKeyName, newKey: newKeyName })
+          return true
+        } else {
+          editingKeyName.value = oldKeyName
+          isEditingKeyName.value = false
+          return false
+        }
+      } catch (error) {
+        ElMessage.error('更新键名失败')
+        editingKeyName.value = keyData.value.key
+        isEditingKeyName.value = false
+        return false
+      }
+    },
+    {
+      confirmTitle: '确认重命名',
+      confirmMessage: `确定要将键名从 "${keyData.value.key}" 重命名为 "${newKeyName}" 吗？`,
+      confirmType: 'warning',
+      confirmButtonText: '重命名',
+      requireConfirm: true
     }
-  } catch (error) {
-    ElMessage.error('更新键名失败')
-    editingKeyName.value = keyData.value.key
-    isEditingKeyName.value = false
-  }
+  )
 }
 
 const cancelKeyNameEdit = () => {
@@ -1567,8 +1607,67 @@ const goBack = () => {
   emit('go-back')
 }
 
+// 处理连接合并事件
+const handleConnectionMerged = async (event) => {
+  console.log('KeyValueDisplay - 收到连接合并事件:', event.detail)
+  
+  const { oldConnections, newConnections } = event.detail
+  
+  // 检查当前连接是否在合并的连接中
+  const currentConn = props.connection
+  if (!currentConn) return
+  
+  const wasMerged = oldConnections.some(oldConn => 
+    oldConn.host === currentConn.host && 
+    oldConn.port === currentConn.port &&
+    oldConn.database === currentConn.database
+  )
+  
+  if (wasMerged && props.selectedKey) {
+    console.log('KeyValueDisplay - 当前连接已被合并，重新获取键值...')
+    
+    // 找到对应的新连接
+    const newConn = newConnections.find(conn => 
+      conn.host === currentConn.host && 
+      conn.port === currentConn.port &&
+      conn.database === currentConn.database
+    )
+    
+    if (newConn) {
+      console.log('KeyValueDisplay - 找到新连接:', {
+        id: newConn.id,
+        isTemp: newConn.isTemp
+      })
+      
+      // 更新当前连接为新连接
+      connectionStore.setCurrentConnection(newConn)
+    }
+    
+    // 等待一下让连接状态更新
+    setTimeout(async () => {
+      try {
+        // 重新获取键值
+        await loadKeyValue()
+        ElMessage.success('连接已更新，键值已重新加载')
+      } catch (error) {
+        console.error('KeyValueDisplay - 重新获取键值失败:', error)
+        ElMessage.error('重新获取键值失败')
+      }
+    }, 500)
+  }
+}
+
+// 组件初始化时添加事件监听
+onMounted(() => {
+  // 监听连接合并事件
+  window.addEventListener('connection-merged', handleConnectionMerged)
+})
+
 // 组件卸载时的清理
 onUnmounted(() => {
+  // 移除事件监听
+  window.removeEventListener('connection-merged', handleConnectionMerged)
+  
   // 清理所有响应式数据
   keyData.value = { key: '', type: 'unknown', value: null, ttl: -1, size: 0 }
   loading.value = false

@@ -35,6 +35,7 @@
           inactive-text=""
           class="auto-refresh-switch"
         />
+        <UserManager />
       </div>
     </div>
 
@@ -104,6 +105,7 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { Plus, Setting, Clock, Close, Refresh } from '@element-plus/icons-vue'
 import { useConnectionStore } from './stores/connection'
+import { useUserStore } from './stores/user'
 import { operationLogger } from './utils/operationLogger'
 import ConnectionExplorer from './components/ConnectionExplorer.vue'
 import RedisOverview from './components/RedisOverview.vue'
@@ -112,8 +114,11 @@ import KeyValueDisplay from './components/KeyValueDisplay.vue'
 import ConnectionManagerDialog from './components/ConnectionManagerDialog.vue'
 import ConversionRulesManager from './components/ConversionRulesManager.vue'
 import OperationHistory from './components/OperationHistory.vue'
+import UserManager from './components/UserManager.vue'
+import OperationLock from './components/OperationLock.vue'
 
 const connectionStore = useConnectionStore()
+const userStore = useUserStore()
 
 // 响应式数据
 const showNewConnectionDialog = ref(false)
@@ -316,6 +321,9 @@ const handleRulesChanged = (rules) => {
 
 // 生命周期
 onMounted(async () => {
+  // 初始化用户状态
+  await userStore.initializeUser()
+  
   // 初始化连接状态 - 页面刷新后自动恢复
   const selectedConnection = await connectionStore.initializeConnections()
   if (selectedConnection) {
@@ -352,9 +360,28 @@ onMounted(async () => {
     await connectionStore.refreshConnectionStatus()
   }, 30000)
   
+  // 定期ping当前连接（每20秒）
+  const pingInterval = setInterval(async () => {
+    if (currentConnection.value && currentConnection.value.status === 'connected') {
+      try {
+        const result = await connectionStore.pingConnection(currentConnection.value.id)
+        if (!result) {
+          console.log('⚠️ Ping失败，连接可能已断开')
+          // 尝试重新连接
+          await connectionStore.reconnect(currentConnection.value.id)
+        } else {
+          console.log('✅ Ping成功，连接正常')
+        }
+      } catch (error) {
+        console.error('Ping连接出错:', error)
+      }
+    }
+  }, 20000)
+  
   // 组件卸载时清理定时器
   onUnmounted(() => {
     clearInterval(statusInterval)
+    clearInterval(pingInterval)
   })
 })
 </script>

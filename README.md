@@ -171,7 +171,7 @@ node-redis-web/
 │   └── vite.config.js
 ├── server/                 # 后端代码
 │   ├── index.js           # 主服务器文件
-│   └── config-manager.js  # 配置管理器
+
 ├── package.json
 └── README.md
 ```

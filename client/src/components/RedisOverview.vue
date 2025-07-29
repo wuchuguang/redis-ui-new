@@ -297,13 +297,69 @@ watch(() => props.connection, (newConnection) => {
   }
 }, { immediate: true })
 
+// 处理连接合并事件
+const handleConnectionMerged = async (event) => {
+  console.log('RedisOverview - 收到连接合并事件:', event.detail)
+  
+  const { oldConnections, newConnections } = event.detail
+  
+  // 检查当前连接是否在合并的连接中
+  const currentConn = props.connection
+  if (!currentConn) return
+  
+  const wasMerged = oldConnections.some(oldConn => 
+    oldConn.host === currentConn.host && 
+    oldConn.port === currentConn.port &&
+    oldConn.database === currentConn.database
+  )
+  
+  if (wasMerged) {
+    console.log('RedisOverview - 当前连接已被合并，重新获取Redis信息...')
+    
+    // 找到对应的新连接
+    const newConn = newConnections.find(conn => 
+      conn.host === currentConn.host && 
+      conn.port === currentConn.port &&
+      conn.database === currentConn.database
+    )
+    
+    if (newConn) {
+      console.log('RedisOverview - 找到新连接:', {
+        id: newConn.id,
+        isTemp: newConn.isTemp
+      })
+      
+      // 更新当前连接为新连接
+      connectionStore.setCurrentConnection(newConn)
+    }
+    
+    // 等待一下让连接状态更新
+    setTimeout(async () => {
+      try {
+        // 重新获取Redis信息
+        await loadRedisInfo()
+        ElMessage.success('连接已更新，Redis信息已重新加载')
+      } catch (error) {
+        console.error('RedisOverview - 重新获取Redis信息失败:', error)
+        ElMessage.error('重新获取Redis信息失败')
+      }
+    }, 500)
+  }
+}
+
 // 组件挂载和卸载
 onMounted(() => {
   startAutoRefresh()
+  
+  // 监听连接合并事件
+  window.addEventListener('connection-merged', handleConnectionMerged)
 })
 
 onUnmounted(() => {
   stopAutoRefresh()
+  
+  // 移除连接合并事件监听
+  window.removeEventListener('connection-merged', handleConnectionMerged)
 })
 </script>
 

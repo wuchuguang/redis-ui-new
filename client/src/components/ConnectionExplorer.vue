@@ -846,11 +846,15 @@ onMounted(() => {
   
   // 添加点击外部关闭搜索历史的事件监听
   document.addEventListener('click', handleClickOutside)
+  
+  // 监听连接合并事件
+  window.addEventListener('connection-merged', handleConnectionMerged)
 })
 
 // 组件卸载时移除事件监听
 onUnmounted(() => {
   document.removeEventListener('click', handleClickOutside)
+  window.removeEventListener('connection-merged', handleConnectionMerged)
 })
 
 // 点击外部关闭搜索历史
@@ -858,6 +862,60 @@ const handleClickOutside = (event) => {
   const searchContainer = document.querySelector('.search-container')
   if (searchContainer && !searchContainer.contains(event.target)) {
     showSearchHistory.value = false
+  }
+}
+
+// 处理连接合并事件
+const handleConnectionMerged = async (event) => {
+  console.log('收到连接合并事件:', event.detail)
+  
+  const { oldConnections, newConnections } = event.detail
+  
+  // 检查当前连接是否在合并的连接中
+  const currentConn = props.connection
+  if (!currentConn) return
+  
+  const wasMerged = oldConnections.some(oldConn => 
+    oldConn.host === currentConn.host && 
+    oldConn.port === currentConn.port &&
+    oldConn.database === currentConn.database
+  )
+  
+  if (wasMerged) {
+    console.log('当前连接已被合并，重新获取数据...')
+    
+    // 找到对应的新连接
+    const newConn = newConnections.find(conn => 
+      conn.host === currentConn.host && 
+      conn.port === currentConn.port &&
+      conn.database === currentConn.database
+    )
+    
+    if (newConn) {
+      console.log('找到新连接:', {
+        id: newConn.id,
+        isTemp: newConn.isTemp
+      })
+      
+      // 更新当前连接为新连接
+      connectionStore.setCurrentConnection(newConn)
+    }
+    
+    // 等待一下让连接状态更新
+    setTimeout(async () => {
+      try {
+        // 重新获取数据库信息
+        await refreshDatabases()
+        
+        // 重新获取键列表
+        await refreshKeys(true)
+        
+        ElMessage.success('连接已更新，数据已重新加载')
+      } catch (error) {
+        console.error('重新获取数据失败:', error)
+        ElMessage.error('重新获取数据失败')
+      }
+    }, 500)
   }
 }
 
