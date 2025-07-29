@@ -145,34 +145,128 @@ const handleClose = () => {
 }
 
 function convertToJson(str) {
-    // 移除行注释和块注释
-    const removeComments = str
+    if (!str || typeof str !== 'string') {
+        return null;
+    }
+    
+    // 预处理：清理输入字符串
+    let cleanStr = str.trim();
+    
+    // 移除注释
+    cleanStr = cleanStr
         .replace(/\/\/.*$/gm, '') // 移除单行注释
         .replace(/\/\*[\s\S]*?\*\//g, ''); // 移除多行注释
     
-    // 处理不规范的键名（添加双引号）
-    const addQuotesToKeys = removeComments
-        .replace(/([\{\s,])([a-zA-Z_$][a-zA-Z_$0-9]*)(\s*:)/g, '$1"$2"$3');
+    // 移除多余的空白字符
+    cleanStr = cleanStr
+        .replace(/\s+/g, ' ')
+        .trim();
     
-    try {
-        // 解析处理后的字符串
-        return JSON.parse(addQuotesToKeys);
-    } catch (error) {
-        console.error('第一次解析失败，尝试宽松模式:', error);
+    // 移除末尾的逗号（如果存在）
+    cleanStr = cleanStr.replace(/,\s*$/, '');
+    
+    console.log('清理后的字符串:', cleanStr);
+    
+    // 确保字符串以 { 开始，以 } 结束
+    if (!cleanStr.startsWith('{') || !cleanStr.endsWith('}')) {
+        console.error('输入不是有效的对象格式');
+        return null;
+    }
+    
+    // 移除最外层的 { 和 }
+    let content = cleanStr.slice(1, -1).trim();
+    
+    console.log('内容部分:', content);
+    
+    // 分割键值对
+    const pairs = [];
+    let currentPair = '';
+    let braceCount = 0;
+    let inString = false;
+    let quoteChar = '';
+    
+    for (let i = 0; i < content.length; i++) {
+        const char = content[i];
         
-        // 宽松模式：尝试修复更多不规范格式
-        const jstring = addQuotesToKeys
-            .replace(/(['"])?([a-zA-Z0-9_]+)(['"])?\s*:/g, '"$2":') // 处理单引号或无引号的键
-            .replace(/:\s*'([^']*)'/g, ':"$1"') // 处理单引号值
-            .replace(/,\s*([}\]])/g, '$1'); // 移除尾随逗号
+        if (!inString && (char === '{' || char === '[')) {
+            braceCount++;
+        } else if (!inString && (char === '}' || char === ']')) {
+            braceCount--;
+        } else if (!inString && (char === '"' || char === "'")) {
+            inString = true;
+            quoteChar = char;
+        } else if (inString && char === quoteChar) {
+            inString = false;
+            quoteChar = '';
+        }
         
-        try {
-            return JSON.parse(jstring);
-        } catch (error) {
-            console.error('宽松模式解析失败:', error);
-            return null;
+        if (!inString && braceCount === 0 && char === ',') {
+            if (currentPair.trim()) {
+                pairs.push(currentPair.trim());
+            }
+            currentPair = '';
+        } else {
+            currentPair += char;
         }
     }
+    
+    // 添加最后一个键值对
+    if (currentPair.trim()) {
+        pairs.push(currentPair.trim());
+    }
+    
+    console.log('分割的键值对:', pairs);
+    
+    // 解析每个键值对
+    const result = {};
+    
+    for (const pair of pairs) {
+        if (!pair) continue;
+        
+        console.log('处理键值对:', pair);
+        
+        // 分割键和值
+        const colonIndex = pair.indexOf(':');
+        if (colonIndex === -1) continue;
+        
+        let key = pair.substring(0, colonIndex).trim();
+        let value = pair.substring(colonIndex + 1).trim();
+        
+        console.log('分割结果 - 键:', key, '值:', value);
+        
+        // 处理键名
+        if (key.startsWith("'") && key.endsWith("'")) {
+            key = key.slice(1, -1);
+        } else if (key.startsWith('"') && key.endsWith('"')) {
+            key = key.slice(1, -1);
+        }
+        
+        // 处理值
+        if (value.startsWith("'") && value.endsWith("'")) {
+            value = value.slice(1, -1);
+        } else if (value.startsWith('"') && value.endsWith('"')) {
+            value = value.slice(1, -1);
+        } else if (value === 'true') {
+            value = true;
+        } else if (value === 'false') {
+            value = false;
+        } else if (value === 'null') {
+            value = null;
+        } else if (!isNaN(value) && value !== '') {
+            value = Number(value);
+        }
+        
+        // 特殊处理：db -> database
+        if (key === 'db') {
+            key = 'database';
+        }
+        
+        console.log('最终结果 - 键:', key, '值:', value, '类型:', typeof value);
+        result[key] = value;
+    }
+    
+    console.log('解析成功:', result);
+    return result;
 }
 const testConnection = async () => {
   testing.value = true

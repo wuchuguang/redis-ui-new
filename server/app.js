@@ -34,15 +34,6 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
-// 恢复保存的连接
-async function restoreConnections() {
-  try {
-    // 现在连接通过用户系统管理，不需要从config-manager恢复
-    console.log('连接恢复：现在通过用户系统管理连接');
-  } catch (error) {
-    console.error('恢复连接失败:', error.message);
-  }
-}
 
 // 启动服务器
 app.listen(PORT, async () => {
@@ -55,8 +46,6 @@ app.listen(PORT, async () => {
   // 初始化默认管理员用户
   await userService.initializeDefaultAdmin();
   
-  // 恢复保存的连接
-  await restoreConnections();
 });
 
 // 优雅关闭
