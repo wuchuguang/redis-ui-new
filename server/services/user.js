@@ -113,6 +113,11 @@ const loadUsersFromFile = async () => {
     }
     
     console.log(`从文件加载了 ${users.size} 个用户`);
+    
+    // 验证JWT密钥状态
+    console.log('JWT密钥状态:', JWT_SECRET ? '已配置' : '使用默认密钥');
+    console.log('JWT密钥长度:', JWT_SECRET.length);
+    
   } catch (error) {
     console.error('加载用户数据失败:', error);
   }

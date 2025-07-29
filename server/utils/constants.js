@@ -1,5 +1,6 @@
 // 常量定义
-const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+// 使用固定的JWT密钥，确保服务重启后token仍然有效
+const JWT_SECRET = process.env.JWT_SECRET || 'redis-web-jwt-secret-key-2024-stable';
 
 // 用户角色
 const USER_ROLES = {

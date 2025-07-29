@@ -55,7 +55,18 @@ export const useUserStore = defineStore('user', () => {
         }
       } catch (error) {
         console.error('获取用户信息失败:', error)
-        logout()
+        
+        // 根据错误类型决定是否清除token
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          console.log('❌ Token已过期或无效，清除登录状态')
+          logout()
+        } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
+          console.log('⚠️ 网络连接失败，保留token等待重连')
+          // 网络错误时不清除token，等待重连
+        } else {
+          console.log('❌ 其他错误，清除登录状态')
+          logout()
+        }
       }
     } else {
       console.log('📝 未找到登录token')
