@@ -11,7 +11,7 @@
           <el-icon><Plus /></el-icon>
           新建连接
         </el-button>
-        <el-button type="text" class="toolbar-btn">
+        <el-button type="text" class="toolbar-btn" @click="openOperationHistory">
           <el-icon><Clock /></el-icon>
         </el-button>
       </div>
@@ -92,6 +92,11 @@
       v-model="showConversionRulesManager"
       @rules-changed="handleRulesChanged"
     />
+
+    <!-- 操作历史 -->
+    <OperationHistory 
+      v-model="showOperationHistory"
+    />
   </div>
 </template>
 
@@ -99,12 +104,14 @@
 import { ref, reactive, onMounted, nextTick } from 'vue'
 import { Plus, Setting, Clock, Close, Refresh } from '@element-plus/icons-vue'
 import { useConnectionStore } from './stores/connection'
+import { operationLogger } from './utils/operationLogger'
 import ConnectionExplorer from './components/ConnectionExplorer.vue'
 import RedisOverview from './components/RedisOverview.vue'
 import NewConnectionDialog from './components/NewConnectionDialog.vue'
 import KeyValueDisplay from './components/KeyValueDisplay.vue'
 import ConnectionManagerDialog from './components/ConnectionManagerDialog.vue'
 import ConversionRulesManager from './components/ConversionRulesManager.vue'
+import OperationHistory from './components/OperationHistory.vue'
 
 const connectionStore = useConnectionStore()
 
@@ -112,6 +119,7 @@ const connectionStore = useConnectionStore()
 const showNewConnectionDialog = ref(false)
 const showConnectionManagerDialog = ref(false)
 const showConversionRulesManager = ref(false)
+const showOperationHistory = ref(false)
 const autoRefresh = ref(true)
 const currentConnection = ref(null)
 const redisInfo = ref(null)
@@ -127,9 +135,16 @@ const openConnectionManagerDialog = () => {
   showConnectionManagerDialog.value = true
 }
 
+const openOperationHistory = () => {
+  showOperationHistory.value = true
+}
+
 const closeConnection = () => {
   currentConnection.value = null
   redisInfo.value = null
+  selectedKey.value = null
+  // 清除保存的状态
+  localStorage.removeItem('redisManagerState')
 }
 
 const refreshData = async () => {
@@ -146,19 +161,32 @@ const handleConnectionCreated = (connection) => {
   // 新创建的连接会自动成为当前连接
   currentConnection.value = connection
   refreshData()
+  // 保存当前状态到localStorage
+  saveCurrentState()
+  // 记录操作日志
+  operationLogger.logConnectionCreated(connection)
 }
 
 const handleConnectionSelected = (connection) => {
   currentConnection.value = connection
   refreshData()
+  // 保存当前状态到localStorage
+  saveCurrentState()
+  // 记录操作日志
+  operationLogger.logConnectionSelected(connection)
 }
 
 const handleConnectionDeleted = (connectionId) => {
   // 如果删除的是当前连接，清空当前连接
   if (currentConnection.value && currentConnection.value.id === connectionId) {
+    const connectionName = currentConnection.value.name
     currentConnection.value = null
     redisInfo.value = null
     selectedKey.value = null
+    // 清除保存的状态
+    localStorage.removeItem('redisManagerState')
+    // 记录操作日志
+    operationLogger.logConnectionDeleted(connectionId, connectionName)
   }
 }
 
@@ -173,6 +201,10 @@ const handleDatabaseSelect = (database) => {
   currentDatabase.value = database
   selectedKey.value = null // 切换数据库时清空选中的键
   console.log('选择数据库:', database)
+  // 保存当前状态到localStorage
+  saveCurrentState()
+  // 记录操作日志
+  operationLogger.logDatabaseSelected(database, currentConnection.value)
 }
 
 const handleAddKey = () => {
@@ -189,14 +221,25 @@ const handleSelectKey = async (key) => {
   await nextTick()
   // 确保 key 对象是响应式的
   selectedKey.value = { ...key }
+  
+  // 保存当前状态到localStorage
+  saveCurrentState()
+  // 记录操作日志
+  operationLogger.logKeySelected(key, currentConnection.value)
 }
 
 const handleGoBack = () => {
   selectedKey.value = null
+  // 保存当前状态到localStorage
+  saveCurrentState()
 }
 
 const handleKeyDeleted = (keyName) => {
   selectedKey.value = null
+  // 保存当前状态到localStorage
+  saveCurrentState()
+  // 记录操作日志
+  operationLogger.logKeyDeleted(keyName, currentConnection.value)
   // 这里可以刷新键列表
   console.log('键已删除:', keyName)
 }
@@ -209,6 +252,10 @@ const handleKeyUpdated = (updateInfo) => {
       ...selectedKey.value,
       name: updateInfo.newKey
     }
+    // 保存当前状态到localStorage
+    saveCurrentState()
+    // 记录操作日志
+    operationLogger.logKeyRenamed(updateInfo.oldKey, updateInfo.newKey, currentConnection.value)
   }
   console.log('键已更新:', updateInfo)
 }
@@ -226,6 +273,38 @@ const handleOpenConversionRules = () => {
   showConversionRulesManager.value = true
 }
 
+// 保存当前状态到localStorage
+const saveCurrentState = () => {
+  const state = {
+    currentConnectionId: currentConnection.value?.id,
+    currentDatabase: currentDatabase.value,
+    selectedKey: selectedKey.value
+  }
+  localStorage.setItem('redisManagerState', JSON.stringify(state))
+  console.log('保存当前状态:', state)
+}
+
+// 从localStorage恢复状态
+const restoreCurrentState = () => {
+  try {
+    const savedState = localStorage.getItem('redisManagerState')
+    if (savedState) {
+      const state = JSON.parse(savedState)
+      console.log('恢复保存的状态:', state)
+      
+      // 恢复数据库选择
+      if (state.currentDatabase !== undefined) {
+        currentDatabase.value = state.currentDatabase
+      }
+      
+      return state
+    }
+  } catch (error) {
+    console.error('恢复状态失败:', error)
+  }
+  return null
+}
+
 const handleRulesChanged = (rules) => {
   // 保存规则到本地存储
   localStorage.setItem('conversionRules', JSON.stringify(rules))
@@ -237,12 +316,35 @@ const handleRulesChanged = (rules) => {
 
 // 生命周期
 onMounted(async () => {
-  await connectionStore.fetchConnections()
-  
-  // 自动选择连接
-  const selectedConnection = connectionStore.autoSelectConnection()
+  // 初始化连接状态 - 页面刷新后自动恢复
+  const selectedConnection = await connectionStore.initializeConnections()
   if (selectedConnection) {
+    currentConnection.value = selectedConnection
     await refreshData()
+    
+    // 恢复保存的状态
+    const savedState = restoreCurrentState()
+    if (savedState && savedState.currentConnectionId === selectedConnection.id) {
+      // 如果保存的状态与当前连接匹配，恢复选中的key
+      if (savedState.selectedKey) {
+        // 验证key是否仍然存在
+        try {
+          const keyValue = await connectionStore.getKeyValue(
+            selectedConnection.id, 
+            savedState.currentDatabase || 0, 
+            savedState.selectedKey.name
+          )
+          if (keyValue) {
+            selectedKey.value = savedState.selectedKey
+            console.log('✅ 成功恢复选中的key:', savedState.selectedKey.name)
+          } else {
+            console.log('❌ 保存的key已不存在:', savedState.selectedKey.name)
+          }
+        } catch (error) {
+          console.log('❌ 恢复key失败:', error.message)
+        }
+      }
+    }
   }
   
   // 定期刷新连接状态（每30秒）

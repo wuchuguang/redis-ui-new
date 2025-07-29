@@ -57,7 +57,7 @@
           <el-table-column label="操作" width="150" fixed="right">
             <template #default="{ row }">
               <el-button size="small" @click="editRule(row)">
-                <el-icon><Edit /></el-icon>
+                <el-icon><Edit type="primary"/></el-icon>
               </el-button>
               <el-button size="small" type="danger" @click="deleteRule(row)">
                 <el-icon><Delete /></el-icon>
@@ -150,7 +150,7 @@
       
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="showRuleDialog = false">取消</el-button>
+          <el-button type="primary" @click="showRuleDialog = false">取消</el-button>
           <el-button type="primary" @click="saveRule" :loading="saving">
             保存
           </el-button>

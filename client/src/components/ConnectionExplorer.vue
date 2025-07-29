@@ -120,7 +120,7 @@
           新增Key
         </el-button>
         <el-button 
-          type="default" 
+          type="primary" 
           size="small" 
           @click="showConfigDialog = true"
           title="显示配置"
@@ -343,6 +343,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { House, Folder, Refresh, ArrowUp, ArrowRight, ArrowLeft, Plus, Search, Document, Delete, List, Setting, Loading } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
+import { operationLogger } from '../utils/operationLogger'
 
 // Props
 const props = defineProps({
@@ -690,6 +691,8 @@ const deleteSearchHistory = (searchTerm) => {
 
 const handleSearch = async (value) => {
   emit('search-keys', value)
+  // 记录操作日志
+  operationLogger.logKeySearch(value, props.connection)
   await refreshKeys(false)
 }
 

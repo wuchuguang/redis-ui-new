@@ -339,6 +339,26 @@ export const useConnectionStore = defineStore('connection', () => {
     return null
   }
 
+  // 初始化连接状态 - 页面刷新后自动恢复
+  const initializeConnections = async () => {
+    try {
+      // 获取所有连接（包括状态）
+      await fetchConnections()
+      
+      // 自动选择连接
+      const selectedConnection = autoSelectConnection()
+      
+      if (selectedConnection) {
+        console.log(`页面刷新后自动选择连接: ${selectedConnection.name}`)
+      }
+      
+      return selectedConnection
+    } catch (error) {
+      console.error('初始化连接状态失败:', error)
+      return null
+    }
+  }
+
   return {
     connections,
     loading,
@@ -364,6 +384,7 @@ export const useConnectionStore = defineStore('connection', () => {
     getConnectionInfo,
     setCurrentConnection,
     getCurrentConnection,
-    autoSelectConnection
+    autoSelectConnection,
+    initializeConnections
   }
 }) 

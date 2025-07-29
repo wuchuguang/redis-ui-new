@@ -240,6 +240,72 @@ app.delete('/api/connections/:id', async (req, res) => {
   }
 });
 
+// 重新连接
+app.post('/api/connections/:id/reconnect', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // 检查连接是否存在
+    const existingConnection = configManager.getConnectionById(id);
+    if (!existingConnection) {
+      return res.status(404).json({
+        success: false,
+        message: '连接不存在'
+      });
+    }
+
+    // 如果连接正在使用，先断开
+    const activeConnection = redisConnections.get(id);
+    if (activeConnection && activeConnection.client.isReady) {
+      await activeConnection.client.disconnect();
+      redisConnections.delete(id);
+    }
+
+    console.log(`尝试重新连接: ${existingConnection.name} (${existingConnection.host}:${existingConnection.port})`);
+
+    // 创建新的Redis客户端
+    const redisClient = createClient({
+      socket: {
+        host: existingConnection.host,
+        port: existingConnection.port
+      },
+      password: existingConnection.password || undefined,
+      database: existingConnection.database
+    });
+
+    // 连接Redis
+    await redisClient.connect();
+    
+    // 测试连接
+    await redisClient.ping();
+    
+    const updatedConnectionConfig = {
+      ...existingConnection,
+      status: 'connected'
+    };
+
+    redisConnections.set(id, {
+      client: redisClient,
+      config: updatedConnectionConfig
+    });
+
+    console.log(`✅ 重新连接成功: ${existingConnection.name}`);
+    
+    res.json({
+      success: true,
+      message: '重新连接成功',
+      data: updatedConnectionConfig
+    });
+
+  } catch (error) {
+    console.error('重新连接失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `重新连接失败: ${error.message}`
+    });
+  }
+});
+
 // 测试连接
 app.post('/api/connections/test', async (req, res) => {
   try {
@@ -899,7 +965,7 @@ async function restoreConnections() {
     
     for (const savedConn of savedConnections) {
       try {
-        console.log(`尝试恢复连接: ${savedConn.name}`);
+        console.log(`尝试恢复连接: ${savedConn.name} (${savedConn.host}:${savedConn.port})`);
         
         const redisClient = createClient({
           socket: {
@@ -910,6 +976,11 @@ async function restoreConnections() {
           database: savedConn.database
         });
 
+        // 设置连接超时
+        redisClient.on('error', (err) => {
+          console.log(`Redis连接错误: ${savedConn.name} - ${err.message}`);
+        });
+
         await redisClient.connect();
         await redisClient.ping();
         
@@ -918,13 +989,15 @@ async function restoreConnections() {
           config: { ...savedConn, status: 'connected' }
         });
         
-        console.log(`连接恢复成功: ${savedConn.name}`);
+        console.log(`✅ 连接恢复成功: ${savedConn.name}`);
       } catch (error) {
-        console.log(`连接恢复失败: ${savedConn.name} - ${error.message}`);
+        console.log(`❌ 连接恢复失败: ${savedConn.name} - ${error.message}`);
         // 连接失败时，不保存到 redisConnections Map 中
         // 这样在获取连接列表时会正确显示为 disconnected
       }
     }
+    
+    console.log(`连接恢复完成，成功恢复 ${redisConnections.size} 个连接`);
   } catch (error) {
     console.error('恢复连接失败:', error.message);
   }

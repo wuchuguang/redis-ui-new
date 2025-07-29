@@ -687,6 +687,7 @@ import {
   ArrowLeft
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
+import { operationLogger } from '../utils/operationLogger'
 import FormattedValue from './FormattedValue.vue'
 
 const connectionStore = useConnectionStore()
@@ -1078,6 +1079,8 @@ const deleteHashField = async (field) => {
         hashLoadedCount.value = Math.min(hashLoadedCount.value, hashTotalCount.value)
         
         ElMessage.success(`字段 "${field}" 删除成功`)
+        // 记录操作日志
+        operationLogger.logHashFieldDeleted(keyData.value.key, field, props.connection)
       }
     } else {
       ElMessage.error('删除字段失败')
@@ -1133,6 +1136,8 @@ const batchDeleteHashFields = async () => {
       hashFilter.value = ''
       
       ElMessage.success(`成功删除 ${fieldsToDelete.length} 个字段`)
+      // 记录操作日志
+      operationLogger.logHashFieldsBatchDeleted(keyData.value.key, fieldsToDelete, props.connection)
     } else {
       ElMessage.error('批量删除字段失败')
     }
@@ -1187,6 +1192,8 @@ const saveHashField = async () => {
       
       showEditHashFieldDialog.value = false
       ElMessage.success('字段保存成功')
+      // 记录操作日志
+      operationLogger.logHashFieldEdited(keyData.value.key, editHashFieldForm.field, props.connection)
     } else {
       ElMessage.error('保存字段失败')
     }
@@ -1223,6 +1230,8 @@ const saveStringValue = async () => {
       
       showEditStringDialog.value = false
       ElMessage.success('String值保存成功')
+      // 记录操作日志
+      operationLogger.logStringValueEdited(keyData.value.key, props.connection)
     } else {
       ElMessage.error('保存String值失败')
     }
@@ -1276,6 +1285,8 @@ const deleteKey = async () => {
     
     // 这里可以添加删除键的逻辑
     ElMessage.success('键删除成功')
+    // 记录操作日志
+    operationLogger.logKeyDeleted(keyData.value.key, props.connection)
     emit('key-deleted', keyData.value.key)
   } catch (error) {
     // 用户取消删除
@@ -1357,6 +1368,8 @@ const handleKeyNameChange = async () => {
       isEditingKeyName.value = false
       
       ElMessage.success(`键名已更新: ${oldKeyName} → ${newKeyName}`)
+      // 记录操作日志
+      operationLogger.logKeyRenamed(oldKeyName, newKeyName, props.connection)
       emit('key-updated', { oldKey: oldKeyName, newKey: newKeyName })
     } else {
       editingKeyName.value = oldKeyName

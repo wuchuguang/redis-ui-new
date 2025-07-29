@@ -50,7 +50,7 @@
           <el-table-column prop="host" label="主机" min-width="120" />
           <el-table-column prop="port" label="端口" width="80" />
           <el-table-column prop="database" label="数据库" width="80" />
-          <el-table-column label="操作" width="200" fixed="right">
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
               <el-button 
                 type="primary" 
@@ -59,6 +59,14 @@
                 :disabled="row.status !== 'connected'"
               >
                 选择
+              </el-button>
+              <el-button 
+                type="success" 
+                size="small" 
+                @click="reconnectConnection(row)"
+                :disabled="row.status === 'connected'"
+              >
+                重连
               </el-button>
               <el-button 
                 type="warning" 
@@ -131,6 +139,7 @@ import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Delete, Refresh } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
+import { operationLogger } from '../utils/operationLogger'
 
 const props = defineProps({
   modelValue: {
@@ -269,6 +278,23 @@ const selectConnection = (connection) => {
   ElMessage.success(`已选择连接: ${connection.name}`)
 }
 
+const reconnectConnection = async (connection) => {
+  try {
+    const success = await connectionStore.reconnect(connection.id)
+    if (success) {
+      ElMessage.success(`重新连接成功: ${connection.name}`)
+      // 记录操作日志
+      operationLogger.logConnectionReconnected(connection)
+      // 刷新连接列表
+      await refreshConnections()
+    }
+  } catch (error) {
+    console.error('重新连接失败:', error)
+    // 记录错误日志
+    operationLogger.logError('重新连接', error, connection)
+  }
+}
+
 const saveConnection = async () => {
   saving.value = true
   try {
@@ -278,6 +304,8 @@ const saveConnection = async () => {
       if (success) {
         emit('connection-updated', form)
         ElMessage.success('连接更新成功')
+        // 记录操作日志
+        operationLogger.logConnectionUpdated(form)
         showEditDialog.value = false
       }
     } else {
@@ -285,11 +313,15 @@ const saveConnection = async () => {
       const success = await connectionStore.createConnection(form)
       if (success) {
         ElMessage.success('连接添加成功')
+        // 记录操作日志
+        operationLogger.logConnectionCreated(form)
         showEditDialog.value = false
       }
     }
   } catch (error) {
     console.error('保存连接失败:', error)
+    // 记录错误日志
+    operationLogger.logError('保存连接', error)
   } finally {
     saving.value = false
   }
