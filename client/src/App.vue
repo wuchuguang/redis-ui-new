@@ -378,10 +378,24 @@ onMounted(async () => {
     }
   }, 20000)
   
-  // 组件卸载时清理定时器
-  onUnmounted(() => {
+  // 组件卸载时清理定时器和连接
+  onUnmounted(async () => {
     clearInterval(statusInterval)
     clearInterval(pingInterval)
+    
+    // 关闭所有打开的连接
+    if (connections.value.length > 0) {
+      console.log('页面卸载，关闭所有连接...')
+      for (const connection of connections.value) {
+        if (connection.status === 'connected') {
+          try {
+            await connectionStore.closeConnection(connection.id)
+          } catch (error) {
+            console.error('关闭连接失败:', connection.id, error)
+          }
+        }
+      }
+    }
   })
 })
 </script>

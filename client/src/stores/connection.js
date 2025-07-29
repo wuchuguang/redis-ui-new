@@ -546,6 +546,20 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 关闭连接
+  const closeConnection = async (connectionId) => {
+    try {
+      const response = await axios.post(`/api/connections/${connectionId}/close`)
+      if (response.data.success) {
+        console.log('连接已关闭:', connectionId)
+        return true
+      }
+    } catch (error) {
+      console.error('关闭连接失败:', error)
+      return false
+    }
+  }
+
   // 设置当前连接
   const setCurrentConnection = (connection) => {
     currentConnection.value = connection
@@ -666,6 +680,7 @@ export const useConnectionStore = defineStore('connection', () => {
     updateStringValue,
     getConnectionInfo,
     pingConnection,
+    closeConnection,
     setCurrentConnection,
     getCurrentConnection,
     autoSelectConnection,

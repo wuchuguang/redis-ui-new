@@ -83,6 +83,10 @@ class OperationLogger {
     this.log('connect', `重新连接Redis: ${connection.name}`, 'info', { connectionId: connection.id })
   }
 
+  logConnectionClosed(connection) {
+    this.log('connect', `关闭Redis连接: ${connection.name}`, 'info', { connectionId: connection.id })
+  }
+
   // Key相关操作
   logKeySelected(key, connection) {
     this.log('query', `选择Key: ${key.name}`, 'info', { key, connection: connection?.name })

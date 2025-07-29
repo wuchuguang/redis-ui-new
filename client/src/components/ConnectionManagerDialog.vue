@@ -69,6 +69,14 @@
                 重连
               </el-button>
               <el-button 
+                type="info" 
+                size="small" 
+                @click="closeConnection(row)"
+                :disabled="row.status !== 'connected'"
+              >
+                关闭
+              </el-button>
+              <el-button 
                 type="warning" 
                 size="small" 
                 @click="editConnection(row)"
@@ -292,6 +300,34 @@ const reconnectConnection = async (connection) => {
     console.error('重新连接失败:', error)
     // 记录错误日志
     operationLogger.logError('重新连接', error, connection)
+  }
+}
+
+const closeConnection = async (connection) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要关闭连接 "${connection.name}" 吗？`,
+      '确认关闭',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    const success = await connectionStore.closeConnection(connection.id)
+    if (success) {
+      ElMessage.success(`连接已关闭: ${connection.name}`)
+      // 记录操作日志
+      operationLogger.logConnectionClosed(connection)
+      // 刷新连接列表
+      await refreshConnections()
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('关闭连接失败:', error)
+      ElMessage.error('关闭连接失败')
+    }
   }
 }
 

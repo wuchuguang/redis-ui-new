@@ -303,6 +303,25 @@ const pingConnection = async (connectionId) => {
   }
 };
 
+// 关闭连接
+const closeConnection = async (connectionId) => {
+  const connection = redisConnections.get(connectionId);
+  if (!connection || !connection.client) {
+    throw new Error('连接不存在或未连接');
+  }
+
+  try {
+    await connection.client.quit();
+    redisConnections.delete(connectionId);
+    
+    console.log(`Redis连接已关闭: ${connectionId}`);
+    return { closed: true, connectionId };
+  } catch (error) {
+    console.error(`关闭Redis连接失败: ${connectionId}`, error.message);
+    throw new Error(`关闭连接失败: ${error.message}`);
+  }
+};
+
 // 获取键列表
 const getKeys = async (connectionId, database, pattern = '*', prefix, offset = 0, limit = 100) => {
   const connection = redisConnections.get(connectionId);
@@ -714,6 +733,7 @@ module.exports = {
   reconnectConnection,
   testConnection,
   pingConnection,
+  closeConnection,
   getKeys,
   getKeyValue,
   renameKey,

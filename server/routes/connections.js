@@ -330,4 +330,25 @@ router.post('/:id/ping', async (req, res) => {
   }
 });
 
+// 关闭Redis连接
+router.post('/:id/close', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await redisService.closeConnection(id);
+    
+    res.json({
+      success: true,
+      message: '连接已关闭',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('关闭连接失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `关闭连接失败: ${error.message}`
+    });
+  }
+});
+
 module.exports = router; 

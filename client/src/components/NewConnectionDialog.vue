@@ -62,10 +62,11 @@
             v-model="jsonConfig"
             placeholder="输入连接配置（支持JavaScript对象格式），例如：
 {
-  port: 6379, // Redis port
-  host: '172.20.100.141', // Redis host
-  password: '2341a3FDEWE41dfaEFAA',
-  db: 0,
+  name: 'Redis连接', // 连接名称（必填）
+  port: 6379, // Redis端口
+  host: '172.20.100.141', // Redis主机
+  password: '2341a3FDEWE41dfaEFAA', // 密码（可选）
+  db: 0, // 数据库编号
 }"
             style="width: 100%; height: 300px; padding: 10px; border: 1px solid #dcdfe6; border-radius: 4px; font-family: monospace; font-size: 13px; resize: vertical;"
           />
@@ -284,6 +285,11 @@ const testConnection = async () => {
         // 直接使用eval解析JavaScript对象
         connectionData = convertToJson(jsonConfig.value)
         
+        if (!connectionData) {
+          ElMessage.error('JSON格式错误，请检查配置')
+          return
+        }
+        
         // 验证必要字段
         if (!connectionData.host) {
           ElMessage.error('缺少host字段')
@@ -291,6 +297,21 @@ const testConnection = async () => {
         }
         if (!connectionData.port) {
           ElMessage.error('缺少port字段')
+          return
+        }
+        
+        // 如果缺少name字段，切换到表单模式并填充数据
+        if (!connectionData.name) {
+          ElMessage.info('缺少连接名称，请切换到表单模式填写')
+          // 切换到表单模式
+          activeTab.value = 'form'
+          // 填充表单数据
+          form.host = connectionData.host
+          form.port = connectionData.port
+          form.password = connectionData.password || ''
+          form.database = connectionData.database || 0
+          // 清空name字段，让用户填写
+          form.name = ''
           return
         }
         
@@ -349,9 +370,19 @@ const handleCreate = async () => {
           return
         }
         
-        // 添加连接名称
+        // 如果缺少name字段，切换到表单模式并填充数据
         if (!connectionData.name) {
-          connectionData.name = `${connectionData.host}:${connectionData.port}`
+          ElMessage.info('缺少连接名称，请切换到表单模式填写')
+          // 切换到表单模式
+          activeTab.value = 'form'
+          // 填充表单数据
+          form.host = connectionData.host
+          form.port = connectionData.port
+          form.password = connectionData.password || ''
+          form.database = connectionData.database || 0
+          // 清空name字段，让用户填写
+          form.name = ''
+          return
         }
         
       } catch (error) {
