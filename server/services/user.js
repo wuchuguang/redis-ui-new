@@ -43,6 +43,20 @@ const ensureUsersDir = async () => {
   }
 };
 
+// 确保用户数据结构完整
+const ensureUserDataStructure = (user) => {
+  if (!user.connections || !Array.isArray(user.connections)) {
+    user.connections = [];
+  }
+  if (!user.shareConnections || !Array.isArray(user.shareConnections)) {
+    user.shareConnections = [];
+  }
+  if (!user.friendConnections || !Array.isArray(user.friendConnections)) {
+    user.friendConnections = [];
+  }
+  return user;
+};
+
 // 获取用户数据文件路径
 const getUserFilePath = (username) => {
   return path.join(USERS_DIR, `${username}.json`);
@@ -83,7 +97,8 @@ const loadUserFromFile = async (username) => {
     const encryptedData = JSON.parse(fileContent);
     const user = decryptData(encryptedData);
     
-    return user;
+    // 确保用户数据结构完整
+    return ensureUserDataStructure(user);
   } catch (error) {
     console.error(`加载用户 ${username} 数据失败:`, error);
     return null;
@@ -106,10 +121,12 @@ const loadUsersFromFile = async () => {
       const username = file.replace('.json', '');
       const user = await loadUserFromFile(username);
       
-      if (user) {
-        users.set(username, user);
-        console.log(`加载用户: ${username}`);
-      }
+              if (user) {
+          // 确保用户数据结构完整
+          const completeUser = ensureUserDataStructure(user);
+          users.set(username, completeUser);
+          console.log(`加载用户: ${username}`);
+        }
     }
     
     console.log(`从文件加载了 ${users.size} 个用户`);
@@ -302,6 +319,10 @@ const shareConnection = async (username, connectionId) => {
   }
 
   // 检查连接是否属于该用户
+  if (!user.connections || !Array.isArray(user.connections)) {
+    throw new Error('用户连接列表不存在');
+  }
+  
   const connection = user.connections.find(conn => conn.id === connectionId);
   if (!connection) {
     throw new Error('连接不存在或不属于该用户');
@@ -310,6 +331,11 @@ const shareConnection = async (username, connectionId) => {
   // 生成分享码
   const joinCode = generateJoinCode();
   
+  // 确保shareConnections数组存在
+  if (!user.shareConnections || !Array.isArray(user.shareConnections)) {
+    user.shareConnections = [];
+  }
+
   // 添加到分享列表
   const shareInfo = {
     id: connectionId,
@@ -332,13 +358,15 @@ const joinSharedConnection = async (username, joinCode) => {
   let ownerUsername = null;
 
   for (const [userKey, user] of users.entries()) {
-    const shareInfo = user.shareConnections.find(share => share.joinCode === joinCode);
-    if (shareInfo) {
-      const connection = user.connections.find(conn => conn.id === shareInfo.id);
-      if (connection) {
-        sharedConnection = connection;
-        ownerUsername = userKey;
-        break;
+    if (user.shareConnections && Array.isArray(user.shareConnections)) {
+      const shareInfo = user.shareConnections.find(share => share.joinCode === joinCode);
+      if (shareInfo && user.connections && Array.isArray(user.connections)) {
+        const connection = user.connections.find(conn => conn.id === shareInfo.id);
+        if (connection) {
+          sharedConnection = connection;
+          ownerUsername = userKey;
+          break;
+        }
       }
     }
   }
@@ -353,6 +381,10 @@ const joinSharedConnection = async (username, joinCode) => {
     throw new Error('用户不存在');
   }
 
+  if (!targetUser.friendConnections || !Array.isArray(targetUser.friendConnections)) {
+    targetUser.friendConnections = [];
+  }
+  
   const alreadyJoined = targetUser.friendConnections.find(fc => fc.id === sharedConnection.id);
   if (alreadyJoined) {
     throw new Error('已经加入过此连接');
@@ -383,33 +415,37 @@ const getUserAllConnections = (username) => {
   const allConnections = [];
 
   // 添加自己的连接
-  user.connections.forEach(conn => {
-    allConnections.push({
-      ...conn,
-      owner: username,
-      isOwner: true,
-      canEdit: true,
-      canDelete: true
+  if (user.connections && Array.isArray(user.connections)) {
+    user.connections.forEach(conn => {
+      allConnections.push({
+        ...conn,
+        owner: username,
+        isOwner: true,
+        canEdit: true,
+        canDelete: true
+      });
     });
-  });
+  }
 
   // 添加好友分享的连接
-  user.friendConnections.forEach(fc => {
-    const ownerUser = users.get(fc.ownerUsername);
-    if (ownerUser) {
-      const connection = ownerUser.connections.find(conn => conn.id === fc.id);
-      if (connection) {
-        allConnections.push({
-          ...connection,
-          owner: fc.ownerUsername,
-          isOwner: false,
-          canEdit: false,
-          canDelete: true,
-          sharedAt: fc.sharedAt
-        });
+  if (user.friendConnections && Array.isArray(user.friendConnections)) {
+    user.friendConnections.forEach(fc => {
+      const ownerUser = users.get(fc.ownerUsername);
+      if (ownerUser && ownerUser.connections && Array.isArray(ownerUser.connections)) {
+        const connection = ownerUser.connections.find(conn => conn.id === fc.id);
+        if (connection) {
+          allConnections.push({
+            ...connection,
+            owner: fc.ownerUsername,
+            isOwner: false,
+            canEdit: false,
+            canDelete: true,
+            sharedAt: fc.sharedAt
+          });
+        }
       }
-    }
-  });
+    });
+  }
 
   return allConnections;
 };
@@ -472,7 +508,7 @@ const getUserConnections = (username) => {
     throw new Error('用户不存在');
   }
   
-  return user.connections || [];
+  return user.connections && Array.isArray(user.connections) ? user.connections : [];
 };
 
 // 保存用户连接
@@ -482,7 +518,7 @@ const saveUserConnections = async (username, connections) => {
     throw new Error('用户不存在');
   }
   
-  user.connections = connections;
+  user.connections = Array.isArray(connections) ? connections : [];
   
   // 保存到文件
   await saveUserToFile(username);
@@ -495,6 +531,7 @@ const saveUserConnections = async (username, connections) => {
 module.exports = {
   users,
   ensureUsersDir,
+  ensureUserDataStructure,
   saveUserToFile,
   loadUserFromFile,
   loadUsersFromFile,
