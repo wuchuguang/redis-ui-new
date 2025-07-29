@@ -515,23 +515,37 @@ const refreshListModeData = async (isConverting = false) => {
   }
 }
 
-const refreshDatabases = async () => {
+const nextRefreshTime = {};
+// 补充0-15的空数据库
+const dbList = Array.from({ length: 16 }, (_, i) => ({
+  id: i,
+  keys: 0
+}))
+const refreshDatabases = async (interval) => {
   if (!props.connection) return
   
   try {
-    const dbList = []
     for (let i = 0; i <= 15; i++) {
       try {
+        if(nextRefreshTime[i] && nextRefreshTime[i] > Date.now()){
+          console.log(`数据库${i}在${nextRefreshTime[i]}后刷新`)
+          continue;
+        }
         const data = await connectionStore.getKeys(props.connection.id, i, '*')
-        dbList.push({
-          id: i,
-          keys: data ? data.totalKeys : 0
-        })
+       dbList.splice(i, 1, {
+        id: i,
+        keys: data ? data.totalKeys : 0
+       })
+        if(data.totalKeys > 0){
+          nextRefreshTime[i] = Date.now() + interval;// 10秒
+        }else{
+          nextRefreshTime[i] = Date.now() + 600000; // 5分钟
+        }
       } catch (error) {
         // 如果某个数据库访问失败，仍然添加但键数为0
-        dbList.push({
+        dbList.splice(i, 1, {
           id: i,
-          keys: 0
+          keys: 'error'
         })
       }
     }
@@ -545,11 +559,11 @@ const refreshDatabases = async () => {
     }))
   }
 }
-
+let interval = 10000;
 const startAutoRefresh = () => {
   stopAutoRefresh()
   autoRefreshTimer.value = setInterval(async () => {
-    await refreshDatabases()
+    await refreshDatabases(interval)
     if (props.connection) {
       // 如果当前是列表模式，刷新当前key下的数据
       if (currentListMode.value && currentListPrefix.value) {
@@ -558,7 +572,7 @@ const startAutoRefresh = () => {
         await refreshKeys(false)
       }
     }
-  }, 10000) // 10秒
+  }, interval) // 10秒
 }
 
 const stopAutoRefresh = () => {
