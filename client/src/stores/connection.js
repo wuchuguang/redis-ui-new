@@ -211,6 +211,72 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 删除Hash字段
+  const deleteHashField = async (connectionId, database = 0, keyName, field) => {
+    try {
+      const response = await axios.delete(`/api/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, {
+        data: { field }
+      })
+      if (response.data.success) {
+        return true
+      }
+    } catch (error) {
+      console.error('删除Hash字段失败:', error)
+      ElMessage.error(error.response?.data?.message || '删除Hash字段失败')
+      return false
+    }
+  }
+
+  // 批量删除Hash字段
+  const batchDeleteHashFields = async (connectionId, database = 0, keyName, fields) => {
+    try {
+      const response = await axios.delete(`/api/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/fields`, {
+        data: { fields }
+      })
+      if (response.data.success) {
+        return true
+      }
+    } catch (error) {
+      console.error('批量删除Hash字段失败:', error)
+      ElMessage.error(error.response?.data?.message || '批量删除Hash字段失败')
+      return false
+    }
+  }
+
+  // 更新Hash字段
+  const updateHashField = async (connectionId, database = 0, keyName, oldField, newField, value) => {
+    try {
+      const response = await axios.put(`/api/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, {
+        oldField,
+        newField,
+        value
+      })
+      if (response.data.success) {
+        return true
+      }
+    } catch (error) {
+      console.error('更新Hash字段失败:', error)
+      ElMessage.error(error.response?.data?.message || '更新Hash字段失败')
+      return false
+    }
+  }
+
+  // 更新String值
+  const updateStringValue = async (connectionId, database = 0, keyName, value) => {
+    try {
+      const response = await axios.put(`/api/connections/${connectionId}/${database}/string/${encodeURIComponent(keyName)}`, {
+        value
+      })
+      if (response.data.success) {
+        return true
+      }
+    } catch (error) {
+      console.error('更新String值失败:', error)
+      ElMessage.error(error.response?.data?.message || '更新String值失败')
+      return false
+    }
+  }
+
   // 获取连接信息
   const getConnectionInfo = async (connectionId) => {
     try {
@@ -268,6 +334,10 @@ export const useConnectionStore = defineStore('connection', () => {
     getKeyValue,
     renameKey,
     deleteKeyGroup,
+    deleteHashField,
+    batchDeleteHashFields,
+    updateHashField,
+    updateStringValue,
     getConnectionInfo,
     setCurrentConnection,
     getCurrentConnection,

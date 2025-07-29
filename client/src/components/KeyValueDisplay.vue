@@ -127,31 +127,66 @@
         </div>
         <!-- String类型 -->
         <div v-if="keyData.type === 'string'" class="string-value">
-          <div class="string-value-container">
-            <FormattedValue 
-              :value="keyData.value" 
-              :row-key="'string_value'"
-              @formatted="handleFormatted"
-            />
-          </div>
+          <el-table :data="[{ value: keyData.value }]" stripe>
+            <el-table-column label="值" min-width="300">
+              <template #default="{ row }">
+                <FormattedValue 
+                  :value="row.value" 
+                  :row-key="'string_value'"
+                  @formatted="handleFormatted"
+                />
+              </template>
+            </el-table-column>
+            <el-table-column label="操作" width="120" fixed="right">
+              <template #default>
+                <el-button 
+                  type="primary" 
+                  size="small"
+                  @click="editStringValue"
+                  title="编辑值"
+                  class="edit-field-btn"
+                >
+                  <el-icon><Edit /></el-icon>
+                </el-button>
+              </template>
+            </el-table-column>
+          </el-table>
         </div>
 
         <!-- Hash类型 -->
         <div v-else-if="keyData.type === 'hash'" class="hash-value">
           <div class="filter-section">
-            <el-input
-              v-model="hashFilter"
-              placeholder="输入关键字搜索字段或值"
-              clearable
-              @input="handleHashFilter"
-              class="filter-input"
-            >
-              <template #prefix>
-                <el-icon><Search /></el-icon>
-              </template>
-            </el-input>
+            <div class="filter-row">
+              <el-input
+                v-model="hashFilter"
+                placeholder="输入关键字搜索字段或值"
+                clearable
+                @input="handleHashFilter"
+                class="filter-input"
+              >
+                <template #prefix>
+                  <el-icon><Search /></el-icon>
+                </template>
+              </el-input>
+              <el-button 
+                v-if="hashFilter && filteredHashTableData.length > 0"
+                type="danger" 
+                size="small"
+                @click="batchDeleteHashFields"
+                :loading="hashBatchDeleting"
+                class="batch-delete-btn"
+              >
+                <el-icon><Delete /></el-icon>
+                批量删除 ({{ filteredHashTableData.length }})
+              </el-button>
+            </div>
           </div>
-          <el-table :data="filteredHashTableData" stripe>
+          <el-table 
+            :data="filteredHashTableData" 
+            stripe
+            :max-height="400"
+            v-loading="hashLoading"
+          >
             <el-table-column prop="field" label="字段" width="200" />
             <el-table-column label="值" min-width="300">
               <template #default="{ row }">
@@ -162,12 +197,56 @@
                 />
               </template>
             </el-table-column>
+            <el-table-column label="操作" width="120" fixed="right">
+              <template #default="{ row }">
+                <el-button 
+                  type="primary" 
+                  size="small"
+                  @click="editHashField(row.field, row.value)"
+                  title="编辑字段"
+                  class="edit-field-btn"
+                >
+                  <el-icon><Edit /></el-icon>
+                </el-button>
+                <el-button 
+                  type="danger" 
+                  size="small"
+                  @click="deleteHashField(row.field)"
+                  title="删除字段"
+                  class="delete-field-btn"
+                >
+                  <el-icon><Delete /></el-icon>
+                </el-button>
+              </template>
+            </el-table-column>
           </el-table>
+          <div v-if="hashHasMore" class="load-more-section">
+            <el-button 
+              type="text" 
+              @click="loadMoreHashData"
+              :loading="hashLoadingMore"
+            >
+              加载更多 ({{ hashLoadedCount }}/{{ hashTotalCount }})
+            </el-button>
+            <el-button 
+              type="primary" 
+              size="small"
+              @click="loadAllHashData"
+              :loading="hashLoadingAll"
+            >
+              显示全部
+            </el-button>
+          </div>
         </div>
 
         <!-- List类型 -->
         <div v-else-if="keyData.type === 'list'" class="list-value">
-          <el-table :data="listTableData" stripe>
+          <el-table 
+            :data="listTableData" 
+            stripe
+            :max-height="400"
+            v-loading="listLoading"
+          >
             <el-table-column prop="index" label="索引" width="80" />
             <el-table-column label="值" min-width="300">
               <template #default="{ row }">
@@ -179,6 +258,23 @@
               </template>
             </el-table-column>
           </el-table>
+          <div v-if="listHasMore" class="load-more-section">
+            <el-button 
+              type="text" 
+              @click="loadMoreListData"
+              :loading="listLoadingMore"
+            >
+              加载更多 ({{ listLoadedCount }}/{{ listTotalCount }})
+            </el-button>
+            <el-button 
+              type="primary" 
+              size="small"
+              @click="loadAllListData"
+              :loading="listLoadingAll"
+            >
+              显示全部
+            </el-button>
+          </div>
         </div>
 
         <!-- Set类型 -->
@@ -483,6 +579,87 @@
     >
       <pre class="raw-data">{{ JSON.stringify(keyData, null, 2) }}</pre>
     </el-dialog>
+
+    <!-- 编辑Hash字段对话框 -->
+    <el-dialog
+      v-model="showEditHashFieldDialog"
+      title="编辑Hash字段"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="editHashFieldFormRef"
+        :model="editHashFieldForm"
+        :rules="editHashFieldRules"
+        label-width="80px"
+      >
+        <el-form-item label="字段名" prop="field">
+          <el-input 
+            v-model="editHashFieldForm.field" 
+            placeholder="请输入字段名"
+            :disabled="editHashFieldForm.isEditField"
+          />
+        </el-form-item>
+        <el-form-item label="字段值" prop="value">
+          <el-input 
+            v-model="editHashFieldForm.value" 
+            type="textarea"
+            :rows="4"
+            placeholder="请输入字段值"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showEditHashFieldDialog = false">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="saveHashField"
+            :loading="editHashFieldLoading"
+          >
+            保存
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
+    <!-- 编辑String值对话框 -->
+    <el-dialog
+      v-model="showEditStringDialog"
+      title="编辑String值"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="editStringFormRef"
+        :model="editStringForm"
+        :rules="editStringRules"
+        label-width="80px"
+      >
+        <el-form-item label="值" prop="value">
+          <el-input 
+            v-model="editStringForm.value" 
+            type="textarea"
+            :rows="8"
+            placeholder="请输入String值"
+          />
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showEditStringDialog = false">取消</el-button>
+          <el-button 
+            type="primary" 
+            @click="saveStringValue"
+            :loading="editStringLoading"
+          >
+            保存
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -533,11 +710,35 @@ const keyData = ref({
 const loading = ref(false)
 const showRawDialog = ref(false)
 const showEditDialog = ref(false)
+const showEditHashFieldDialog = ref(false)
+const showEditStringDialog = ref(false)
 const editingKeyName = ref('')
 const isEditingKeyName = ref(false)
 const keyNameInputRef = ref(null)
 const hashFilter = ref('')
 const setFilter = ref('')
+
+// 分页加载相关状态
+const hashLoading = ref(false)
+const hashLoadingMore = ref(false)
+const hashLoadingAll = ref(false)
+const hashBatchDeleting = ref(false)
+const hashLoadedCount = ref(0)
+const hashTotalCount = ref(0)
+const hashPageSize = ref(100)
+const hashCurrentPage = ref(0)
+
+const listLoading = ref(false)
+const listLoadingMore = ref(false)
+const listLoadingAll = ref(false)
+const listLoadedCount = ref(0)
+const listTotalCount = ref(0)
+const listPageSize = ref(100)
+const listCurrentPage = ref(0)
+
+// 缓存机制
+const keyValueCache = ref(new Map())
+const cacheTimeout = 5 * 60 * 1000 // 5分钟缓存
 const editForm = reactive({
   keyName: '',
   value: null,
@@ -545,12 +746,42 @@ const editForm = reactive({
   isRename: false
 })
 const editLoading = ref(false)
+const editHashFieldLoading = ref(false)
+const editStringLoading = ref(false)
 const newHashField = ref('')
 const newHashValue = ref('')
 const newListItem = ref('')
 const newSetMember = ref('')
 const newZSetMember = ref('')
 const newZSetScore = ref(0)
+
+// 编辑Hash字段表单
+const editHashFieldForm = reactive({
+  field: '',
+  value: '',
+  isEditField: false, // 是否编辑字段名（false表示新增，true表示编辑）
+  originalField: '' // 原始字段名，用于编辑时判断是否修改了字段名
+})
+
+const editHashFieldRules = {
+  field: [
+    { required: true, message: '请输入字段名', trigger: 'blur' }
+  ],
+  value: [
+    { required: true, message: '请输入字段值', trigger: 'blur' }
+  ]
+}
+
+// 编辑String值表单
+const editStringForm = reactive({
+  value: ''
+})
+
+const editStringRules = {
+  value: [
+    { required: true, message: '请输入String值', trigger: 'blur' }
+  ]
+}
 
 // 格式化事件处理
 const handleFormatted = (data) => {
@@ -569,24 +800,43 @@ const hashTableData = computed(() => {
 })
 
 const filteredHashTableData = computed(() => {
-  if (!hashFilter.value) {
-    return hashTableData.value
+  let data = hashTableData.value
+  
+  // 应用过滤器
+  if (hashFilter.value) {
+    data = data.filter(item => 
+      item.field.toLowerCase().includes(hashFilter.value.toLowerCase()) ||
+      item.value.toLowerCase().includes(hashFilter.value.toLowerCase())
+    )
   }
   
-  return hashTableData.value.filter(item => 
-    item.field.toLowerCase().includes(hashFilter.value.toLowerCase()) ||
-    item.value.toLowerCase().includes(hashFilter.value.toLowerCase())
-  )
+  // 应用分页
+  const start = 0
+  const end = hashLoadedCount.value
+  return data.slice(start, end)
+})
+
+const hashHasMore = computed(() => {
+  if (keyData.value.type !== 'hash' || !keyData.value.value) return false
+  const totalItems = Object.keys(keyData.value.value).length
+  return hashLoadedCount.value < totalItems
 })
 
 const listTableData = computed(() => {
   if (keyData.value.type === 'list' && keyData.value.value) {
-    return keyData.value.value.map((value, index) => ({
+    const data = keyData.value.value.map((value, index) => ({
       index,
       value
     }))
+    // 应用分页
+    return data.slice(0, listLoadedCount.value)
   }
   return []
+})
+
+const listHasMore = computed(() => {
+  if (keyData.value.type !== 'list' || !keyData.value.value) return false
+  return listLoadedCount.value < keyData.value.value.length
 })
 
 const zsetTableData = computed(() => {
@@ -611,7 +861,7 @@ const filteredSetData = computed(() => {
 })
 
 // 方法
-const loadKeyValue = async () => {
+const loadKeyValue = async (forceRefresh = false) => {
   console.log('loadKeyValue called:', { 
     connection: props.connection?.id, 
     selectedKey: props.selectedKey?.name,
@@ -621,6 +871,29 @@ const loadKeyValue = async () => {
   if (!props.connection || !props.selectedKey) {
     console.log('loadKeyValue - missing connection or selectedKey')
     keyData.value = { key: '', type: 'unknown', value: null, ttl: -1, size: 0 }
+    return
+  }
+
+  // 检查缓存
+  const cacheKey = `${props.connection.id}:${props.database}:${props.selectedKey.name}`
+  const cachedData = keyValueCache.value.get(cacheKey)
+  
+  if (!forceRefresh && cachedData && (Date.now() - cachedData.timestamp) < cacheTimeout) {
+    console.log('使用缓存数据:', cachedData.data)
+    keyData.value = { ...cachedData.data }
+    
+    // 初始化分页状态
+    if (cachedData.data.type === 'hash' && cachedData.data.value) {
+      hashTotalCount.value = Object.keys(cachedData.data.value).length
+      hashLoadedCount.value = Math.min(hashPageSize.value, hashTotalCount.value)
+    } else if (cachedData.data.type === 'list' && cachedData.data.value) {
+      listTotalCount.value = cachedData.data.value.length
+      listLoadedCount.value = Math.min(listPageSize.value, listTotalCount.value)
+    }
+    
+    if (!isEditingKeyName.value) {
+      editingKeyName.value = cachedData.data.key
+    }
     return
   }
 
@@ -637,6 +910,22 @@ const loadKeyValue = async () => {
     if (data) {
       console.log('KeyValueDisplay - setting keyData to:', data)
       keyData.value = { ...data }
+      
+      // 缓存数据
+      keyValueCache.value.set(cacheKey, {
+        data: { ...data },
+        timestamp: Date.now()
+      })
+      
+      // 初始化分页状态
+      if (data.type === 'hash' && data.value) {
+        hashTotalCount.value = Object.keys(data.value).length
+        hashLoadedCount.value = Math.min(hashPageSize.value, hashTotalCount.value)
+      } else if (data.type === 'list' && data.value) {
+        listTotalCount.value = data.value.length
+        listLoadedCount.value = Math.min(listPageSize.value, listTotalCount.value)
+      }
+      
       // 确保 editingKeyName 也更新
       if (!isEditingKeyName.value) {
         editingKeyName.value = data.key
@@ -679,7 +968,258 @@ const loadKeyValue = async () => {
 }
 
 const refreshValue = () => {
-  loadKeyValue()
+  loadKeyValue(true) // 强制刷新，不使用缓存
+}
+
+// 分页加载方法
+const loadMoreHashData = async () => {
+  if (hashLoadingMore.value) return
+  
+  hashLoadingMore.value = true
+  try {
+    // 模拟异步加载
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    const totalItems = Object.keys(keyData.value.value || {}).length
+    const nextCount = Math.min(hashLoadedCount.value + hashPageSize.value, totalItems)
+    hashLoadedCount.value = nextCount
+  } finally {
+    hashLoadingMore.value = false
+  }
+}
+
+const loadMoreListData = async () => {
+  if (listLoadingMore.value) return
+  
+  listLoadingMore.value = true
+  try {
+    // 模拟异步加载
+    await new Promise(resolve => setTimeout(resolve, 100))
+    
+    const totalItems = keyData.value.value?.length || 0
+    const nextCount = Math.min(listLoadedCount.value + listPageSize.value, totalItems)
+    listLoadedCount.value = nextCount
+  } finally {
+    listLoadingMore.value = false
+  }
+}
+
+const loadAllHashData = async () => {
+  if (hashLoadingAll.value) return
+  
+  hashLoadingAll.value = true
+  try {
+    // 模拟异步加载
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    const totalItems = Object.keys(keyData.value.value || {}).length
+    hashLoadedCount.value = totalItems
+  } finally {
+    hashLoadingAll.value = false
+  }
+}
+
+const loadAllListData = async () => {
+  if (listLoadingAll.value) return
+  
+  listLoadingAll.value = true
+  try {
+    // 模拟异步加载
+    await new Promise(resolve => setTimeout(resolve, 200))
+    
+    const totalItems = keyData.value.value?.length || 0
+    listLoadedCount.value = totalItems
+  } finally {
+    listLoadingAll.value = false
+  }
+}
+
+// Hash字段删除方法
+const deleteHashField = async (field) => {
+  if (!props.connection || !keyData.value.key) return
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除字段 "${field}" 吗？此操作不可恢复！`,
+      '确认删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    // 调用后端API删除字段
+    const success = await connectionStore.deleteHashField(
+      props.connection.id,
+      props.database,
+      keyData.value.key,
+      field
+    )
+    
+    if (success) {
+      // 从本地数据中移除字段
+      if (keyData.value.value && keyData.value.value[field]) {
+        delete keyData.value.value[field]
+        // 更新总数
+        hashTotalCount.value = Object.keys(keyData.value.value).length
+        // 调整已加载数量
+        hashLoadedCount.value = Math.min(hashLoadedCount.value, hashTotalCount.value)
+        
+        ElMessage.success(`字段 "${field}" 删除成功`)
+      }
+    } else {
+      ElMessage.error('删除字段失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除字段失败')
+    }
+  }
+}
+
+const batchDeleteHashFields = async () => {
+  if (!props.connection || !keyData.value.key || !hashFilter.value) return
+  
+  const fieldsToDelete = filteredHashTableData.value.map(item => item.field)
+  if (fieldsToDelete.length === 0) return
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除 ${fieldsToDelete.length} 个字段吗？此操作不可恢复！\n\n字段列表：${fieldsToDelete.slice(0, 5).join(', ')}${fieldsToDelete.length > 5 ? '...' : ''}`,
+      '确认批量删除',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    hashBatchDeleting.value = true
+    
+    // 调用后端API批量删除字段
+    const success = await connectionStore.batchDeleteHashFields(
+      props.connection.id,
+      props.database,
+      keyData.value.key,
+      fieldsToDelete
+    )
+    
+    if (success) {
+      // 从本地数据中移除字段
+      for (const field of fieldsToDelete) {
+        if (keyData.value.value && keyData.value.value[field]) {
+          delete keyData.value.value[field]
+        }
+      }
+      
+      // 更新总数
+      hashTotalCount.value = Object.keys(keyData.value.value).length
+      // 调整已加载数量
+      hashLoadedCount.value = Math.min(hashLoadedCount.value, hashTotalCount.value)
+      
+      // 清空搜索条件
+      hashFilter.value = ''
+      
+      ElMessage.success(`成功删除 ${fieldsToDelete.length} 个字段`)
+    } else {
+      ElMessage.error('批量删除字段失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('批量删除字段失败')
+    }
+  } finally {
+    hashBatchDeleting.value = false
+  }
+}
+
+// 编辑Hash字段方法
+const editHashField = (field, value) => {
+  editHashFieldForm.field = field
+  editHashFieldForm.value = value
+  editHashFieldForm.isEditField = true
+  editHashFieldForm.originalField = field
+  showEditHashFieldDialog.value = true
+}
+
+const saveHashField = async () => {
+  if (!props.connection || !keyData.value.key) return
+  
+  try {
+    editHashFieldLoading.value = true
+    
+    // 验证表单
+    const formRef = document.querySelector('.el-form')
+    if (!formRef) return
+    
+    // 调用后端API保存字段
+    const success = await connectionStore.updateHashField(
+      props.connection.id,
+      props.database,
+      keyData.value.key,
+      editHashFieldForm.originalField,
+      editHashFieldForm.field,
+      editHashFieldForm.value
+    )
+    
+    if (success) {
+      // 更新本地数据
+      if (keyData.value.value) {
+        // 如果字段名改变了，先删除原字段
+        if (editHashFieldForm.originalField !== editHashFieldForm.field) {
+          delete keyData.value.value[editHashFieldForm.originalField]
+        }
+        // 设置新字段
+        keyData.value.value[editHashFieldForm.field] = editHashFieldForm.value
+      }
+      
+      showEditHashFieldDialog.value = false
+      ElMessage.success('字段保存成功')
+    } else {
+      ElMessage.error('保存字段失败')
+    }
+  } catch (error) {
+    ElMessage.error('保存字段失败')
+  } finally {
+    editHashFieldLoading.value = false
+  }
+}
+
+// 编辑String值方法
+const editStringValue = () => {
+  editStringForm.value = keyData.value.value || ''
+  showEditStringDialog.value = true
+}
+
+const saveStringValue = async () => {
+  if (!props.connection || !keyData.value.key) return
+  
+  try {
+    editStringLoading.value = true
+    
+    // 调用后端API保存String值
+    const success = await connectionStore.updateStringValue(
+      props.connection.id,
+      props.database,
+      keyData.value.key,
+      editStringForm.value
+    )
+    
+    if (success) {
+      // 更新本地数据
+      keyData.value.value = editStringForm.value
+      
+      showEditStringDialog.value = false
+      ElMessage.success('String值保存成功')
+    } else {
+      ElMessage.error('保存String值失败')
+    }
+  } catch (error) {
+    ElMessage.error('保存String值失败')
+  } finally {
+    editStringLoading.value = false
+  }
 }
 
 const copyValue = () => {
@@ -1362,5 +1902,75 @@ watch(() => props.database, async () => {
 
 :deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover) {
   background: #909399;
+}
+
+/* 加载更多按钮样式 */
+.load-more-section {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  padding: 10px 0;
+  border-top: 1px solid #404040;
+  margin-top: 10px;
+}
+
+.load-more-section .el-button {
+  color: #409eff;
+  font-size: 14px;
+}
+
+.load-more-section .el-button:hover {
+  color: #66b1ff;
+}
+
+.load-more-section .el-button--primary {
+  background-color: #409eff;
+  border-color: #409eff;
+  color: #ffffff;
+}
+
+.load-more-section .el-button--primary:hover {
+  background-color: #66b1ff;
+  border-color: #66b1ff;
+  color: #ffffff;
+}
+
+/* Hash字段删除相关样式 */
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.filter-input {
+  flex: 1;
+}
+
+.batch-delete-btn {
+  flex-shrink: 0;
+}
+
+.edit-field-btn {
+  padding: 4px 8px;
+  min-width: auto;
+  margin-right: 5px;
+}
+
+.edit-field-btn:hover {
+  background-color: #409eff;
+  border-color: #409eff;
+  color: #ffffff;
+}
+
+.delete-field-btn {
+  padding: 4px 8px;
+  min-width: auto;
+}
+
+.delete-field-btn:hover {
+  background-color: #f56c6c;
+  border-color: #f56c6c;
+  color: #ffffff;
 }
 </style> 
