@@ -20,6 +20,10 @@
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
+        <el-button type="info" @click="refreshConnectionStatus">
+          <el-icon><Refresh /></el-icon>
+          刷新状态
+        </el-button>
       </div>
 
       <!-- 连接列表 -->
@@ -186,6 +190,16 @@ const refreshConnections = async () => {
     console.error('刷新连接列表失败:', error)
   } finally {
     loading.value = false
+  }
+}
+
+const refreshConnectionStatus = async () => {
+  try {
+    await connectionStore.refreshConnectionStatus()
+    ElMessage.success('连接状态已刷新')
+  } catch (error) {
+    console.error('刷新连接状态失败:', error)
+    ElMessage.error('刷新连接状态失败')
   }
 }
 

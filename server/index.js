@@ -179,9 +179,13 @@ app.get('/api/connections', async (req, res) => {
     // 合并内存中的连接状态
     const connections = savedConnections.map(savedConn => {
       const activeConnection = redisConnections.get(savedConn.id);
+      // 检查连接是否真正可用
+      const isConnected = activeConnection && 
+                         activeConnection.client && 
+                         activeConnection.client.isReady;
       return {
         ...savedConn,
-        status: activeConnection && activeConnection.client.isReady ? 'connected' : 'disconnected'
+        status: isConnected ? 'connected' : 'disconnected'
       };
     });
     
@@ -573,6 +577,169 @@ app.put('/api/connections/:id/:db/key/:oldKeyName/rename', async (req, res) => {
   }
 });
 
+// 更新Hash字段
+app.put('/api/connections/:connectionId/:database/hash/:keyName/field', async (req, res) => {
+  try {
+    const { connectionId, database, keyName } = req.params;
+    const { oldField, newField, value } = req.body;
+    
+    const connection = redisConnections.get(connectionId);
+    if (!connection || !connection.client) {
+      return res.status(404).json({
+        success: false,
+        message: '连接不存在或未连接'
+      });
+    }
+
+    // 切换到指定数据库
+    await connection.client.select(parseInt(database));
+    
+    // 如果字段名改变了，先删除原字段
+    if (oldField !== newField) {
+      await connection.client.hDel(keyName, oldField);
+    }
+    
+    // 设置新字段
+    await connection.client.hSet(keyName, newField, value);
+    
+    console.log(`Hash字段更新成功: ${keyName}.${newField}`);
+    
+    res.json({
+      success: true,
+      message: 'Hash字段更新成功'
+    });
+
+  } catch (error) {
+    console.error('更新Hash字段失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `更新失败: ${error.message}`
+    });
+  }
+});
+
+// 更新String值
+app.put('/api/connections/:connectionId/:database/string/:keyName', async (req, res) => {
+  try {
+    const { connectionId, database, keyName } = req.params;
+    const { value } = req.body;
+    
+    const connection = redisConnections.get(connectionId);
+    if (!connection || !connection.client) {
+      return res.status(404).json({
+        success: false,
+        message: '连接不存在或未连接'
+      });
+    }
+
+    // 切换到指定数据库
+    await connection.client.select(parseInt(database));
+    
+    // 设置String值
+    await connection.client.set(keyName, value);
+    
+    console.log(`String值更新成功: ${keyName}`);
+    
+    res.json({
+      success: true,
+      message: 'String值更新成功'
+    });
+
+  } catch (error) {
+    console.error('更新String值失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `更新失败: ${error.message}`
+    });
+  }
+});
+
+// 删除Hash字段
+app.delete('/api/connections/:connectionId/:database/hash/:keyName/field', async (req, res) => {
+  try {
+    const { connectionId, database, keyName } = req.params;
+    const { field } = req.body;
+    
+    const connection = redisConnections.get(connectionId);
+    if (!connection || !connection.client) {
+      return res.status(404).json({
+        success: false,
+        message: '连接不存在或未连接'
+      });
+    }
+
+    // 切换到指定数据库
+    await connection.client.select(parseInt(database));
+    
+    // 删除字段
+    const deleted = await connection.client.hDel(keyName, field);
+    
+    if (deleted === 0) {
+      return res.status(404).json({
+        success: false,
+        message: '字段不存在'
+      });
+    }
+    
+    console.log(`Hash字段删除成功: ${keyName}.${field}`);
+    
+    res.json({
+      success: true,
+      message: 'Hash字段删除成功'
+    });
+
+  } catch (error) {
+    console.error('删除Hash字段失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `删除失败: ${error.message}`
+    });
+  }
+});
+
+// 批量删除Hash字段
+app.delete('/api/connections/:connectionId/:database/hash/:keyName/fields', async (req, res) => {
+  try {
+    const { connectionId, database, keyName } = req.params;
+    const { fields } = req.body;
+    
+    if (!Array.isArray(fields) || fields.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '字段列表不能为空'
+      });
+    }
+    
+    const connection = redisConnections.get(connectionId);
+    if (!connection || !connection.client) {
+      return res.status(404).json({
+        success: false,
+        message: '连接不存在或未连接'
+      });
+    }
+
+    // 切换到指定数据库
+    await connection.client.select(parseInt(database));
+    
+    // 批量删除字段
+    const deleted = await connection.client.hDel(keyName, ...fields);
+    
+    console.log(`批量删除Hash字段成功: ${keyName}, 删除 ${deleted} 个字段`);
+    
+    res.json({
+      success: true,
+      message: `批量删除成功，删除了 ${deleted} 个字段`
+    });
+
+  } catch (error) {
+    console.error('批量删除Hash字段失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `批量删除失败: ${error.message}`
+    });
+  }
+});
+
 // 删除键组
 app.delete('/api/connections/:id/:db/keys/group/:prefix', async (req, res) => {
   try {
@@ -704,7 +871,7 @@ app.get('/api/connections/:id/info', async (req, res) => {
         redisInfo: infoObj,
         currentDbSize,
         dbStats,
-        status: connection.client.isReady ? 'connected' : 'disconnected'
+        status: connection.client && connection.client.isReady ? 'connected' : 'disconnected'
       }
     });
 
@@ -754,11 +921,8 @@ async function restoreConnections() {
         console.log(`连接恢复成功: ${savedConn.name}`);
       } catch (error) {
         console.log(`连接恢复失败: ${savedConn.name} - ${error.message}`);
-        // 连接失败时，仍然保存配置但标记为未连接
-        redisConnections.set(savedConn.id, {
-          client: null,
-          config: { ...savedConn, status: 'disconnected' }
-        });
+        // 连接失败时，不保存到 redisConnections Map 中
+        // 这样在获取连接列表时会正确显示为 disconnected
       }
     }
   } catch (error) {

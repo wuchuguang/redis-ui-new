@@ -132,6 +132,28 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 刷新连接状态
+  const refreshConnectionStatus = async () => {
+    try {
+      const response = await axios.get('/api/connections')
+      if (response.data.success) {
+        // 更新连接列表，保持当前选中的连接
+        const currentConnId = currentConnection.value?.id
+        connections.value = response.data.data
+        
+        // 如果当前有选中的连接，更新其状态
+        if (currentConnId) {
+          const updatedConn = connections.value.find(conn => conn.id === currentConnId)
+          if (updatedConn) {
+            currentConnection.value = updatedConn
+          }
+        }
+      }
+    } catch (error) {
+      console.error('刷新连接状态失败:', error)
+    }
+  }
+
   // 获取键列表
   const getKeys = async (connectionId, database = 0, pattern = '*', limit = 100) => {
     try {
@@ -329,6 +351,7 @@ export const useConnectionStore = defineStore('connection', () => {
     deleteConnection,
     testConnection,
     reconnect,
+    refreshConnectionStatus,
     getKeys,
     loadMoreKeys,
     getKeyValue,

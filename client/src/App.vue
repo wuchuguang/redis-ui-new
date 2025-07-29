@@ -222,6 +222,16 @@ onMounted(async () => {
   if (selectedConnection) {
     await refreshData()
   }
+  
+  // 定期刷新连接状态（每30秒）
+  const statusInterval = setInterval(async () => {
+    await connectionStore.refreshConnectionStatus()
+  }, 30000)
+  
+  // 组件卸载时清理定时器
+  onUnmounted(() => {
+    clearInterval(statusInterval)
+  })
 })
 </script>
 
