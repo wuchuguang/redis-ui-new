@@ -448,12 +448,21 @@ const refreshKeys = async (showLoading = false) => {
       pattern = `*${searchTerm.value.trim()}*`
     }
     
-    const data = await connectionStore.getKeys(props.connection.id, selectedDatabase.value, pattern, maxKeysPerGroup.value)
+    // 计算请求的键数：使用已加载的最大键数，但不少于默认值
+    let requestLimit = maxKeysPerGroup.value
+    for (const [prefix, count] of Object.entries(loadedKeyCounts.value)) {
+      if (count > requestLimit) {
+        requestLimit = count
+      }
+    }
+    
+    const data = await connectionStore.getKeys(props.connection.id, selectedDatabase.value, pattern, requestLimit)
     if (data) {
       keysData.value = data.groups
-      // 初始化已加载的键数
+      // 更新已加载的键数，保持用户已加载的数量
       for (const group of data.groups) {
-        loadedKeyCounts.value[group.prefix] = group.keys.length
+        const existingCount = loadedKeyCounts.value[group.prefix] || 0
+        loadedKeyCounts.value[group.prefix] = Math.max(existingCount, group.keys.length)
       }
     }
   } finally {
@@ -490,13 +499,18 @@ const refreshListModeData = async (isConverting = false) => {
       pattern = `${currentListPrefix.value}:*${searchTerm.value.trim()}*`
     }
     
-    const data = await connectionStore.getKeys(props.connection.id, selectedDatabase.value, pattern)
+    // 使用已加载的键数作为请求参数
+    const existingCount = loadedKeyCounts.value[currentListPrefix.value] || maxKeysPerGroup.value
+    const requestLimit = Math.max(existingCount, maxKeysPerGroup.value)
+    
+    const data = await connectionStore.getKeys(props.connection.id, selectedDatabase.value, pattern, requestLimit)
     if (data && data.groups && data.groups.length > 0) {
       // 将单个组的数据设置为当前显示
       keysData.value = data.groups
-      // 重置已加载的键数
+      // 保持已加载的键数
       for (const group of data.groups) {
-        loadedKeyCounts.value[group.prefix] = group.keys.length
+        const currentCount = loadedKeyCounts.value[group.prefix] || 0
+        loadedKeyCounts.value[group.prefix] = Math.max(currentCount, group.keys.length)
       }
     }
     // 只有在非转换模式下才显示成功消息
