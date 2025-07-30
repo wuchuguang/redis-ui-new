@@ -130,13 +130,26 @@
         label-width="100px"
       >
         <el-form-item label="连接名称" prop="name">
-          <el-input v-model="form.name" placeholder="请输入连接名称" />
+          <el-input 
+            v-model="form.name" 
+            placeholder="请输入连接名称"
+            @keyup.enter="saveConnection"
+          />
         </el-form-item>
         <el-form-item label="主机地址" prop="host">
-          <el-input v-model="form.host" placeholder="请输入主机地址" />
+          <el-input 
+            v-model="form.host" 
+            placeholder="请输入主机地址"
+            @keyup.enter="saveConnection"
+          />
         </el-form-item>
         <el-form-item label="端口" prop="port">
-          <el-input-number v-model="form.port" :min="1" :max="65535" />
+          <el-input-number 
+            v-model="form.port" 
+            :min="1" 
+            :max="65535"
+            @keyup.enter="saveConnection"
+          />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input 
@@ -144,10 +157,16 @@
             type="password" 
             placeholder="请输入密码（可选）"
             show-password
+            @keyup.enter="saveConnection"
           />
         </el-form-item>
         <el-form-item label="数据库" prop="database">
-          <el-input-number v-model="form.database" :min="0" :max="15" />
+          <el-input-number 
+            v-model="form.database" 
+            :min="0" 
+            :max="15"
+            @keyup.enter="saveConnection"
+          />
         </el-form-item>
       </el-form>
       <template #footer>
@@ -196,6 +215,7 @@
             v-model="joinForm.joinCode" 
             placeholder="请输入分享码"
             style="text-transform: uppercase;"
+            @keyup.enter="joinSharedConnection"
           />
         </el-form-item>
       </el-form>

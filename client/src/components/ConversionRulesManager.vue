@@ -77,7 +77,11 @@
     >
       <el-form :model="ruleForm" :rules="ruleFormRules" ref="ruleFormRef" label-width="100px">
         <el-form-item label="规则名称" prop="name">
-          <el-input v-model="ruleForm.name" placeholder="请输入规则名称" />
+          <el-input 
+            v-model="ruleForm.name" 
+            placeholder="请输入规则名称"
+            @keyup.enter="saveRule"
+          />
         </el-form-item>
         
         <el-form-item label="数据类型" prop="dataType">
@@ -94,6 +98,7 @@
           <el-input 
             v-model="ruleForm.pattern" 
             :placeholder="getPatternPlaceholder(ruleForm.dataType)"
+            @keyup.enter="saveRule"
           />
           <div class="pattern-help">
             <small>使用 {*} 作为通配符，例如：hash:{*}:limit</small>
@@ -108,6 +113,7 @@
           <el-input 
             v-model="ruleForm.fieldPattern" 
             placeholder="例如：time, status"
+            @keyup.enter="saveRule"
           />
           <div class="pattern-help">
             <small>支持通配符 *，例如：*_time</small>
@@ -137,11 +143,17 @@
             type="textarea"
             :rows="4"
             placeholder="输入JSON格式的映射配置，例如：{'1':'在线','0':'离线'}"
+            @keyup.enter="saveRule"
           />
         </el-form-item>
         
         <el-form-item label="优先级" prop="priority">
-          <el-input-number v-model="ruleForm.priority" :min="1" :max="100" />
+          <el-input-number 
+            v-model="ruleForm.priority" 
+            :min="1" 
+            :max="100"
+            @keyup.enter="saveRule"
+          />
           <div class="pattern-help">
             <small>数字越小优先级越高</small>
           </div>

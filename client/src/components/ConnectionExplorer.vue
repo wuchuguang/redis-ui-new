@@ -275,6 +275,7 @@
             :min="10" 
             :max="1000"
             :step="10"
+            @keyup.enter="handleConfigSave"
           />
         </el-form-item>
       </el-form>
@@ -301,7 +302,11 @@
         label-width="100px"
       >
         <el-form-item label="Key名称" prop="name">
-          <el-input v-model="addKeyForm.name" placeholder="请输入Key名称" />
+          <el-input 
+            v-model="addKeyForm.name" 
+            placeholder="请输入Key名称"
+            @keyup.enter="handleAddKey"
+          />
         </el-form-item>
         
         <el-form-item label="数据类型" prop="type">
@@ -315,7 +320,12 @@
         </el-form-item>
         
         <el-form-item label="TTL(秒)" prop="ttl">
-          <el-input-number v-model="addKeyForm.ttl" :min="-1" placeholder="-1表示永不过期" />
+          <el-input-number 
+            v-model="addKeyForm.ttl" 
+            :min="-1" 
+            placeholder="-1表示永不过期"
+            @keyup.enter="handleAddKey"
+          />
         </el-form-item>
         
         <el-form-item label="值" prop="value" v-if="addKeyForm.type === 'string'">
@@ -324,6 +334,7 @@
             type="textarea"
             :rows="3"
             placeholder="请输入值"
+            @keyup.enter="handleAddKey"
           />
         </el-form-item>
       </el-form>

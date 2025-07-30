@@ -17,11 +17,19 @@
             class="connection-form"
           >
             <el-form-item label="连接名称" prop="name">
-              <el-input v-model="form.name" placeholder="请输入连接名称" />
+              <el-input 
+                v-model="form.name" 
+                placeholder="请输入连接名称"
+                @keyup.enter="handleCreate"
+              />
             </el-form-item>
             
             <el-form-item label="主机地址" prop="host">
-              <el-input v-model="form.host" placeholder="localhost" />
+              <el-input 
+                v-model="form.host" 
+                placeholder="localhost"
+                @keyup.enter="handleCreate"
+              />
             </el-form-item>
             
             <el-form-item label="端口" prop="port">
@@ -31,6 +39,7 @@
                 :max="65535"
                 placeholder="6379"
                 style="width: 100%"
+                @keyup.enter="handleCreate"
               />
             </el-form-item>
             
@@ -40,6 +49,7 @@
                 type="password"
                 placeholder="可选，留空表示无密码"
                 show-password
+                @keyup.enter="handleCreate"
               />
             </el-form-item>
             
@@ -50,6 +60,7 @@
                 :max="15"
                 placeholder="0"
                 style="width: 100%"
+                @keyup.enter="handleCreate"
               />
             </el-form-item>
           </el-form>

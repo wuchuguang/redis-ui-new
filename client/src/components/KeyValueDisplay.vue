@@ -406,6 +406,7 @@
                 type="textarea"
                 :rows="8"
                 placeholder="请输入字符串值"
+                @keyup.enter="handleEditSave"
               />
             </el-form-item>
 
@@ -439,11 +440,13 @@
                     v-model="newHashField"
                     placeholder="新字段名"
                     class="new-field-input"
+                    @keyup.enter="addHashField"
                   />
                   <el-input
                     v-model="newHashValue"
                     placeholder="新字段值"
                     class="new-value-input"
+                    @keyup.enter="addHashField"
                   />
                   <el-button 
                     type="primary" 
@@ -482,6 +485,7 @@
                     v-model="newListItem"
                     placeholder="新列表项"
                     class="new-item-input"
+                    @keyup.enter="addListItem"
                   />
                   <el-button 
                     type="primary" 
@@ -555,11 +559,13 @@
                     v-model="newZSetMember"
                     placeholder="新成员"
                     class="new-zset-member-input"
+                    @keyup.enter="addZSetItem"
                   />
                   <el-input-number
                     v-model="newZSetScore"
                     placeholder="分数"
                     class="new-zset-score-input"
+                    @keyup.enter="addZSetItem"
                   />
                   <el-button 
                     type="primary" 
@@ -612,6 +618,7 @@
             v-model="editHashFieldForm.field" 
             placeholder="请输入字段名"
             :disabled="editHashFieldForm.isEditField"
+            @keyup.enter="saveHashField"
           />
         </el-form-item>
         <el-form-item label="字段值" prop="value">
@@ -620,6 +627,7 @@
             type="textarea"
             :rows="4"
             placeholder="请输入字段值"
+            @keyup.enter="saveHashField"
           />
         </el-form-item>
       </el-form>
@@ -657,6 +665,7 @@
             type="textarea"
             :rows="8"
             placeholder="请输入String值"
+            @keyup.enter="saveStringValue"
           />
         </el-form-item>
       </el-form>

@@ -50,7 +50,11 @@
         label-width="80px"
       >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="loginForm.username" placeholder="请输入用户名" />
+          <el-input 
+            v-model="loginForm.username" 
+            placeholder="请输入用户名"
+            @keyup.enter="handleLogin"
+          />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input
@@ -58,6 +62,7 @@
             type="password"
             placeholder="请输入密码"
             show-password
+            @keyup.enter="handleLogin"
           />
         </el-form-item>
       </el-form>
@@ -85,10 +90,18 @@
         label-width="80px"
       >
         <el-form-item label="用户名" prop="username">
-          <el-input v-model="registerForm.username" placeholder="请输入用户名" />
+          <el-input 
+            v-model="registerForm.username" 
+            placeholder="请输入用户名"
+            @keyup.enter="handleRegister"
+          />
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
-          <el-input v-model="registerForm.email" placeholder="请输入邮箱" />
+          <el-input 
+            v-model="registerForm.email" 
+            placeholder="请输入邮箱"
+            @keyup.enter="handleRegister"
+          />
         </el-form-item>
         <el-form-item label="密码" prop="password">
           <el-input
@@ -96,6 +109,7 @@
             type="password"
             placeholder="请输入密码"
             show-password
+            @keyup.enter="handleRegister"
           />
         </el-form-item>
         <el-form-item label="确认密码" prop="confirmPassword">
@@ -104,6 +118,7 @@
             type="password"
             placeholder="请再次输入密码"
             show-password
+            @keyup.enter="handleRegister"
           />
         </el-form-item>
       </el-form>
@@ -134,10 +149,16 @@
           <el-input v-model="profileForm.username" disabled />
         </el-form-item>
         <el-form-item label="邮箱" prop="email">
-          <el-input v-model="profileForm.email" />
+          <el-input 
+            v-model="profileForm.email"
+            @keyup.enter="handleUpdateProfile"
+          />
         </el-form-item>
         <el-form-item label="昵称" prop="nickname">
-          <el-input v-model="profileForm.nickname" />
+          <el-input 
+            v-model="profileForm.nickname"
+            @keyup.enter="handleUpdateProfile"
+          />
         </el-form-item>
         <el-form-item label="头像">
           <el-upload
