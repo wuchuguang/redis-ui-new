@@ -1,255 +1,139 @@
 <template>
-  <el-dialog
-    v-model="dialogVisible"
-    title="操作历史"
-    width="900px"
-    :close-on-click-modal="false"
-    class="operation-history-dialog"
-  >
-    <div class="operation-history">
-      <!-- 工具栏 -->
-      <div class="toolbar">
-        <el-button type="danger" @click="clearHistory" :disabled="!hasHistory">
-          <el-icon><Delete /></el-icon>
-          清空历史
-        </el-button>
-        <el-button type="primary" @click="exportHistory" :disabled="!hasHistory">
-          <el-icon><Download /></el-icon>
-          导出历史
-        </el-button>
-        <el-button type="info" @click="refreshHistory">
+  <div class="operation-history">
+    <div class="history-header">
+      <h3>操作历史</h3>
+      <div class="header-actions">
+        <el-button 
+          type="primary" 
+          size="small" 
+          @click="refreshHistory"
+          :loading="loading"
+        >
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
-        <div class="filter-section">
-          <el-select v-model="filterType" placeholder="操作类型" clearable style="width: 120px;">
-            <el-option label="全部" value="" />
-            <el-option label="添加" value="add" />
-            <el-option label="编辑" value="edit" />
-            <el-option label="删除" value="delete" />
-            <el-option label="连接" value="connect" />
-            <el-option label="查询" value="query" />
-          </el-select>
-          <el-select v-model="filterLevel" placeholder="日志级别" clearable style="width: 120px;">
-            <el-option label="全部" value="" />
-            <el-option label="信息" value="info" />
-            <el-option label="警告" value="warning" />
-            <el-option label="错误" value="error" />
-          </el-select>
-        </div>
-      </div>
-
-      <!-- 操作历史列表 -->
-      <div class="history-list">
-        <el-table
-          :data="filteredHistory"
-          v-loading="loading"
-          max-height="500"
-          :empty-text="emptyText"
+        <el-button 
+          type="danger" 
+          size="small" 
+          @click="clearHistory"
+          :disabled="!hasHistory"
         >
-          <el-table-column prop="timestamp" label="时间" width="180" sortable>
-            <template #default="{ row }">
-              <span class="timestamp">{{ formatTime(row.timestamp) }}</span>
-            </template>
-          </el-table-column>
-          
-          <el-table-column prop="type" label="类型" width="100">
-            <template #default="{ row }">
-              <el-tag 
-                :type="getTypeTagType(row.type)" 
-                size="small"
-              >
-                {{ getTypeLabel(row.type) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          
-          <el-table-column prop="level" label="级别" width="80">
-            <template #default="{ row }">
-              <el-tag 
-                :type="getLevelTagType(row.level)" 
-                size="small"
-              >
-                {{ getLevelLabel(row.level) }}
-              </el-tag>
-            </template>
-          </el-table-column>
-          
-          <el-table-column prop="message" label="操作描述" min-width="300">
-            <template #default="{ row }">
-              <div class="message-content">
-                <span class="message-text">{{ row.message }}</span>
-                <div v-if="row.details" class="message-details">
-                  <el-button 
-                    type="text" 
-                    size="small" 
-                    @click="toggleDetails(row)"
-                  >
-                    {{ row.showDetails ? '隐藏详情' : '查看详情' }}
-                  </el-button>
-                  <div v-if="row.showDetails" class="details-content">
-                    <pre>{{ JSON.stringify(row.details, null, 2) }}</pre>
-                  </div>
-                </div>
-              </div>
-            </template>
-          </el-table-column>
-          
-          <el-table-column prop="connection" label="连接" width="120">
-            <template #default="{ row }">
-              <span v-if="row.connection" class="connection-name">
-                {{ row.connection }}
-              </span>
-              <span v-else class="no-connection">-</span>
-            </template>
-          </el-table-column>
-        </el-table>
+          <el-icon><Delete /></el-icon>
+          清空
+        </el-button>
       </div>
     </div>
-  </el-dialog>
+
+    <div class="history-content">
+      <div v-if="loading" class="loading-container">
+        <el-skeleton :rows="5" animated />
+      </div>
+      
+      <div v-else-if="!hasHistory" class="empty-container">
+        <el-empty description="暂无操作历史" />
+      </div>
+      
+      <div v-else class="history-list">
+        <div 
+          v-for="operation in history" 
+          :key="operation.id" 
+          class="history-item"
+        >
+          <div class="operation-header">
+            <div class="operation-type">
+              <el-tag 
+                :type="getOperationTypeColor(operation.type)"
+                size="small"
+              >
+                {{ getOperationTypeText(operation.type) }}
+              </el-tag>
+            </div>
+            <div class="operation-time">
+              {{ formatTime(operation.timestamp) }}
+            </div>
+          </div>
+          
+          <div class="operation-details">
+            <div class="operator">
+              操作者: {{ operation.operator }}
+            </div>
+            <div class="action">
+              {{ operation.details?.action || '未知操作' }}
+            </div>
+            <div v-if="operation.details" class="details">
+              <div v-if="operation.details.connectionName" class="detail-item">
+                连接: {{ operation.details.connectionName }}
+              </div>
+              <div v-if="operation.details.keyName" class="detail-item">
+                Key: {{ operation.details.keyName }}
+              </div>
+              <div v-if="operation.details.field" class="detail-item">
+                字段: {{ operation.details.field }}
+              </div>
+              <div v-if="operation.details.oldKey && operation.details.newKey" class="detail-item">
+                重命名: {{ operation.details.oldKey }} → {{ operation.details.newKey }}
+              </div>
+              <div v-if="operation.details.searchTerm" class="detail-item">
+                搜索: {{ operation.details.searchTerm }}
+              </div>
+              <div v-if="operation.details.database !== undefined" class="detail-item">
+                数据库: DB{{ operation.details.database }}
+              </div>
+              <div v-if="operation.details.fieldsCount" class="detail-item">
+                字段数: {{ operation.details.fieldsCount }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Delete, Download, Refresh } from '@element-plus/icons-vue'
+import { Refresh, Delete } from '@element-plus/icons-vue'
+import axios from 'axios'
 
 const props = defineProps({
-  modelValue: {
-    type: Boolean,
-    default: false
+  connectionId: {
+    type: String,
+    required: true
   }
 })
 
 const emit = defineEmits(['update:modelValue'])
 
-// 响应式数据
+const history = ref([])
 const loading = ref(false)
-const filterType = ref('')
-const filterLevel = ref('')
-const operationHistory = ref([])
 
-// 计算属性
-const dialogVisible = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
-})
+const hasHistory = computed(() => history.value.length > 0)
 
-const hasHistory = computed(() => operationHistory.value.length > 0)
-
-const filteredHistory = computed(() => {
-  let filtered = operationHistory.value
-
-  if (filterType.value) {
-    filtered = filtered.filter(item => item.type === filterType.value)
-  }
-
-  if (filterLevel.value) {
-    filtered = filtered.filter(item => item.level === filterLevel.value)
-  }
-
-  return filtered
-})
-
-const emptyText = computed(() => {
-  if (operationHistory.value.length === 0) {
-    return '暂无操作历史'
-  }
-  if (filteredHistory.value.length === 0) {
-    return '没有匹配的操作记录'
-  }
-  return '暂无数据'
-})
-
-// 方法
-const formatTime = (timestamp) => {
-  const date = new Date(timestamp)
-  return date.toLocaleString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit'
-  })
-}
-
-const getTypeLabel = (type) => {
-  const typeMap = {
-    'add': '添加',
-    'edit': '编辑',
-    'delete': '删除',
-    'connect': '连接',
-    'query': '查询',
-    'export': '导出',
-    'import': '导入'
-  }
-  return typeMap[type] || type
-}
-
-const getTypeTagType = (type) => {
-  const typeMap = {
-    'add': 'success',
-    'edit': 'warning',
-    'delete': 'danger',
-    'connect': 'primary',
-    'query': 'info',
-    'export': 'success',
-    'import': 'info'
-  }
-  return typeMap[type] || 'info'
-}
-
-const getLevelLabel = (level) => {
-  const levelMap = {
-    'info': '信息',
-    'warning': '警告',
-    'error': '错误'
-  }
-  return levelMap[level] || level
-}
-
-const getLevelTagType = (level) => {
-  const levelMap = {
-    'info': 'info',
-    'warning': 'warning',
-    'error': 'danger'
-  }
-  return levelMap[level] || 'info'
-}
-
-const toggleDetails = (row) => {
-  row.showDetails = !row.showDetails
-}
-
-const loadHistory = () => {
+// 获取操作历史
+const fetchHistory = async () => {
+  if (!props.connectionId) return
+  
+  loading.value = true
   try {
-    const savedHistory = localStorage.getItem('operationHistory')
-    if (savedHistory) {
-      operationHistory.value = JSON.parse(savedHistory)
+    const response = await axios.get(`/api/operations/${props.connectionId}/history`)
+    if (response.data.success) {
+      history.value = response.data.data
     }
   } catch (error) {
-    console.error('加载操作历史失败:', error)
-    operationHistory.value = []
-  }
-}
-
-const saveHistory = () => {
-  try {
-    localStorage.setItem('operationHistory', JSON.stringify(operationHistory.value))
-  } catch (error) {
-    console.error('保存操作历史失败:', error)
-  }
-}
-
-const refreshHistory = () => {
-  loading.value = true
-  setTimeout(() => {
-    loadHistory()
+    console.error('获取操作历史失败:', error)
+    ElMessage.error('获取操作历史失败')
+  } finally {
     loading.value = false
-  }, 300)
+  }
 }
 
+// 刷新历史
+const refreshHistory = () => {
+  fetchHistory()
+}
+
+// 清空历史
 const clearHistory = async () => {
   try {
     await ElMessageBox.confirm(
@@ -262,128 +146,206 @@ const clearHistory = async () => {
       }
     )
     
-    operationHistory.value = []
-    saveHistory()
-    ElMessage.success('操作历史已清空')
+    const response = await axios.delete(`/api/operations/${props.connectionId}/history`)
+    if (response.data.success) {
+      ElMessage.success('操作历史已清空')
+      history.value = []
+    }
   } catch (error) {
-    // 用户取消操作
+    if (error !== 'cancel') {
+      console.error('清空操作历史失败:', error)
+      ElMessage.error('清空操作历史失败')
+    }
   }
 }
 
-const exportHistory = () => {
-  try {
-    const data = filteredHistory.value.map(item => ({
-      时间: formatTime(item.timestamp),
-      类型: getTypeLabel(item.type),
-      级别: getLevelLabel(item.level),
-      操作描述: item.message,
-      连接: item.connection || '-',
-      详情: item.details ? JSON.stringify(item.details, null, 2) : ''
-    }))
-
-    const csvContent = [
-      Object.keys(data[0]).join(','),
-      ...data.map(row => Object.values(row).map(value => `"${value}"`).join(','))
-    ].join('\n')
-
-    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement('a')
-    const url = URL.createObjectURL(blob)
-    link.setAttribute('href', url)
-    link.setAttribute('download', `操作历史_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    
-    ElMessage.success('操作历史已导出')
-  } catch (error) {
-    console.error('导出操作历史失败:', error)
-    ElMessage.error('导出失败')
+// 获取操作类型颜色
+const getOperationTypeColor = (type) => {
+  const colorMap = {
+    connection_created: 'success',
+    connection_updated: 'warning',
+    connection_deleted: 'danger',
+    connection_connected: 'success',
+    connection_disconnected: 'info',
+    connection_reconnected: 'success',
+    connection_shared: 'primary',
+    key_selected: 'info',
+    key_deleted: 'danger',
+    key_renamed: 'warning',
+    key_added: 'success',
+    hash_field_added: 'success',
+    hash_field_edited: 'warning',
+    hash_field_deleted: 'danger',
+    hash_fields_batch_deleted: 'danger',
+    string_value_edited: 'warning',
+    database_selected: 'info',
+    key_search: 'info',
+    field_search: 'info',
+    history_cleared: 'danger'
   }
+  return colorMap[type] || 'info'
 }
 
-// 监听对话框打开
-watch(dialogVisible, (visible) => {
-  if (visible) {
-    loadHistory()
+// 获取操作类型文本
+const getOperationTypeText = (type) => {
+  const textMap = {
+    connection_created: '创建连接',
+    connection_updated: '更新连接',
+    connection_deleted: '删除连接',
+    connection_connected: '连接',
+    connection_disconnected: '断开',
+    connection_reconnected: '重连',
+    connection_shared: '分享',
+    key_selected: '选择Key',
+    key_deleted: '删除Key',
+    key_renamed: '重命名Key',
+    key_added: '添加Key',
+    hash_field_added: '添加字段',
+    hash_field_edited: '编辑字段',
+    hash_field_deleted: '删除字段',
+    hash_fields_batch_deleted: '批量删除',
+    string_value_edited: '编辑值',
+    database_selected: '切换数据库',
+    key_search: '搜索Key',
+    field_search: '搜索字段',
+    history_cleared: '清空历史'
+  }
+  return textMap[type] || '未知操作'
+}
+
+// 格式化时间
+const formatTime = (timestamp) => {
+  const date = new Date(timestamp)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
+
+// 监听连接ID变化
+onMounted(() => {
+  fetchHistory()
+})
+
+// 暴露方法给父组件
+defineExpose({
+  refreshHistory
+})
+
+// 监听连接ID变化，重新获取历史
+watch(() => props.connectionId, (newId) => {
+  if (newId) {
+    fetchHistory()
   }
 })
 </script>
 
 <style scoped>
 .operation-history {
+  height: 500px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
 }
 
-.toolbar {
+.history-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 8px;
+  padding: 16px;
+  border-bottom: 1px solid #e4e7ed;
 }
 
-.filter-section {
+.history-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-actions {
   display: flex;
   gap: 8px;
 }
 
-.history-list {
-  max-height: 500px;
+.history-content {
+  flex: 1;
   overflow-y: auto;
+  padding: 16px;
+  max-height: 400px;
 }
 
-.timestamp {
-  font-family: 'Courier New', monospace;
+.loading-container {
+  padding: 20px;
+}
+
+.empty-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.history-item {
+  border: 1px solid #e4e7ed;
+  border-radius: 8px;
+  padding: 12px;
+  background-color: #fafafa;
+}
+
+.operation-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.operation-time {
   font-size: 12px;
-  color: var(--el-text-color-secondary);
+  color: #909399;
 }
 
-.message-content {
+.operation-details {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.message-text {
-  word-break: break-all;
-}
-
-.message-details {
-  margin-top: 4px;
-}
-
-.details-content {
-  margin-top: 8px;
-  padding: 8px;
-  background-color: var(--el-fill-color-light);
-  border-radius: 4px;
-  font-family: 'Courier New', monospace;
+.operator {
   font-size: 12px;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.connection-name {
-  color: var(--el-color-primary);
+  color: #606266;
   font-weight: 500;
 }
 
-.no-connection {
-  color: var(--el-text-color-placeholder);
+.action {
+  font-size: 14px;
+  color: #303133;
+  font-weight: 500;
 }
 
-:deep(.el-table) {
-  background-color: transparent;
+.details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
 }
 
-:deep(.el-table th) {
-  background-color: var(--el-bg-color-overlay);
-}
-
-:deep(.el-table td) {
-  background-color: var(--el-bg-color);
+.detail-item {
+  font-size: 12px;
+  color: #606266;
+  background-color: #f5f7fa;
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+  margin-right: 8px;
+  margin-bottom: 2px;
 }
 </style> 

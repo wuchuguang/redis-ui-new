@@ -3,9 +3,89 @@ import { ref, computed } from 'vue'
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
+// 设置axios拦截器
+let isRefreshing = false
+let failedQueue = []
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error)
+    } else {
+      prom.resolve(token)
+    }
+  })
+  
+  failedQueue = []
+}
+
+// 响应拦截器
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config
+    
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject })
+        }).then(token => {
+          originalRequest.headers['Authorization'] = 'Bearer ' + token
+          return axios(originalRequest)
+        }).catch(err => {
+          return Promise.reject(err)
+        })
+      }
+      
+      originalRequest._retry = true
+      isRefreshing = true
+      
+      // 尝试刷新token
+      const currentToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken')
+      if (currentToken) {
+        try {
+          const response = await axios.post('/api/auth/refresh-token', {}, {
+            headers: { Authorization: `Bearer ${currentToken}` }
+          })
+          
+          if (response.data.success) {
+            const newToken = response.data.data.token
+            
+            // 更新存储中的token
+            if (sessionStorage.getItem('userToken')) {
+              sessionStorage.setItem('userToken', newToken)
+            } else if (localStorage.getItem('userToken')) {
+              localStorage.setItem('userToken', newToken)
+            }
+            
+            // 更新axios默认headers
+            axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+            originalRequest.headers['Authorization'] = 'Bearer ' + newToken
+            
+            processQueue(null, newToken)
+            return axios(originalRequest)
+          }
+        } catch (refreshError) {
+          processQueue(refreshError, null)
+          // 刷新失败，清除登录状态
+          localStorage.removeItem('userToken')
+          sessionStorage.removeItem('userToken')
+          delete axios.defaults.headers.common['Authorization']
+          window.location.reload() // 刷新页面
+          return Promise.reject(refreshError)
+        } finally {
+          isRefreshing = false
+        }
+      }
+    }
+    
+    return Promise.reject(error)
+  }
+)
+
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref(null)
-  const token = ref(localStorage.getItem('userToken') || null)
+  const token = ref(sessionStorage.getItem('userToken') || localStorage.getItem('userToken') || null)
   const loading = ref(false)
 
   // 计算属性
@@ -58,7 +138,26 @@ export const useUserStore = defineStore('user', () => {
         
         // 根据错误类型决定是否清除token
         if (error.response?.status === 401 || error.response?.status === 403) {
-          console.log('❌ Token已过期或无效，清除登录状态')
+          console.log('⚠️ Token可能已过期，尝试刷新...')
+          // 尝试刷新token
+          const refreshSuccess = await refreshToken()
+          if (refreshSuccess) {
+            // 刷新成功，重新获取用户信息
+            try {
+              const retryResponse = await axios.get('/api/auth/profile', {
+                headers: { Authorization: `Bearer ${token.value}` }
+              })
+              if (retryResponse.data.success) {
+                currentUser.value = retryResponse.data.data
+                console.log('✅ Token刷新后用户状态恢复成功:', currentUser.value.username)
+                return
+              }
+            } catch (retryError) {
+              console.error('Token刷新后获取用户信息失败:', retryError)
+            }
+          }
+          // 刷新失败，清除登录状态
+          console.log('❌ Token刷新失败，清除登录状态')
           logout()
         } else if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
           console.log('⚠️ 网络连接失败，保留token等待重连')
@@ -82,7 +181,17 @@ export const useUserStore = defineStore('user', () => {
         const { user, token: userToken } = response.data.data
         currentUser.value = user
         token.value = userToken
-        localStorage.setItem('userToken', userToken)
+        
+        // 根据记住登录状态设置token存储
+        if (credentials.rememberLogin) {
+          // 记住登录状态：token存localStorage
+          localStorage.setItem('userToken', userToken)
+          sessionStorage.removeItem('userToken')
+        } else {
+          // 不记住登录状态：token存sessionStorage
+          sessionStorage.setItem('userToken', userToken)
+          localStorage.removeItem('userToken')
+        }
         
         // 设置axios默认headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`
@@ -111,7 +220,10 @@ export const useUserStore = defineStore('user', () => {
         const { user, token: userToken } = response.data.data
         currentUser.value = user
         token.value = userToken
+        
+        // 注册后默认使用持久化存储（记住登录状态）
         localStorage.setItem('userToken', userToken)
+        sessionStorage.removeItem('userToken')
         
         // 设置axios默认headers
         axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`
@@ -131,11 +243,48 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // 刷新token
+  const refreshToken = async () => {
+    if (!token.value) return false
+    
+    try {
+      const response = await axios.post('/api/auth/refresh-token', {}, {
+        headers: { Authorization: `Bearer ${token.value}` }
+      })
+      
+      if (response.data.success) {
+        const newToken = response.data.data.token
+        token.value = newToken
+        
+        // 更新存储中的token
+        if (sessionStorage.getItem('userToken')) {
+          sessionStorage.setItem('userToken', newToken)
+        } else if (localStorage.getItem('userToken')) {
+          localStorage.setItem('userToken', newToken)
+        }
+        
+        // 更新axios默认headers
+        axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
+        
+        console.log('✅ Token刷新成功')
+        return true
+      }
+    } catch (error) {
+      console.error('Token刷新失败:', error)
+      // 刷新失败，清除登录状态
+      logout()
+      return false
+    }
+    
+    return false
+  }
+
   // 用户登出
   const logout = () => {
     currentUser.value = null
     token.value = null
     localStorage.removeItem('userToken')
+    sessionStorage.removeItem('userToken')
     delete axios.defaults.headers.common['Authorization']
   }
 

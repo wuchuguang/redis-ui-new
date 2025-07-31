@@ -65,6 +65,16 @@
             @keyup.enter="handleLogin"
           />
         </el-form-item>
+        <el-form-item>
+          <div class="login-options">
+            <el-checkbox v-model="loginForm.rememberPassword">
+              记住密码
+            </el-checkbox>
+            <el-checkbox v-model="loginForm.rememberLogin">
+              记住登录状态
+            </el-checkbox>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <div class="dialog-footer">
@@ -190,7 +200,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '../stores/user'
@@ -215,7 +225,9 @@ const profileFormRef = ref()
 // 登录表单
 const loginForm = reactive({
   username: '',
-  password: ''
+  password: '',
+  rememberPassword: false,
+  rememberLogin: false
 })
 
 // 注册表单
@@ -286,11 +298,79 @@ const profileRules = {
 // 计算属性
 const currentUser = computed(() => userStore.currentUser)
 
+// 加载保存的登录信息
+const loadSavedLoginInfo = () => {
+  try {
+    const savedInfo = localStorage.getItem('savedLoginInfo')
+    if (savedInfo) {
+      const parsed = JSON.parse(savedInfo)
+      // 设置用户名（如果有的话）
+      if (parsed.username) {
+        loginForm.username = parsed.username
+      }
+      // 设置记住密码状态和密码
+      if (parsed.rememberPassword && parsed.password) {
+        loginForm.password = parsed.password
+        loginForm.rememberPassword = true
+      }
+      // 设置记住登录状态
+      if (parsed.rememberLogin) {
+        loginForm.rememberLogin = true
+      }
+    }
+  } catch (error) {
+    console.error('加载保存的登录信息失败:', error)
+  }
+}
+
+// 保存登录信息
+const saveLoginInfo = () => {
+  try {
+    const savedInfo = {}
+    
+    // 总是保存用户名
+    if (loginForm.username) {
+      savedInfo.username = loginForm.username
+    }
+    
+    // 如果记住密码，保存密码
+    if (loginForm.rememberPassword && loginForm.password) {
+      savedInfo.password = loginForm.password
+      savedInfo.rememberPassword = true
+    }
+    
+    // 如果记住登录状态，保存该状态
+    if (loginForm.rememberLogin) {
+      savedInfo.rememberLogin = true
+    }
+    
+    // 如果有任何信息需要保存，则保存
+    if (Object.keys(savedInfo).length > 0) {
+      localStorage.setItem('savedLoginInfo', JSON.stringify(savedInfo))
+    } else {
+      localStorage.removeItem('savedLoginInfo')
+    }
+  } catch (error) {
+    console.error('保存登录信息失败:', error)
+  }
+}
+
+// 清除保存的登录信息
+const clearSavedLoginInfo = () => {
+  try {
+    localStorage.removeItem('savedLoginInfo')
+  } catch (error) {
+    console.error('清除保存的登录信息失败:', error)
+  }
+}
+
 // 方法
 const handleCommand = (command) => {
   switch (command) {
     case 'login':
       showLoginDialog.value = true
+      // 加载保存的登录信息
+      loadSavedLoginInfo()
       break
     case 'register':
       showRegisterDialog.value = true
@@ -319,6 +399,9 @@ const handleLogin = async () => {
       showLoginDialog.value = false
       ElMessage.success('登录成功')
       
+      // 保存登录信息
+      saveLoginInfo()
+      
       // 检查是否有临时连接需要合并
       if (connectionStore.hasTempConnections) {
         try {
@@ -338,11 +421,18 @@ const handleLogin = async () => {
         }
       }
       
-      // 重置表单
-      Object.assign(loginForm, { username: '', password: '' })
+      // 重置表单（但保留记住密码的设置）
+      if (!loginForm.rememberPassword) {
+        loginForm.username = ''
+        loginForm.password = ''
+      }
+    } else {
+      // 登录失败，显示错误信息（已在userStore中显示）
+      console.log('登录失败')
     }
   } catch (error) {
     console.error('登录失败:', error)
+    ElMessage.error('登录失败，请检查网络连接')
   } finally {
     loginLoading.value = false
   }
@@ -378,9 +468,13 @@ const handleRegister = async () => {
       
       // 重置表单
       Object.assign(registerForm, { username: '', email: '', password: '', confirmPassword: '' })
+    } else {
+      // 注册失败，显示错误信息（已在userStore中显示）
+      console.log('注册失败')
     }
   } catch (error) {
     console.error('注册失败:', error)
+    ElMessage.error('注册失败，请检查网络连接')
   } finally {
     registerLoading.value = false
   }
@@ -395,6 +489,10 @@ const handleLogout = async () => {
     })
     
     await userStore.logout()
+    
+    // 清除保存的登录信息
+    clearSavedLoginInfo()
+    
     ElMessage.success('已退出登录')
   } catch (error) {
     // 用户取消操作
@@ -503,6 +601,17 @@ const getRoleTagType = (role) => {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+.login-options {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.login-options .el-checkbox {
+  margin-right: 0;
 }
 
 .avatar-uploader {

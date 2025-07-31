@@ -16,7 +16,8 @@ const users = new Map();
 // 加密数据
 const encryptData = (data) => {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher('aes-256-cbc', ENCRYPTION_KEY);
+  const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
   let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return {
@@ -25,12 +26,36 @@ const encryptData = (data) => {
   };
 };
 
-// 解密数据
+// 解密数据（支持新旧格式）
 const decryptData = (encryptedData) => {
-  const decipher = crypto.createDecipher('aes-256-cbc', ENCRYPTION_KEY);
-  let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return JSON.parse(decrypted);
+  // 检查是否是旧格式（没有iv字段或iv格式不正确）
+  const isOldFormat = !encryptedData.iv || typeof encryptedData.iv !== 'string' || encryptedData.iv.length !== 32;
+  
+  if (isOldFormat) {
+    // 使用旧的解密方法
+    try {
+      const decipher = crypto.createDecipher('aes-256-cbc', ENCRYPTION_KEY);
+      let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      const result = JSON.parse(decrypted);
+      console.log('检测到旧格式加密数据，正在转换为新格式...');
+      return result;
+    } catch (error) {
+      throw new Error(`旧格式解密失败: ${error.message}`);
+    }
+  } else {
+    // 使用新的解密方法
+    try {
+      const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+      const iv = Buffer.from(encryptedData.iv, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return JSON.parse(decrypted);
+    } catch (error) {
+      throw new Error(`新格式解密失败: ${error.message}`);
+    }
+  }
 };
 
 // 确保用户数据目录存在
@@ -98,7 +123,18 @@ const loadUserFromFile = async (username) => {
     const user = decryptData(encryptedData);
     
     // 确保用户数据结构完整
-    return ensureUserDataStructure(user);
+    const processedUser = ensureUserDataStructure(user);
+    
+    // 检查是否是旧格式，如果是则重新保存为新格式
+    const isOldFormat = !encryptedData.iv || typeof encryptedData.iv !== 'string' || encryptedData.iv.length !== 32;
+    if (isOldFormat) {
+      console.log(`用户 ${username} 数据已转换为新格式`);
+      // 重新加密保存为新格式
+      const newEncryptedData = encryptData(processedUser);
+      await fs.writeFile(userFilePath, JSON.stringify(newEncryptedData, null, 2));
+    }
+    
+    return processedUser;
   } catch (error) {
     console.error(`加载用户 ${username} 数据失败:`, error);
     return null;
@@ -236,11 +272,11 @@ const loginUser = async (credentials) => {
     throw new Error('用户名或密码错误');
   }
   
-  // 生成JWT token
+  // 生成JWT token - 延长过期时间到7天
   const token = jwt.sign(
     { userId: user.id, username: user.username, role: user.role },
     JWT_SECRET,
-    { expiresIn: '24h' }
+    { expiresIn: '7d' }
   );
   
   // 返回用户信息（不包含密码）
@@ -260,6 +296,16 @@ const getUserProfile = (username) => {
   
   const { password: _, ...userInfo } = user;
   return userInfo;
+};
+
+// 根据用户名获取用户（包含密码，用于内部使用）
+const getUserByUsername = (username) => {
+  const user = users.get(username);
+  if (!user) {
+    throw new Error('用户不存在');
+  }
+  
+  return user; // 返回完整用户信息，包括密码
 };
 
 // 更新用户资料
@@ -539,6 +585,7 @@ module.exports = {
   registerUser,
   loginUser,
   getUserProfile,
+  getUserByUsername,
   updateUserProfile,
   changePassword,
   getAllUsers,

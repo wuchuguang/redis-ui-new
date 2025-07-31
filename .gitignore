@@ -1,3 +1,4 @@
+
 # Dependencies
 node_modules/
 client/node_modules/
@@ -97,3 +98,5 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db 
+server/users
+server/data

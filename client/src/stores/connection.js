@@ -31,33 +31,22 @@ export const useConnectionStore = defineStore('connection', () => {
   const fetchConnections = async () => {
     loading.value = true
     try {
-      // 只有登录用户才从后端获取连接
+      // 只有登录用户才从后端获取连接配置
       if (userStore.isLoggedIn) {
         const response = await axios.get('/api/connections')
         if (response.data.success) {
           connections.value = response.data.data
-          
-          // 恢复用户连接状态
-          for (const conn of connections.value) {
-            if (conn.status === 'disconnected') {
-              try {
-                await reconnect(conn.id)
-              } catch (error) {
-                console.error(`恢复连接失败: ${conn.name}`, error)
-              }
-            }
-          }
         }
       }
     } catch (error) {
-      console.error('获取连接列表失败:', error)
-      ElMessage.error('获取连接列表失败')
+      console.error('获取连接配置列表失败:', error)
+      ElMessage.error('获取连接配置列表失败')
     } finally {
       loading.value = false
     }
   }
 
-  // 加载临时连接
+  // 加载临时连接配置
   const loadTempConnections = () => {
     try {
       const saved = localStorage.getItem('tempConnections')
@@ -65,14 +54,14 @@ export const useConnectionStore = defineStore('connection', () => {
         tempConnections.value = JSON.parse(saved)
       }
     } catch (error) {
-      console.error('加载临时连接失败:', error)
+      console.error('加载临时连接配置失败:', error)
     }
   }
 
-  // 保存临时连接
+  // 保存临时连接配置
   const saveTempConnections = () => {
     try {
-      // 保存完整的连接信息，包括认证信息
+      // 保存完整的连接配置信息，包括认证信息
       const tempConnectionsData = tempConnections.value.map(conn => ({
         id: conn.id,
         name: conn.name,
@@ -85,17 +74,17 @@ export const useConnectionStore = defineStore('connection', () => {
       }))
       localStorage.setItem('tempConnections', JSON.stringify(tempConnectionsData))
     } catch (error) {
-      console.error('保存临时连接失败:', error)
+      console.error('保存临时连接配置失败:', error)
     }
   }
 
-  // 合并临时连接到用户账户
+  // 合并临时连接配置到用户账户
   const mergeTempConnections = async () => {
     if (tempConnections.value.length === 0) return
     
     loading.value = true
     try {
-      // 保存旧的临时连接信息，用于事件通知
+      // 保存旧的临时连接配置信息，用于事件通知
       const oldTempConnections = [...tempConnections.value]
       
       const mergePromises = tempConnections.value.map(async (tempConn) => {
@@ -117,7 +106,7 @@ export const useConnectionStore = defineStore('connection', () => {
       const mergedConnections = await Promise.all(mergePromises)
       const successfulMerges = mergedConnections.filter(conn => conn !== null)
       
-      // 将成功合并的连接添加到正式连接列表，避免重复
+      // 将成功合并的连接配置添加到正式连接配置列表，避免重复
       for (const mergedConn of successfulMerges) {
         const existingIndex = connections.value.findIndex(conn => 
           conn.host === mergedConn.host && 
@@ -126,10 +115,10 @@ export const useConnectionStore = defineStore('connection', () => {
         )
         
         if (existingIndex >= 0) {
-          // 更新现有连接
+          // 更新现有连接配置
           connections.value[existingIndex] = mergedConn
         } else {
-          // 添加新连接
+          // 添加新连接配置
           connections.value.push(mergedConn)
         }
       }
@@ -198,40 +187,86 @@ export const useConnectionStore = defineStore('connection', () => {
     loading.value = true
     try {
       if (userStore.isLoggedIn) {
-        // 登录用户：保存到后端
+        // 登录用户：保存配置到后端
         const response = await axios.post('/api/connections', connectionData)
         if (response.data.success) {
           const newConnection = response.data.data
           connections.value.push(newConnection)
           
-          // 自动设置为当前连接
-          currentConnection.value = newConnection
-          
-          ElMessage.success('连接创建成功')
+          ElMessage.success('连接配置保存成功')
           return newConnection
         }
       } else {
-        // 未登录用户：使用临时连接API
-        const response = await axios.post('/api/connections/temp', connectionData)
-        if (response.data.success) {
-          const tempConnection = {
-            ...response.data.data,
-            isTemp: true
-          }
-          
-          tempConnections.value.push(tempConnection)
-          saveTempConnections()
-          
-          // 自动设置为当前连接
-          currentConnection.value = tempConnection
-          
-          ElMessage.success('临时连接创建成功')
-          return tempConnection
+        // 未登录用户：保存配置到前端localStorage
+        const tempConnection = {
+          ...connectionData,
+          id: Date.now().toString(), // 简单ID生成
+          isTemp: true
         }
+        
+        tempConnections.value.push(tempConnection)
+        saveTempConnections()
+        
+        ElMessage.success('临时连接配置保存成功')
+        return tempConnection
       }
     } catch (error) {
-      console.error('创建连接失败:', error)
-      ElMessage.error(error.response?.data?.message || '创建连接失败')
+      console.error('创建连接配置失败:', error)
+      ElMessage.error(error.response?.data?.message || '创建连接配置失败')
+      return false
+    } finally {
+      loading.value = false
+    }
+  }
+
+  // 建立连接
+  const connectToRedis = async (connection) => {
+    loading.value = true
+    try {
+      let response
+      
+      if (connection.isTemp) {
+        // 临时连接：发送完整配置
+        response = await axios.post('/api/connections/establish', {
+          name: connection.name,
+          host: connection.host,
+          port: connection.port,
+          password: connection.password,
+          database: connection.database
+        })
+      } else if (connection.isShared) {
+        // 分享连接：使用分享连接API
+        response = await axios.post(`/api/connections/${connection.id}/connect-shared`)
+      } else {
+        // 已保存连接：只发送连接ID
+        response = await axios.post(`/api/connections/${connection.id}/connect`)
+      }
+      
+      if (response.data.success) {
+        const connectedConnection = response.data.data
+        
+        // 更新连接状态
+        if (connection.isTemp) {
+          const index = tempConnections.value.findIndex(conn => conn.id === connection.id)
+          if (index > -1) {
+            tempConnections.value[index] = { ...connection, status: 'connected' }
+          }
+        } else {
+          const index = connections.value.findIndex(conn => conn.id === connection.id)
+          if (index > -1) {
+            connections.value[index] = { ...connection, status: 'connected' }
+          }
+        }
+        
+        // 设置为当前连接
+        currentConnection.value = { ...connection, status: 'connected' }
+        
+        ElMessage.success('Redis连接建立成功')
+        return connectedConnection
+      }
+    } catch (error) {
+      console.error('建立Redis连接失败:', error)
+      ElMessage.error(error.response?.data?.message || '建立Redis连接失败')
       return false
     } finally {
       loading.value = false
@@ -297,24 +332,42 @@ export const useConnectionStore = defineStore('connection', () => {
 
   // 检查是否是连接错误
   const isConnectionError = (error) => {
-    return error.response?.status === 500 && 
-           error.response?.data?.message?.includes('连接不存在或未连接')
+    // 检查是否是连接相关的错误
+    const isConnectionNotFound = error.response?.status === 500 && 
+                                error.response?.data?.message?.includes('连接不存在或未连接')
+    
+    // 检查是否是网络连接错误（后端重启等）
+    const isNetworkError = error.code === 'ECONNREFUSED' || 
+                          error.code === 'ENOTFOUND' ||
+                          error.message?.includes('socket hang up') ||
+                          error.message?.includes('connect ECONNREFUSED')
+    
+    // 检查是否是超时错误
+    const isTimeoutError = error.code === 'ECONNABORTED' ||
+                          error.message?.includes('timeout')
+    
+    return isConnectionNotFound || isNetworkError || isTimeoutError
   }
 
   // 自动重连（静默重连，不显示错误信息）
   const autoReconnect = async (connectionId) => {
     try {
       console.log('开始自动重连:', connectionId)
-      const response = await axios.post(`/api/connections/${connectionId}/reconnect`)
-      if (response.data.success) {
+      
+      // 查找连接配置
+      const connection = connections.value.find(conn => conn.id === connectionId)
+      if (!connection) {
+        console.error('找不到连接配置:', connectionId)
+        return false
+      }
+      
+      // 使用新的连接建立逻辑
+      const success = await connectToRedis(connection)
+      if (success) {
         console.log('自动重连成功:', connectionId)
-        // 更新连接状态
-        const index = connections.value.findIndex(conn => conn.id === connectionId)
-        if (index > -1) {
-          connections.value[index] = response.data.data
-        }
         return true
       }
+      return false
     } catch (error) {
       console.error('自动重连失败:', connectionId, error.message)
       return false
@@ -337,16 +390,20 @@ export const useConnectionStore = defineStore('connection', () => {
   // 手动重新连接（显示错误信息）
   const reconnect = async (connectionId) => {
     try {
-      const response = await axios.post(`/api/connections/${connectionId}/reconnect`)
-      if (response.data.success) {
-        // 更新连接状态
-        const index = connections.value.findIndex(conn => conn.id === connectionId)
-        if (index > -1) {
-          connections.value[index] = response.data.data
-        }
+      // 查找连接配置
+      const connection = connections.value.find(conn => conn.id === connectionId)
+      if (!connection) {
+        ElMessage.error('找不到连接配置')
+        return false
+      }
+      
+      // 使用新的连接建立逻辑
+      const success = await connectToRedis(connection)
+      if (success) {
         ElMessage.success('重新连接成功')
         return true
       }
+      return false
     } catch (error) {
       console.error('重新连接失败:', error)
       ElMessage.error(error.response?.data?.message || '重新连接失败')
@@ -367,40 +424,24 @@ export const useConnectionStore = defineStore('connection', () => {
         connections.value = response.data.data
         
         // 如果当前有选中的连接，通过主机、端口、数据库匹配来更新
-        if (currentConnKey) {
+        if (currentConn) {
           const updatedConn = connections.value.find(conn => 
-            `${conn.host}:${conn.port}:${conn.database}` === currentConnKey
+            conn.host === currentConn.host && 
+            conn.port === currentConn.port && 
+            conn.database === currentConn.database
           )
           if (updatedConn) {
-            console.log('更新当前连接:', {
+            console.log('更新当前连接配置:', {
               old: currentConnection.value?.id,
               new: updatedConn.id,
               status: updatedConn.status
             })
             currentConnection.value = updatedConn
-            
-            // 如果连接状态显示为已连接，进行ping检查
-            if (updatedConn.status === 'connected') {
-              try {
-                const pingResult = await pingConnection(updatedConn.id)
-                if (!pingResult) {
-                  console.log('⚠️ 连接状态检查：Ping失败，连接可能已断开')
-                  // 更新连接状态为断开
-                  const index = connections.value.findIndex(conn => conn.id === updatedConn.id)
-                  if (index >= 0) {
-                    connections.value[index].status = 'disconnected'
-                    currentConnection.value.status = 'disconnected'
-                  }
-                }
-              } catch (error) {
-                console.error('Ping检查失败:', error)
-              }
-            }
           }
         }
         
-        console.log('连接状态刷新完成，连接数:', connections.value.length)
-        console.log('连接状态:', connections.value.map(conn => ({
+        console.log('连接配置状态刷新完成，连接数:', connections.value.length)
+        console.log('连接配置状态:', connections.value.map(conn => ({
           id: conn.id,
           name: conn.name,
           status: conn.status,
@@ -409,7 +450,7 @@ export const useConnectionStore = defineStore('connection', () => {
         })))
       }
     } catch (error) {
-      console.error('刷新连接状态失败:', error)
+      console.error('刷新连接配置状态失败:', error)
     }
   }
 
@@ -733,7 +774,7 @@ export const useConnectionStore = defineStore('connection', () => {
         currentConnection.value = connectedConnection
         return connectedConnection
       }
-      // 如果没有已连接的，选择第一个
+      // 如果没有已连接的，选择第一个（但不会自动建立连接）
       currentConnection.value = allConnections[0]
       return allConnections[0]
     }
@@ -767,10 +808,10 @@ export const useConnectionStore = defineStore('connection', () => {
           
           if (matchedConnection) {
             currentConnection.value = matchedConnection
-            console.log(`从localStorage恢复当前连接: ${matchedConnection.name}`)
+            console.log(`从localStorage恢复当前连接配置: ${matchedConnection.name}`)
             return matchedConnection
           } else {
-            console.log('保存的连接已不存在，清除localStorage')
+            console.log('保存的连接配置已不存在，清除localStorage')
             localStorage.removeItem('currentConnection')
           }
         } catch (error) {
@@ -779,18 +820,18 @@ export const useConnectionStore = defineStore('connection', () => {
         }
       }
       
-      // 自动选择连接
+      // 自动选择连接配置（不会自动建立连接）
       const selectedConnection = autoSelectConnection()
       
       if (selectedConnection) {
-        console.log(`页面刷新后自动选择连接: ${selectedConnection.name}`)
+        console.log(`页面刷新后自动选择连接配置: ${selectedConnection.name}`)
         // 保存当前连接到localStorage
         localStorage.setItem('currentConnection', JSON.stringify(selectedConnection))
       }
       
       return selectedConnection
     } catch (error) {
-      console.error('初始化连接状态失败:', error)
+      console.error('初始化连接配置状态失败:', error)
       return null
     }
   }
@@ -810,6 +851,7 @@ export const useConnectionStore = defineStore('connection', () => {
     mergeTempConnections,
     clearTempConnections,
     createConnection,
+    connectToRedis,
     updateConnection,
     deleteConnection,
     testConnection,

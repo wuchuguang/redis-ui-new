@@ -94,15 +94,29 @@
       @rules-changed="handleRulesChanged"
     />
 
-    <!-- 操作历史 -->
-    <OperationHistory 
+    <!-- 操作历史对话框 -->
+    <el-dialog
       v-model="showOperationHistory"
-    />
+      title="操作历史"
+      width="800px"
+      :close-on-click-modal="false"
+      destroy-on-close
+    >
+      <OperationHistory 
+        v-if="currentConnection"
+        :connection-id="currentConnection.id"
+        ref="operationHistoryRef"
+      />
+      <div v-else class="no-connection-tip">
+        <el-empty description="请先选择一个连接" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, nextTick } from 'vue'
+import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ElMessage } from 'element-plus'
 import { Plus, Setting, Clock, Close, Refresh } from '@element-plus/icons-vue'
 import { useConnectionStore } from './stores/connection'
 import { useUserStore } from './stores/user'
@@ -125,6 +139,7 @@ const showNewConnectionDialog = ref(false)
 const showConnectionManagerDialog = ref(false)
 const showConversionRulesManager = ref(false)
 const showOperationHistory = ref(false)
+const operationHistoryRef = ref(null)
 const autoRefresh = ref(true)
 const currentConnection = ref(null)
 const redisInfo = ref(null)
@@ -141,6 +156,10 @@ const openConnectionManagerDialog = () => {
 }
 
 const openOperationHistory = () => {
+  if (!currentConnection.value) {
+    ElMessage.warning('请先选择一个连接')
+    return
+  }
   showOperationHistory.value = true
 }
 
@@ -163,11 +182,8 @@ const refreshData = async () => {
 }
 
 const handleConnectionCreated = (connection) => {
-  // 新创建的连接会自动成为当前连接
-  currentConnection.value = connection
-  refreshData()
-  // 保存当前状态到localStorage
-  saveCurrentState()
+  // 新创建的连接配置已保存，但需要手动建立连接
+  ElMessage.info('连接配置已保存，请点击连接按钮建立Redis连接')
   // 记录操作日志
   operationLogger.logConnectionCreated(connection)
 }
@@ -319,6 +335,53 @@ const handleRulesChanged = (rules) => {
   // 这里可以触发全局事件或更新全局状态
 }
 
+// 自动刷新定时器
+let autoRefreshInterval = null
+
+// 启动自动刷新
+const startAutoRefresh = () => {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval)
+  }
+  
+  if (autoRefresh.value && currentConnection.value) {
+    autoRefreshInterval = setInterval(async () => {
+      if (currentConnection.value && currentConnection.value.status === 'connected') {
+        await refreshData()
+        console.log('🔄 自动刷新数据完成')
+      }
+    }, 10000) // 每10秒自动刷新一次
+  }
+}
+
+// 停止自动刷新
+const stopAutoRefresh = () => {
+  if (autoRefreshInterval) {
+    clearInterval(autoRefreshInterval)
+    autoRefreshInterval = null
+  }
+}
+
+// 监听自动刷新开关变化
+watch(autoRefresh, (newValue) => {
+  if (newValue) {
+    startAutoRefresh()
+  } else {
+    stopAutoRefresh()
+  }
+})
+
+// 监听当前连接变化
+watch(currentConnection, (newConnection) => {
+  if (autoRefresh.value) {
+    if (newConnection) {
+      startAutoRefresh()
+    } else {
+      stopAutoRefresh()
+    }
+  }
+})
+
 // 生命周期
 onMounted(async () => {
   // 初始化用户状态
@@ -355,6 +418,11 @@ onMounted(async () => {
     }
   }
   
+  // 启动自动刷新
+  if (autoRefresh.value) {
+    startAutoRefresh()
+  }
+  
   // 定期刷新连接状态（每30秒）
   const statusInterval = setInterval(async () => {
     await connectionStore.refreshConnectionStatus()
@@ -382,11 +450,12 @@ onMounted(async () => {
   onUnmounted(async () => {
     clearInterval(statusInterval)
     clearInterval(pingInterval)
+    stopAutoRefresh()
     
     // 关闭所有打开的连接
-    if (connections.value.length > 0) {
+    if (connectionStore.connections.length > 0) {
       console.log('页面卸载，关闭所有连接...')
-      for (const connection of connections.value) {
+      for (const connection of connectionStore.connections) {
         if (connection.status === 'connected') {
           try {
             await connectionStore.closeConnection(connection.id)
@@ -1005,5 +1074,12 @@ input[type="url"] {
   justify-content: center;
   align-items: center;
   height: 100%;
+}
+
+.no-connection-tip {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
 }
 </style> 

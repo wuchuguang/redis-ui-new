@@ -2,7 +2,7 @@
   <el-dialog
     v-model="dialogVisible"
     title="连接管理"
-    width="800px"
+    width="850px"
     :close-on-click-modal="false"
   >
     <div class="connection-manager">
@@ -15,10 +15,6 @@
         <el-button type="success" @click="showJoinDialog = true">
           <el-icon><Share /></el-icon>
           加入分享
-        </el-button>
-        <el-button type="danger" @click="deleteSelectedConnections" :disabled="!hasSelectedConnections">
-          <el-icon><Delete /></el-icon>
-          删除选中
         </el-button>
         <el-button type="primary" @click="refreshConnections">
           <el-icon><Refresh /></el-icon>
@@ -34,61 +30,49 @@
       <div class="connection-list">
         <el-table
           :data="connections"
-          @selection-change="handleSelectionChange"
           v-loading="loading"
         >
-          <el-table-column type="selection" width="55" />
           <el-table-column prop="name" label="连接名称" min-width="150">
             <template #default="{ row }">
               <div class="connection-name">
                 <span>{{ row.name }}</span>
                 <el-tag 
-                  :type="row.status === 'connected' ? 'success' : 'danger'" 
-                  size="small"
-                >
-                  {{ row.status === 'connected' ? '已连接' : '未连接' }}
-                </el-tag>
-                <el-tag 
-                  v-if="!row.isOwner" 
+                  v-if="!row.isOwner && row.owner" 
                   type="info" 
                   size="small"
                 >
                   来自: {{ row.owner }}
                 </el-tag>
+
               </div>
             </template>
           </el-table-column>
           <el-table-column prop="host" label="主机" min-width="120" />
           <el-table-column prop="port" label="端口" width="80" />
           <el-table-column prop="database" label="数据库" width="80" />
-          <el-table-column label="操作" width="350" fixed="right">
+          <el-table-column label="状态" width="120">
+            <template #default="{ row }">
+              <el-tag 
+                :type="getStatusTagType(row)"
+                size="small"
+              >
+                {{ getStatusText(row) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="280" fixed="right">
             <template #default="{ row }">
               <el-button 
-                type="primary" 
+                :type="getConnectionButtonType(row)"
                 size="small" 
-                @click="selectConnection(row)"
-                :disabled="row.status !== 'connected'"
+                @click="handleConnectionAction(row)"
+                :loading="row.connecting"
               >
-                选择
+                {{ getConnectionButtonText(row) }}
               </el-button>
+
               <el-button 
-                type="success" 
-                size="small" 
-                @click="reconnectConnection(row)"
-                :disabled="row.status === 'connected'"
-              >
-                重连
-              </el-button>
-              <el-button 
-                type="info" 
-                size="small" 
-                @click="closeConnection(row)"
-                :disabled="row.status !== 'connected'"
-              >
-                关闭
-              </el-button>
-              <el-button 
-                v-if="row.isOwner"
+                v-if="row.canEdit"
                 type="warning" 
                 size="small" 
                 @click="editConnection(row)"
@@ -96,7 +80,7 @@
                 编辑
               </el-button>
               <el-button 
-                v-if="row.isOwner"
+                v-if="row.canEdit"
                 type="primary" 
                 size="small" 
                 @click="shareConnection(row)"
@@ -241,7 +225,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'connection-selected', 'connection-deleted', 'connection-updated'])
+const emit = defineEmits(['update:modelValue', 'connection-deleted', 'connection-updated', 'connection-selected'])
 
 const connectionStore = useConnectionStore()
 
@@ -250,7 +234,6 @@ const loading = ref(false)
 const showEditDialog = ref(false)
 const isEditing = ref(false)
 const saving = ref(false)
-const selectedConnections = ref([])
 const showShareDialog = ref(false)
 const showJoinDialog = ref(false)
 const shareInfo = ref(null)
@@ -296,7 +279,7 @@ const dialogVisible = computed({
 
 const connections = computed(() => connectionStore.connections)
 
-const hasSelectedConnections = computed(() => selectedConnections.value.length > 0)
+
 
 // 方法
 const refreshConnections = async () => {
@@ -341,6 +324,8 @@ const shareConnection = async (connection) => {
       ElMessage.success('连接分享成功')
       // 记录操作日志
       operationLogger.logConnectionShared(connection)
+      // 刷新连接列表
+      await refreshConnections()
     }
   } catch (error) {
     console.error('分享连接失败:', error)
@@ -375,6 +360,8 @@ const joinSharedConnection = async () => {
       await refreshConnections()
       // 记录操作日志
       operationLogger.logConnectionJoined(response.data.connection)
+      // 触发连接选择事件，让主应用切换到新加入的连接
+      emit('connection-selected', response.data.connection)
     }
   } catch (error) {
     console.error('加入分享连接失败:', error)
@@ -400,46 +387,23 @@ const deleteConnection = async (connection) => {
     if (success) {
       emit('connection-deleted', connection.id)
       ElMessage.success('连接删除成功')
+      // 刷新连接列表
+      await refreshConnections()
     }
   } catch (error) {
     // 用户取消删除
   }
 }
 
-const deleteSelectedConnections = async () => {
-  if (selectedConnections.value.length === 0) return
-  
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除选中的 ${selectedConnections.value.length} 个连接吗？`,
-      '确认删除',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    for (const connection of selectedConnections.value) {
-      await connectionStore.deleteConnection(connection.id)
-      emit('connection-deleted', connection.id)
-    }
-    
-    ElMessage.success('连接删除成功')
-    selectedConnections.value = []
-  } catch (error) {
-    // 用户取消删除
-  }
-}
 
-const selectConnection = (connection) => {
-  emit('connection-selected', connection)
-  dialogVisible.value = false
-  ElMessage.success(`已选择连接: ${connection.name}`)
-}
+
+
 
 const reconnectConnection = async (connection) => {
   try {
+    // 设置连接中状态
+    connection.connecting = true
+    
     const success = await connectionStore.reconnect(connection.id)
     if (success) {
       ElMessage.success(`重新连接成功: ${connection.name}`)
@@ -452,6 +416,8 @@ const reconnectConnection = async (connection) => {
     console.error('重新连接失败:', error)
     // 记录错误日志
     operationLogger.logError('重新连接', error, connection)
+  } finally {
+    connection.connecting = false
   }
 }
 
@@ -467,6 +433,9 @@ const closeConnection = async (connection) => {
       }
     )
     
+    // 设置连接中状态
+    connection.connecting = true
+    
     const success = await connectionStore.closeConnection(connection.id)
     if (success) {
       ElMessage.success(`连接已关闭: ${connection.name}`)
@@ -480,6 +449,8 @@ const closeConnection = async (connection) => {
       console.error('关闭连接失败:', error)
       ElMessage.error('关闭连接失败')
     }
+  } finally {
+    connection.connecting = false
   }
 }
 
@@ -495,15 +466,19 @@ const saveConnection = async () => {
         // 记录操作日志
         operationLogger.logConnectionUpdated(form)
         showEditDialog.value = false
+        // 刷新连接列表
+        await refreshConnections()
       }
     } else {
-      // 添加连接
+      // 添加连接配置
       const success = await connectionStore.createConnection(form)
       if (success) {
-        ElMessage.success('连接添加成功')
+        ElMessage.success('连接配置添加成功')
         // 记录操作日志
         operationLogger.logConnectionCreated(form)
         showEditDialog.value = false
+        // 刷新连接列表
+        await refreshConnections()
       }
     }
   } catch (error) {
@@ -526,8 +501,88 @@ const resetForm = () => {
   })
 }
 
-const handleSelectionChange = (selection) => {
-  selectedConnections.value = selection
+
+
+// 获取状态标签类型
+const getStatusTagType = (connection) => {
+  if (connection.status === 'connected') {
+    return 'success'
+  } else if (connection.status === 'connecting') {
+    return 'warning'
+  } else if (connection.status === 'reconnecting') {
+    return 'warning'
+  } else {
+    return 'danger'
+  }
+}
+
+// 获取状态文本
+const getStatusText = (connection) => {
+  if (connection.status === 'connected') {
+    return '已连接'
+  } else if (connection.status === 'connecting') {
+    return '连接中...'
+  } else if (connection.status === 'reconnecting') {
+    return '重连中...'
+  } else {
+    return '未连接'
+  }
+}
+
+// 获取连接按钮文本
+const getConnectionButtonText = (connection) => {
+  if (connection.status === 'connected') {
+    return '关闭'
+  } else {
+    return '连接'
+  }
+}
+
+// 获取连接按钮类型
+const getConnectionButtonType = (connection) => {
+  if (connection.status === 'connected') {
+    return 'info'
+  } else {
+    return 'success'
+  }
+}
+
+// 处理连接按钮点击事件
+const handleConnectionAction = async (connection) => {
+  if (connection.status === 'connected') {
+    // 已连接状态：执行关闭操作
+    await closeConnection(connection)
+  } else {
+    // 未连接状态：执行连接操作
+    await connectConnection(connection)
+  }
+}
+
+// 连接操作
+const connectConnection = async (connection) => {
+  try {
+    // 设置连接中状态
+    connection.connecting = true
+    connection.status = 'connecting'
+    
+    const success = await connectionStore.connectToRedis(connection)
+    if (success) {
+      ElMessage.success(`连接建立成功: ${connection.name}`)
+      // 记录操作日志
+      operationLogger.logConnectionConnected(connection)
+      // 刷新连接列表
+      await refreshConnections()
+      // 触发连接选择事件，让主应用切换到该连接
+      emit('connection-selected', connection)
+    }
+  } catch (error) {
+    console.error('建立连接失败:', error)
+    ElMessage.error('建立连接失败')
+    // 记录错误日志
+    operationLogger.logError('建立连接', error, connection)
+  } finally {
+    connection.connecting = false
+  }
 }
 
 // 监听对话框打开
@@ -566,6 +621,8 @@ watch(dialogVisible, (visible) => {
 .connection-name span {
   font-weight: 500;
 }
+
+
 
 .dialog-footer {
   display: flex;

@@ -10,7 +10,8 @@ const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-encryption-key-32-cha
 // 加密数据
 const encryptData = (data) => {
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipher('aes-256-cbc', ENCRYPTION_KEY);
+  const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
   let encrypted = cipher.update(JSON.stringify(data), 'utf8', 'hex');
   encrypted += cipher.final('hex');
   return {
@@ -19,12 +20,36 @@ const encryptData = (data) => {
   };
 };
 
-// 解密数据
+// 解密数据（支持新旧格式）
 const decryptData = (encryptedData) => {
-  const decipher = crypto.createDecipher('aes-256-cbc', ENCRYPTION_KEY);
-  let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
-  return JSON.parse(decrypted);
+  // 检查是否是旧格式（没有iv字段或iv格式不正确）
+  const isOldFormat = !encryptedData.iv || typeof encryptedData.iv !== 'string' || encryptedData.iv.length !== 32;
+  
+  if (isOldFormat) {
+    // 使用旧的解密方法
+    try {
+      const decipher = crypto.createDecipher('aes-256-cbc', ENCRYPTION_KEY);
+      let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      const result = JSON.parse(decrypted);
+      console.log('检测到旧格式加密数据，正在转换为新格式...');
+      return result;
+    } catch (error) {
+      throw new Error(`旧格式解密失败: ${error.message}`);
+    }
+  } else {
+    // 使用新的解密方法
+    try {
+      const key = crypto.scryptSync(ENCRYPTION_KEY, 'salt', 32);
+      const iv = Buffer.from(encryptedData.iv, 'hex');
+      const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+      let decrypted = decipher.update(encryptedData.data, 'hex', 'utf8');
+      decrypted += decipher.final('utf8');
+      return JSON.parse(decrypted);
+    } catch (error) {
+      throw new Error(`新格式解密失败: ${error.message}`);
+    }
+  }
 };
 
 // 获取用户文件路径

@@ -1,5 +1,6 @@
 const { createClient } = require('redis');
 const { v4: uuidv4 } = require('uuid');
+const userService = require('./user');
 
 // 存储Redis连接实例
 const redisConnections = new Map();
@@ -31,26 +32,13 @@ const addConnection = async (connectionConfig) => {
   const connectionId = uuidv4();
   const config = {
     id: connectionId,
-    ...connectionConfig,
-    status: 'connecting'
+    ...connectionConfig
   };
 
-  try {
-    const redisClient = await createRedisConnection(connectionConfig);
-    
-    config.status = 'connected';
-    redisConnections.set(connectionId, {
-      client: redisClient,
-      config
-    });
-
-    console.log(`Redis连接成功: ${config.name} (${config.host}:${config.port})`);
-    
-    return config;
-  } catch (error) {
-    console.error('Redis连接失败:', error.message);
-    throw error;
-  }
+  // 只保存配置，不建立连接
+  console.log(`连接配置已保存: ${config.name} (${config.host}:${config.port})`);
+  
+  return config; // 返回配置，不包含状态
 };
 
 // 添加临时连接（不保存到配置文件）
@@ -60,57 +48,155 @@ const addTempConnection = async (connectionConfig) => {
   const config = {
     id: connectionId,
     ...connectionConfig,
-    status: 'connecting',
     isTemp: true
+  };
+
+  // 只保存配置，不建立连接
+  console.log(`临时连接配置已保存: ${config.name} (${config.host}:${config.port}) - ID: ${connectionId}`);
+  
+  return config; // 返回配置，不包含状态
+};
+
+// 建立连接（未登录用户使用）
+const establishConnection = async (connectionConfig) => {
+  const connectionId = uuidv4();
+  const config = {
+    id: connectionId,
+    ...connectionConfig
   };
 
   try {
     const redisClient = await createRedisConnection(connectionConfig);
     
-    config.status = 'connected';
+    // 在内存中保存连接（包含状态）
+    const connectionWithStatus = {
+      ...config,
+      status: 'connected'
+    };
     redisConnections.set(connectionId, {
       client: redisClient,
-      config
+      config: connectionWithStatus
     });
 
-    console.log(`临时Redis连接成功: ${config.name} (${config.host}:${config.port}) - ID: ${connectionId}`);
+    console.log(`Redis连接建立成功: ${config.name} (${config.host}:${config.port})`);
     
     return config;
   } catch (error) {
-    console.error('临时Redis连接失败:', error.message);
+    console.error('Redis连接建立失败:', error.message);
+    throw error;
+  }
+};
+
+// 建立已保存的连接（登录用户使用）
+const establishSavedConnection = async (connectionId, username) => {
+  // 获取用户保存的连接配置
+  const userConnections = userService.getUserConnections(username);
+  const savedConnection = userConnections.find(conn => conn.id === connectionId);
+  
+  if (!savedConnection) {
+    throw new Error('连接不存在或无权限访问');
+  }
+
+  // 检查是否已经连接
+  const existingConnection = redisConnections.get(connectionId);
+  if (existingConnection && existingConnection.client.isReady) {
+    console.log(`连接已存在且活跃: ${savedConnection.name}`);
+    return savedConnection;
+  }
+
+  try {
+    const redisClient = await createRedisConnection(savedConnection);
+    
+    // 在内存中保存连接（包含状态）
+    const connectionWithStatus = {
+      ...savedConnection,
+      status: 'connected'
+    };
+    redisConnections.set(connectionId, {
+      client: redisClient,
+      config: connectionWithStatus
+    });
+
+    console.log(`已保存连接建立成功: ${savedConnection.name} (${savedConnection.host}:${savedConnection.port})`);
+    
+    return savedConnection;
+  } catch (error) {
+    console.error('已保存连接建立失败:', error.message);
+    throw error;
+  }
+};
+
+// 建立分享的连接（需要权限验证）
+const establishSharedConnection = async (connectionId, username) => {
+  // 获取用户的好友连接
+  const user = userService.getUserByUsername(username);
+  if (!user || !user.friendConnections) {
+    throw new Error('无权限访问分享的连接');
+  }
+
+  const friendConnection = user.friendConnections.find(fc => fc.id === connectionId);
+  if (!friendConnection) {
+    throw new Error('分享的连接不存在或无权限访问');
+  }
+
+  // 获取分享者的连接配置
+  const ownerUser = userService.getUserByUsername(friendConnection.ownerUsername);
+  if (!ownerUser || !ownerUser.connections) {
+    throw new Error('分享的连接已失效');
+  }
+
+  const sharedConnection = ownerUser.connections.find(conn => conn.id === connectionId);
+  if (!sharedConnection) {
+    throw new Error('分享的连接已失效');
+  }
+
+  // 检查是否已经连接
+  const existingConnection = redisConnections.get(connectionId);
+  if (existingConnection && existingConnection.client.isReady) {
+    console.log(`分享连接已存在且活跃: ${sharedConnection.name}`);
+    return {
+      ...sharedConnection,
+      owner: friendConnection.ownerUsername,
+      isShared: true
+    };
+  }
+
+  try {
+    const redisClient = await createRedisConnection(sharedConnection);
+    
+    // 在内存中保存连接（包含状态）
+    const connectionWithStatus = {
+      ...sharedConnection,
+      status: 'connected'
+    };
+    redisConnections.set(connectionId, {
+      client: redisClient,
+      config: connectionWithStatus
+    });
+
+    console.log(`分享连接建立成功: ${sharedConnection.name} (${sharedConnection.host}:${sharedConnection.port})`);
+    
+    return {
+      ...sharedConnection,
+      owner: friendConnection.ownerUsername,
+      isShared: true
+    };
+  } catch (error) {
+    console.error('分享连接建立失败:', error.message);
     throw error;
   }
 };
 
 // 将临时连接转换为正式连接
 const convertTempToFormalConnection = async (tempConnectionId, newConnectionConfig) => {
-  const tempConnection = redisConnections.get(tempConnectionId);
-  if (!tempConnection) {
-    throw new Error('临时连接不存在');
-  }
-
-  // 直接更新连接配置，保持相同ID
+  // 只更新配置，不建立连接
   const formalConfig = {
     id: tempConnectionId,
     ...newConnectionConfig,
-    status: 'connected',
     isTemp: false
   };
 
-  // 更新连接配置
-  redisConnections.set(tempConnectionId, {
-    client: tempConnection.client,
-    config: formalConfig
-  });
-
   console.log(`临时连接已转换为正式连接: ${tempConnectionId}`);
-  console.log('新连接配置:', formalConfig);
-  console.log('Redis连接映射:', {
-    id: tempConnectionId,
-    host: formalConfig.host,
-    port: formalConfig.port,
-    database: formalConfig.database
-  });
   
   return formalConfig;
 };
@@ -174,50 +260,37 @@ const getAllConnections = () => {
 
 // 获取用户的所有连接（包括未打开的）
 const getUserAllConnections = (username) => {
-  const userService = require('./user');
-  
   try {
-    // 获取用户存储的连接配置
-    const userConnections = userService.getUserConnections(username);
+    // 获取用户的所有连接（包括自己的和分享的）
+    const allConnections = userService.getUserAllConnections(username);
     
-    // 获取当前打开的连接
-    const openConnections = Array.from(redisConnections.values()).map(conn => conn.config);
-    
-    // 合并连接列表，优先使用打开连接的状态
-    const mergedConnections = userConnections.map(userConn => {
-      // 查找是否有对应的打开连接
-      const openConn = openConnections.find(open => open.id === userConn.id);
-      if (openConn) {
+    // 为每个连接检查实际状态
+    const connectionsWithStatus = allConnections.map(userConn => {
+      // 检查是否有对应的活跃连接
+      const activeConnection = redisConnections.get(userConn.id);
+      
+      let status = 'disconnected';
+      if (activeConnection && activeConnection.client) {
         // 检查连接是否真正可用
-        const connection = redisConnections.get(userConn.id);
-        let status = openConn.status;
-        
-        if (connection && connection.client && connection.client.isReady) {
-          // 尝试ping连接来验证状态
-          try {
-            // 这里不实际ping，只是检查连接状态
-            status = 'connected';
-          } catch (error) {
-            status = 'disconnected';
-          }
+        if (activeConnection.client.isReady) {
+          status = 'connected';
         } else {
           status = 'disconnected';
         }
-        
-        return {
-          ...userConn,
-          status: status
-        };
-      } else {
-        // 使用用户存储的状态，但标记为未连接
-        return {
-          ...userConn,
-          status: 'disconnected'
-        };
       }
+      
+      // 调试信息：只在开发环境显示
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`连接状态检查: ${userConn.name} (${userConn.id}) - 活跃连接: ${!!activeConnection}, 状态: ${status}`);
+      }
+      
+      return {
+        ...userConn,
+        status: status
+      };
     });
     
-    return mergedConnections;
+    return connectionsWithStatus;
   } catch (error) {
     console.error('获取用户连接失败:', error);
     return [];
@@ -697,35 +770,11 @@ const getRedisInfo = async (connectionId) => {
   };
 };
 
-// 恢复保存的连接
+// 恢复保存的连接（新架构：不自动恢复连接）
 const restoreConnections = async (savedConnections) => {
-  console.log(`发现 ${savedConnections.length} 个保存的连接`);
-  
-  for (const savedConn of savedConnections) {
-    try {
-      console.log(`尝试恢复连接: ${savedConn.name} (${savedConn.host}:${savedConn.port})`);
-      
-      const redisClient = await createRedisConnection(savedConn);
-
-      // 设置连接超时
-      redisClient.on('error', (err) => {
-        console.log(`Redis连接错误: ${savedConn.name} - ${err.message}`);
-      });
-
-      redisConnections.set(savedConn.id, {
-        client: redisClient,
-        config: { ...savedConn, status: 'connected' }
-      });
-      
-      console.log(`✅ 连接恢复成功: ${savedConn.name}`);
-    } catch (error) {
-      console.log(`❌ 连接恢复失败: ${savedConn.name} - ${error.message}`);
-      // 连接失败时，不保存到 redisConnections Map 中
-      // 这样在获取连接列表时会正确显示为 disconnected
-    }
-  }
-  
-  console.log(`连接恢复完成，成功恢复 ${redisConnections.size} 个连接`);
+  console.log(`发现 ${savedConnections.length} 个保存的连接配置`);
+  console.log('新架构：连接配置和实际连接分离，启动时不自动恢复连接');
+  console.log('用户需要手动点击连接按钮来建立Redis连接');
 };
 
 // 关闭所有连接
@@ -746,6 +795,9 @@ module.exports = {
   redisConnections,
   addConnection,
   addTempConnection,
+  establishConnection,
+  establishSavedConnection,
+  establishSharedConnection,
   convertTempToFormalConnection,
   updateConnection,
   getConnection,

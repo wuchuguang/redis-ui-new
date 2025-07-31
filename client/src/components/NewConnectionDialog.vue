@@ -412,7 +412,7 @@ const handleCreate = async () => {
     
     const newConnection = await connectionStore.createConnection(connectionData)
     if (newConnection) {
-      ElMessage.success('连接创建成功')
+      ElMessage.success('连接配置创建成功')
       emit('connection-created', newConnection)
       handleClose()
     }
