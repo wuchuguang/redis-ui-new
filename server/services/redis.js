@@ -295,33 +295,9 @@ const getUserAllConnections = async (username) => {
     // 获取用户的所有连接（包括自己的和分享的）
     const allConnections = await connectionService.getUserConnections(username);
     
-    // 为每个连接检查实际状态
-    const connectionsWithStatus = allConnections.map(userConn => {
-      // 检查是否有对应的活跃连接
-      const activeConnection = redisConnections.get(userConn.id);
-      
-      let status = 'disconnected';
-      if (activeConnection && activeConnection.client) {
-        // 检查连接是否真正可用
-        if (activeConnection.client.isReady) {
-          status = 'connected';
-        } else {
-          status = 'disconnected';
-        }
-      }
-      
-      // 调试信息：只在开发环境显示
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`连接状态检查: ${userConn.redis.name} (${userConn.id}) - 活跃连接: ${!!activeConnection}, 状态: ${status}`);
-      }
-      
-      return {
-        ...userConn,
-        status: status
-      };
-    });
-    
-    return connectionsWithStatus;
+    // 直接返回连接配置信息，不检查连接状态
+    // 连接管理界面主要关注配置信息，而不是实时连接状态
+    return allConnections;
   } catch (error) {
     console.error('获取用户连接失败:', error);
     return [];

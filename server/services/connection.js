@@ -143,6 +143,12 @@ const deleteConnectionInfo = async (connectionId) => {
 const addParticipant = async (connectionId, username) => {
   try {
     const connectionInfo = await getConnectionInfo(connectionId);
+    
+    // 检查是否为连接所有者，如果是则不允许添加为参与者
+    if (connectionInfo.owner === username) {
+      throw new Error('连接所有者不能作为参与者添加');
+    }
+    
     if (!connectionInfo.participants.includes(username)) {
       connectionInfo.participants.push(username);
       await updateConnectionInfo(connectionId, { participants: connectionInfo.participants });

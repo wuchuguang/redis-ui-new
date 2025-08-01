@@ -3,20 +3,6 @@
     <!-- 当前连接标题 -->
     <div class="current-connection-header" v-if="currentConnection">
       <h3 class="connection-title">{{ currentConnection.redis.name }}</h3>
-      <div class="connection-status">
-        <el-tag 
-          :type="currentConnection.status === 'connected' ? 'success' : 'danger'"
-          size="small"
-          class="status-tag"
-        >
-          <el-icon v-if="currentConnection.status === 'connected'"><CircleCheck /></el-icon>
-          <el-icon v-else><CircleClose /></el-icon>
-          {{ currentConnection.status === 'connected' ? '已连接' : '未连接' }}
-        </el-tag>
-        <span v-if="currentConnection.status === 'connected'" class="connection-info">
-          {{ currentConnection.redis.host }}:{{ currentConnection.redis.port }}
-        </span>
-      </div>
       <div class="connection-actions">
         <el-button type="text" size="small" @click="refreshKeys" title="刷新键列表">
           <el-icon><House /></el-icon>
@@ -47,9 +33,10 @@
           :key="db.id"
           :label="`DB${db.id} (${db.keys})`"
           :value="db.id"
+          :class="{ 'db-with-data': db.keys > 0 }"
         >
-          <span>DB{{ db.id }}</span>
-          <span class="db-keys-count">({{ db.keys }})</span>
+          <span class="db-name">DB{{ db.id }}</span>
+          <span class="db-keys-count" :class="{ 'has-data': db.keys > 0 }">({{ db.keys }})</span>
         </el-option>
       </el-select>
     </div>
@@ -1518,19 +1505,63 @@ onUnmounted(() => {
   width: 100%;
 }
 
-/* 搜索框样式 */
-.search-input {
-  width: 100%;
+/* 数据库选项样式 - 有数据时高亮和字体放大 */
+:deep(.el-select-dropdown__item.db-with-data) {
+  background-color: #409eff !important;
+  color: #ffffff !important;
+  font-weight: 600;
 }
 
-/* 输入框样式已由全局样式处理 */
+:deep(.el-select-dropdown__item.db-with-data:hover) {
+  background-color: #66b1ff !important;
+}
 
-/* 移除强制覆盖，使用Element Plus默认深色主题 */
+:deep(.el-select-dropdown__item.db-with-data.selected) {
+  background-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+:deep(.el-select-dropdown__item.db-with-data .db-name) {
+  font-size: 1.5em;
+  font-weight: bold;
+}
+
+:deep(.el-select-dropdown__item.db-with-data .db-keys-count.has-data) {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #ffffff !important;
+}
+
+/* 无数据的数据库选项保持默认样式 */
+:deep(.el-select-dropdown__item:not(.db-with-data)) {
+  background-color: var(--el-bg-color-overlay) !important;
+  color: var(--el-text-color-primary) !important;
+}
+
+:deep(.el-select-dropdown__item:not(.db-with-data):hover) {
+  background-color: var(--el-fill-color) !important;
+}
+
+:deep(.el-select-dropdown__item:not(.db-with-data) .db-name) {
+  font-size: 1em;
+  font-weight: normal;
+}
+
+:deep(.el-select-dropdown__item:not(.db-with-data) .db-keys-count) {
+  font-size: 1em;
+  font-weight: normal;
+  color: var(--el-text-color-secondary) !important;
+}
 
 /* 数据库选项内部样式 */
 .db-keys-count {
   color: var(--el-text-color-secondary);
   margin-left: 8px;
+}
+
+.db-keys-count.has-data {
+  color: #67c23a;
+  font-weight: 600;
 }
 
 /* 连接状态样式 */

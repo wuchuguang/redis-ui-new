@@ -49,32 +49,25 @@
           <template #default="{ row }">
             <div class="status-cell">
               <el-tag 
-                :type="getStatusTagType(row)"
+                type="info"
                 size="small"
                 class="status-tag"
               >
-                <el-icon v-if="row.status === 'connected'"><CircleCheck /></el-icon>
-                <el-icon v-else><CircleClose /></el-icon>
-                {{ getStatusText(row) }}
+                <el-icon><Setting /></el-icon>
+                已配置
               </el-tag>
-              <div v-if="row.status === 'connected'" class="connection-details">
-                <span class="detail-text">活跃</span>
-              </div>
-              <div v-else class="connection-details">
-                <span class="detail-text">离线</span>
-              </div>
             </div>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
             <el-button 
-              :type="getConnectionButtonType(row)"
+              type="success" 
               size="small" 
               @click="handleConnectionAction(row)"
               :loading="row.connecting"
             >
-              {{ getConnectionButtonText(row) }}
+              连接
             </el-button>
 
             <el-button 
@@ -136,7 +129,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Share, Refresh, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import { Plus, Share, Refresh, CircleCheck, CircleClose, Setting } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../../stores/connection'
 import { operationLogger } from '../../utils/operationLogger'
 
@@ -179,11 +172,7 @@ const showNewConnection = () => {
 }
 
 const handleConnectionAction = async (connection) => {
-  if (connection.status === 'connected') {
-    await closeConnection(connection)
-  } else {
-    await connectConnection(connection)
-  }
+  await connectConnection(connection)
 }
 
 const connectConnection = async (connection) => {
@@ -279,46 +268,22 @@ const joinSharedConnection = async () => {
 
 // 获取状态标签类型
 const getStatusTagType = (connection) => {
-  if (connection.status === 'connected') {
-    return 'success'
-  } else if (connection.status === 'connecting') {
-    return 'warning'
-  } else if (connection.status === 'reconnecting') {
-    return 'warning'
-  } else {
-    return 'danger'
-  }
+  return 'info'
 }
 
 // 获取状态文本
 const getStatusText = (connection) => {
-  if (connection.status === 'connected') {
-    return '已连接'
-  } else if (connection.status === 'connecting') {
-    return '连接中...'
-  } else if (connection.status === 'reconnecting') {
-    return '重连中...'
-  } else {
-    return '未连接'
-  }
+  return '已配置'
 }
 
 // 获取连接按钮文本
 const getConnectionButtonText = (connection) => {
-  if (connection.status === 'connected') {
-    return '关闭'
-  } else {
-    return '连接'
-  }
+  return '连接'
 }
 
 // 获取连接按钮类型
 const getConnectionButtonType = (connection) => {
-  if (connection.status === 'connected') {
-    return 'info'
-  } else {
-    return 'success'
-  }
+  return 'success'
 }
 </script>
 

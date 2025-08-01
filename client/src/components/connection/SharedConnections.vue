@@ -44,20 +44,13 @@
           <template #default="{ row }">
             <div class="status-cell">
               <el-tag 
-                :type="getStatusTagType(row)"
+                type="info"
                 size="small"
                 class="status-tag"
               >
-                <el-icon v-if="row.status === 'connected'"><CircleCheck /></el-icon>
-                <el-icon v-else><CircleClose /></el-icon>
-                {{ getStatusText(row) }}
+                <el-icon><Setting /></el-icon>
+                已配置
               </el-tag>
-              <div v-if="row.status === 'connected'" class="connection-details">
-                <span class="detail-text">活跃</span>
-              </div>
-              <div v-else class="connection-details">
-                <span class="detail-text">离线</span>
-              </div>
             </div>
           </template>
         </el-table-column>
@@ -144,7 +137,7 @@
 <script setup>
 import { ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Refresh, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import { Refresh, CircleCheck, CircleClose, Setting } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../../stores/connection'
 import { operationLogger } from '../../utils/operationLogger'
 

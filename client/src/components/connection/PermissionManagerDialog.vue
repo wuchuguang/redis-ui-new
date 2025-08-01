@@ -154,9 +154,14 @@ const dialogVisible = computed({
 const participants = computed(() => {
   if (!props.connection) return []
   
+  // 过滤掉连接的所有者，只显示真正的参与者
+  const realParticipants = (props.connection.participants || []).filter(username => 
+    username !== props.connection.owner
+  )
+  
   // 这里应该从后端获取详细的参与者信息
   // 暂时使用简单的数据结构
-  return (props.connection.participants || []).map(username => ({
+  return realParticipants.map(username => ({
     username,
     joinedAt: new Date().toLocaleString(),
     permissions: 'readonly'
