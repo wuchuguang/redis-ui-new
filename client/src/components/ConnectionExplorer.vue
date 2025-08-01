@@ -46,7 +46,7 @@
       <div class="search-container">
         <el-input
           v-model="searchTerm"
-          placeholder="搜索键... (回车或延时1秒自动搜索)"
+          :placeholder="getSearchPlaceholder()"
           clearable
           @input="handleSearchInput"
           @keyup.enter="handleSearchEnter"
@@ -98,8 +98,10 @@
     <!-- 键列表标题 -->
     <div class="keys-header">
       <div class="keys-header-left">
-        <span class="keys-title">键列表</span>
-        <span class="keys-count">({{ filteredKeys.length }})</span>
+        <span class="keys-title">{{ getKeysTitle() }}</span>
+        <span v-if="searchTerm && searchTerm.trim()" class="search-result-count">
+          ({{ getTotalKeysCount() }}个键)
+        </span>
       </div>
       <div class="keys-header-right">
         <el-button 
@@ -130,7 +132,10 @@
             <el-empty description="请先创建Redis连接" />
           </div>
           <div v-else-if="filteredKeys.length === 0" class="no-keys-tip">
-            <el-empty description="当前数据库暂无键" />
+            <el-empty 
+              :description="getNoKeysMessage()" 
+              :image="getNoKeysImage()"
+            />
           </div>
           <div v-else-if="isListMode" class="list-mode">
             <div class="list-mode-header">
@@ -998,6 +1003,78 @@ onUnmounted(() => {
     clearTimeout(searchTimer.value)
   }
 })
+
+// 获取无键时的提示信息
+const getNoKeysMessage = () => {
+  if (!props.connection) {
+    return '请先创建Redis连接'
+  }
+  
+  if (searchTerm.value && searchTerm.value.trim()) {
+    return `未找到匹配 "${searchTerm.value.trim()}" 的键`
+  }
+  
+  if (currentListMode.value && currentListPrefix.value) {
+    return `在 ${currentListPrefix.value} 组中未找到键`
+  }
+  
+  return '当前数据库暂无键'
+}
+
+// 获取无键时的图标
+const getNoKeysImage = () => {
+  if (searchTerm.value && searchTerm.value.trim()) {
+    return 'https://fuss10.elemecdn.com/e/5d/4a731a90594a4af544c0c25941171jpeg.jpeg'
+  }
+  return 'https://fuss10.elemecdn.com/a/3f/3302e58f9a181d2509f3dc0fa68b0jpeg.jpeg'
+}
+
+// 获取搜索框占位符文本
+const getSearchPlaceholder = () => {
+  if (searchTerm.value && searchTerm.value.trim()) {
+    return `搜索 "${searchTerm.value.trim()}" 的键...`
+  }
+  if (currentListMode.value && currentListPrefix.value) {
+    return `搜索 ${currentListPrefix.value} 组中的键...`
+  }
+  return '搜索键...'
+}
+
+// 获取搜索状态文本
+const getSearchStatusText = () => {
+  if (searchTerm.value && searchTerm.value.trim()) {
+    return `搜索 "${searchTerm.value.trim()}"`
+  }
+  return '搜索'
+}
+
+// 获取搜索状态类型
+const getSearchStatusType = () => {
+  if (searchTerm.value && searchTerm.value.trim()) {
+    return 'success'
+  }
+  return 'info'
+}
+
+// 获取键列表标题文本
+const getKeysTitle = () => {
+  if (searchTerm.value && searchTerm.value.trim()) {
+    return '搜索结果'
+  }
+  if (currentListMode.value && currentListPrefix.value) {
+    return `${currentListPrefix.value} 组`
+  }
+  return '键列表'
+}
+
+// 获取总键数
+const getTotalKeysCount = () => {
+  let total = 0;
+  for (const group of keysData.value) {
+    total += group.keys.length;
+  }
+  return total;
+}
 </script>
 
 <style scoped>
@@ -1107,9 +1184,15 @@ onUnmounted(() => {
   gap: 8px;
 }
 .keys-title {
-  font-weight: bold;
-  font-size: 15px;
-  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+.search-result-count {
+  font-size: 12px;
+  color: var(--el-color-primary);
+  margin-left: 8px;
+  font-weight: 500;
 }
 .keys-header-right {
   display: flex;
@@ -1349,6 +1432,29 @@ onUnmounted(() => {
 .search-container {
   position: relative;
   width: 100%;
+}
+
+/* 搜索状态指示器样式 */
+.search-status {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  padding: 0 12px;
+  margin-top: 4px;
+  z-index: 10;
+}
+
+.search-status-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background-color: var(--el-color-primary-light-9);
+  border-color: var(--el-color-primary);
+  color: var(--el-color-primary);
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
 }
 
 /* 搜索历史下拉菜单样式 */
