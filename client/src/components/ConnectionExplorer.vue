@@ -367,11 +367,12 @@ const currentConnection = computed(() => props.connection)
 
 // 过滤搜索历史
 const filteredSearchHistory = computed(() => {
-  if (!searchTerm.value) {
+  if (!searchTerm.value || !searchTerm.value.trim()) {
     return searchHistory.value
   }
+  const searchLower = searchTerm.value.toLowerCase().trim()
   return searchHistory.value.filter(item => 
-    item.value.toLowerCase().includes(searchTerm.value.toLowerCase())
+    item.value.toLowerCase().includes(searchLower)
   )
 })
 
@@ -395,7 +396,7 @@ const searchHistory = ref([]) // 搜索历史记录
 const maxSearchHistory = 20 // 最大历史记录数
 const showSearchHistory = ref(false) // 是否显示搜索历史
 
-// 响应式数据
+// 数据库和键列表相关
 const databases = ref(Array.from({ length: 16 }, (_, i) => ({
   id: i,
   keys: 0
@@ -449,8 +450,16 @@ const refreshKeys = async (showLoading = false) => {
     let pattern = '*'
     if (searchTerm.value && searchTerm.value.trim()) {
       // 如果搜索词不为空，使用搜索词作为模式
-      pattern = `*${searchTerm.value.trim()}*`
+      const searchValue = searchTerm.value.trim()
+      // 如果搜索词包含通配符，直接使用；否则添加通配符
+      if (searchValue.includes('*') || searchValue.includes('?')) {
+        pattern = searchValue
+      } else {
+        pattern = `*${searchValue}*`
+      }
     }
+    
+    console.log('搜索模式:', pattern)
     
     // 计算请求的键数：使用已加载的最大键数，但不少于默认值
     let requestLimit = maxKeysPerGroup.value
@@ -469,6 +478,9 @@ const refreshKeys = async (showLoading = false) => {
         loadedKeyCounts.value[group.prefix] = Math.max(existingCount, group.keys.length)
       }
     }
+  } catch (error) {
+    console.error('搜索键失败:', error)
+    ElMessage.error('搜索键失败')
   } finally {
     if (showLoading) {
       keysLoading.value = false
@@ -500,8 +512,16 @@ const refreshListModeData = async (isConverting = false) => {
     // 构建搜索模式，包含搜索词
     let pattern = `${currentListPrefix.value}:*`
     if (searchTerm.value && searchTerm.value.trim()) {
-      pattern = `${currentListPrefix.value}:*${searchTerm.value.trim()}*`
+      const searchValue = searchTerm.value.trim()
+      // 如果搜索词包含通配符，直接使用；否则添加通配符
+      if (searchValue.includes('*') || searchValue.includes('?')) {
+        pattern = `${currentListPrefix.value}:${searchValue}`
+      } else {
+        pattern = `${currentListPrefix.value}:*${searchValue}*`
+      }
     }
+    
+    console.log('列表模式搜索模式:', pattern)
     
     // 使用已加载的键数作为请求参数
     const existingCount = loadedKeyCounts.value[currentListPrefix.value] || maxKeysPerGroup.value
@@ -522,6 +542,7 @@ const refreshListModeData = async (isConverting = false) => {
       ElMessage.success(`已刷新 ${currentListPrefix.value} 的列表数据`)
     }
   } catch (error) {
+    console.error('刷新列表数据失败:', error)
     ElMessage.error('刷新列表数据失败')
     // 如果是转换模式失败，退出列表模式
     if (isConverting) {
@@ -626,6 +647,7 @@ const handleSearchInput = () => {
   
   // 设置1秒延时搜索
   searchTimer.value = setTimeout(() => {
+    console.log('延时搜索:', searchTerm.value)
     refreshKeys(false)
   }, 1000)
 }
@@ -643,8 +665,12 @@ const handleSearchEnter = () => {
     currentListPrefix.value = ''
   }
   
+  console.log('回车搜索:', searchTerm.value)
+  
   // 添加到搜索历史
-  addToSearchHistory(searchTerm.value)
+  if (searchTerm.value && searchTerm.value.trim()) {
+    addToSearchHistory(searchTerm.value)
+  }
   
   refreshKeys(false)
 }
@@ -679,6 +705,9 @@ const addToSearchHistory = (searchTerm) => {
 const selectSearchHistory = (value) => {
   searchTerm.value = value
   showSearchHistory.value = false
+  
+  console.log('选择搜索历史:', value)
+  
   // 添加到搜索历史
   addToSearchHistory(value)
   // 立即搜索
@@ -694,6 +723,7 @@ const clearAllSearchHistory = () => {
 const saveSearchHistory = () => {
   try {
     localStorage.setItem('redis-search-history', JSON.stringify(searchHistory.value))
+    console.log('保存搜索历史:', searchHistory.value.length, '条')
   } catch (error) {
     console.error('保存搜索历史失败:', error)
   }
@@ -704,9 +734,12 @@ const loadSearchHistory = () => {
     const saved = localStorage.getItem('redis-search-history')
     if (saved) {
       searchHistory.value = JSON.parse(saved)
+      console.log('加载搜索历史:', searchHistory.value.length, '条')
     }
   } catch (error) {
     console.error('加载搜索历史失败:', error)
+    // 如果加载失败，清空搜索历史
+    searchHistory.value = []
   }
 }
 
