@@ -75,8 +75,8 @@
 {
   name: 'Redis连接', // 连接名称（必填）
   port: 6379, // Redis端口
-  host: '172.20.100.141', // Redis主机
-  password: '2341a3FDEWE41dfaEFAA', // 密码（可选）
+  host: 'localhost', // Redis主机
+  password: '', // 密码（可选）
   db: 0, // 数据库编号
 }"
             style="width: 100%; height: 300px; padding: 10px; border: 1px solid #dcdfe6; border-radius: 4px; font-family: monospace; font-size: 13px; resize: vertical;"
