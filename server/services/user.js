@@ -70,15 +70,7 @@ const ensureUsersDir = async () => {
 
 // 确保用户数据结构完整
 const ensureUserDataStructure = (user) => {
-  if (!user.connections || !Array.isArray(user.connections)) {
-    user.connections = [];
-  }
-  if (!user.shareConnections || !Array.isArray(user.shareConnections)) {
-    user.shareConnections = [];
-  }
-  if (!user.friendConnections || !Array.isArray(user.friendConnections)) {
-    user.friendConnections = [];
-  }
+  // 移除连接相关字段，因为连接信息现在独立存储
   return user;
 };
 
@@ -352,104 +344,7 @@ const changePassword = async (username, oldPassword, newPassword) => {
   return true;
 };
 
-// 生成分享码
-const generateJoinCode = () => {
-  return Math.random().toString(36).substr(2, 8).toUpperCase();
-};
-
-// 分享连接
-const shareConnection = async (username, connectionId) => {
-  const user = users.get(username);
-  if (!user) {
-    throw new Error('用户不存在');
-  }
-
-  // 检查连接是否属于该用户
-  if (!user.connections || !Array.isArray(user.connections)) {
-    throw new Error('用户连接列表不存在');
-  }
-  
-  const connection = user.connections.find(conn => conn.id === connectionId);
-  if (!connection) {
-    throw new Error('连接不存在或不属于该用户');
-  }
-
-  // 生成分享码
-  const joinCode = generateJoinCode();
-  
-  // 确保shareConnections数组存在
-  if (!user.shareConnections || !Array.isArray(user.shareConnections)) {
-    user.shareConnections = [];
-  }
-
-  // 添加到分享列表
-  const shareInfo = {
-    id: connectionId,
-    joinCode,
-    sharedAt: new Date().toISOString()
-  };
-
-  user.shareConnections.push(shareInfo);
-  await saveUserToFile(username);
-
-  console.log(`用户 ${username} 分享了连接: ${connection.name}, 分享码: ${joinCode}`);
-  
-  return { joinCode, connection };
-};
-
-// 加入分享的连接
-const joinSharedConnection = async (username, joinCode) => {
-  // 查找分享码对应的连接
-  let sharedConnection = null;
-  let ownerUsername = null;
-
-  for (const [userKey, user] of users.entries()) {
-    if (user.shareConnections && Array.isArray(user.shareConnections)) {
-      const shareInfo = user.shareConnections.find(share => share.joinCode === joinCode);
-      if (shareInfo && user.connections && Array.isArray(user.connections)) {
-        const connection = user.connections.find(conn => conn.id === shareInfo.id);
-        if (connection) {
-          sharedConnection = connection;
-          ownerUsername = userKey;
-          break;
-        }
-      }
-    }
-  }
-
-  if (!sharedConnection) {
-    throw new Error('分享码无效或已过期');
-  }
-
-  // 检查是否已经加入过
-  const targetUser = users.get(username);
-  if (!targetUser) {
-    throw new Error('用户不存在');
-  }
-
-  if (!targetUser.friendConnections || !Array.isArray(targetUser.friendConnections)) {
-    targetUser.friendConnections = [];
-  }
-  
-  const alreadyJoined = targetUser.friendConnections.find(fc => fc.id === sharedConnection.id);
-  if (alreadyJoined) {
-    throw new Error('已经加入过此连接');
-  }
-
-  // 添加到好友连接列表
-  const friendConnection = {
-    id: sharedConnection.id,
-    ownerUsername,
-    sharedAt: new Date().toISOString()
-  };
-
-  targetUser.friendConnections.push(friendConnection);
-  await saveUserToFile(username);
-
-  console.log(`用户 ${username} 加入了 ${ownerUsername} 分享的连接: ${sharedConnection.name}`);
-  
-  return { connection: sharedConnection, ownerUsername };
-};
+// 注意：连接相关功能已移至 connectionService
 
 // 获取用户的所有连接（包括分享的和好友的）
 const getUserAllConnections = (username) => {
@@ -547,32 +442,7 @@ const deleteUser = async (username) => {
   return true;
 };
 
-// 获取用户连接列表
-const getUserConnections = (username) => {
-  const user = users.get(username);
-  if (!user) {
-    throw new Error('用户不存在');
-  }
-  
-  return user.connections && Array.isArray(user.connections) ? user.connections : [];
-};
-
-// 保存用户连接
-const saveUserConnections = async (username, connections) => {
-  const user = users.get(username);
-  if (!user) {
-    throw new Error('用户不存在');
-  }
-  
-  user.connections = Array.isArray(connections) ? connections : [];
-  
-  // 保存到文件
-  await saveUserToFile(username);
-  
-  console.log(`用户连接已保存: ${username}, 连接数: ${connections.length}`);
-  
-  return true;
-};
+// 注意：连接相关功能已移至 connectionService
 
 module.exports = {
   users,
@@ -590,10 +460,5 @@ module.exports = {
   changePassword,
   getAllUsers,
   updateUserRole,
-  deleteUser,
-  getUserConnections,
-  saveUserConnections,
-  shareConnection,
-  joinSharedConnection,
-  getUserAllConnections
+  deleteUser
 }; 

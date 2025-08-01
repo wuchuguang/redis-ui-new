@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const redisService = require('../services/redis');
 const userService = require('../services/user');
+const connectionService = require('../services/connection');
 const { authenticateToken } = require('../middleware/auth');
 const operationHistory = require('../services/operationHistory');
 
@@ -119,46 +120,23 @@ router.post('/', authenticateToken, async (req, res) => {
       database: parseInt(database)
     };
 
-    // 检查是否有对应的临时连接
-    const allConnections = redisService.getAllConnections();
-    const tempConnection = allConnections.find(conn => 
-      conn.isTemp && 
-      conn.host === host && 
-      conn.port === parseInt(port) &&
-      conn.database === parseInt(database)
-    );
-
-    const config = tempConnection 
-      ? await redisService.convertTempToFormalConnection(tempConnection.id, connectionConfig)
-      : await redisService.addConnection(connectionConfig);
-
-    // 保存到用户账户（不包含状态信息）
-    const userConnections = userService.getUserConnections(username);
-    const connectionToSave = {
-      id: config.id,
-      name: config.name,
-      host: config.host,
-      port: config.port,
-      password: config.password,
-      database: config.database
-    };
-    userConnections.push(connectionToSave);
-    await userService.saveUserConnections(username, userConnections);
+    // 使用新的连接服务创建连接信息
+    const connectionInfo = await redisService.addConnection(connectionConfig, username);
 
     // 记录操作历史
-    await operationHistory.logConnectionCreated(config.id, username, config.name);
+    await operationHistory.logConnectionCreated(connectionInfo.id, username, connectionInfo.redis.name);
 
     res.json({
       success: true,
-      message: 'Redis连接创建成功',
-      data: config
+      message: 'Redis连接配置创建成功',
+      data: connectionInfo
     });
 
   } catch (error) {
-    console.error('Redis连接失败:', error.message);
+    console.error('Redis连接创建失败:', error.message);
     res.status(500).json({
       success: false,
-      message: `连接失败: ${error.message}`
+      message: `连接创建失败: ${error.message}`
     });
   }
 });
@@ -298,12 +276,12 @@ router.put('/:id', authenticateToken, async (req, res) => {
       });
     }
 
-    const userConnections = userService.getUserConnections(username);
-    const existingConnection = userConnections.find(conn => conn.id === id);
-    if (!existingConnection) {
-      return res.status(404).json({
+    // 获取连接信息并验证权限
+    const connectionInfo = await connectionService.getConnectionInfo(id);
+    if (connectionInfo.owner !== username) {
+      return res.status(403).json({
         success: false,
-        message: '连接不存在'
+        message: '无权限修改此连接'
       });
     }
 
@@ -315,15 +293,13 @@ router.put('/:id', authenticateToken, async (req, res) => {
       database: parseInt(database)
     };
 
-    const updatedConfig = await redisService.updateConnection(id, connectionConfig);
-
-    const updatedConnections = userConnections.map(conn => 
-      conn.id === id ? updatedConfig : conn
-    );
-    await userService.saveUserConnections(username, updatedConnections);
+    // 更新连接信息
+    const updatedConnectionInfo = await connectionService.updateConnectionInfo(id, {
+      redis: connectionConfig
+    });
 
     // 记录操作历史
-    await operationHistory.logConnectionUpdated(id, username, updatedConfig.name);
+    await operationHistory.logConnectionUpdated(id, username, updatedConnectionInfo.redis.name);
 
     res.json({
       success: true,
@@ -373,7 +349,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 router.get('/', authenticateToken, async (req, res) => {
   try {
     const { username } = req.user;
-    const connectionsWithStatus = redisService.getUserAllConnections(username);
+    const connectionsWithStatus = await redisService.getUserAllConnections(username);
     
     res.json({
       success: true,
@@ -417,20 +393,31 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { username } = req.user;
     
-    await redisService.deleteConnection(id);
-
-    // 获取连接信息用于记录历史
-    const userConnections = userService.getUserConnections(username);
-    const connectionToDelete = userConnections.find(conn => conn.id === id);
+    // 获取连接信息并验证权限
+    const connectionInfo = await connectionService.getConnectionInfo(id);
+    if (connectionInfo.owner !== username) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限删除此连接'
+      });
+    }
     
-    // 从用户自己的连接中删除
-    const updatedConnections = userConnections.filter(conn => conn.id !== id);
-    await userService.saveUserConnections(username, updatedConnections);
+    // 关闭Redis连接（如果存在）- 先断开所有用户，然后关闭连接
+    const userCount = redisService.getConnectionUserCount(id);
+    if (userCount > 0) {
+      console.log(`删除连接 ${id} 时，发现 ${userCount} 个活跃用户，将断开所有用户`);
+      // 获取所有用户并断开
+      const users = redisService.getConnectionUsers(id);
+      for (const username of users) {
+        await redisService.disconnectUser(id, username);
+      }
+    }
+    
+    // 删除连接信息
+    await connectionService.deleteConnectionInfo(id);
     
     // 记录操作历史
-    if (connectionToDelete) {
-      await operationHistory.logConnectionDeleted(id, username, connectionToDelete.name);
-    }
+    await operationHistory.logConnectionDeleted(id, username, connectionInfo.redis.name);
     
     res.json({
       success: true,
@@ -479,19 +466,20 @@ router.post('/:id/reconnect', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { username } = req.user;
     
-    const userConnections = userService.getUserAllConnections(username);
-    const existingConnection = userConnections.find(conn => conn.id === id);
-    if (!existingConnection) {
-      return res.status(404).json({
+    // 获取连接信息并验证权限
+    const connectionInfo = await connectionService.getConnectionInfo(id);
+    if (connectionInfo.owner !== username && !connectionInfo.participants.includes(username)) {
+      return res.status(403).json({
         success: false,
-        message: '连接不存在'
+        message: '无权限访问此连接'
       });
     }
 
-    const updatedConfig = await redisService.reconnectConnection(id, existingConnection);
+    // 重新建立连接
+    const updatedConfig = await redisService.reconnectConnection(id, connectionInfo.redis);
 
     // 记录操作历史
-    await operationHistory.logConnectionReconnected(id, username, existingConnection.name);
+    await operationHistory.logConnectionReconnected(id, username, connectionInfo.redis.name);
 
     res.json({
       success: true,
@@ -615,7 +603,7 @@ router.get('/:id/info', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('获取Redis信息失败:', error.message);
+    console.error('获取Redis信息失败:', error);
     res.status(500).json({
       success: false,
       message: `获取信息失败: ${error.message}`
@@ -828,45 +816,53 @@ router.post('/:id/connect-shared', authenticateToken, async (req, res) => {
 });
 
 /**
- * @api {post} /api/connections/:id/close 关闭连接
- * @apiName CloseConnection
+ * @api {post} /api/connections/:id/disconnect 用户断开连接
+ * @apiName DisconnectUser
  * @apiGroup Connections
  * @apiVersion 1.0.0
  * 
- * @apiDescription 关闭指定的Redis连接
+ * @apiDescription 用户断开指定的Redis连接（不会关闭Redis连接，除非没有其他用户）
+ * 
+ * @apiHeader {String} Authorization Bearer JWT令牌
  * 
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/123456/close
+ *     curl -X POST http://localhost:3000/api/connections/123456/disconnect \
+ *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
- * @apiSuccess {Boolean} success=true 关闭成功
- * @apiSuccess {String} message="连接已关闭" 成功消息
- * @apiSuccess {Object} data 关闭结果
+ * @apiSuccess {Boolean} success=true 断开成功
+ * @apiSuccess {String} message="用户已断开连接" 成功消息
+ * @apiSuccess {Object} data 断开结果
+ * @apiSuccess {Boolean} data.disconnected 是否断开成功
+ * @apiSuccess {String} data.connectionId 连接ID
+ * @apiSuccess {String} data.username 用户名
  * 
  * @apiUse ConnectionError
  * 
  * @apiError {Object} 404 连接不存在
  * @apiError {String} 404.message 错误消息
- * @apiError {Object} 500 关闭失败
+ * @apiError {Object} 500 断开失败
  * @apiError {String} 500.message 错误消息
  */
-router.post('/:id/close', async (req, res) => {
+router.post('/:id/disconnect', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await redisService.closeConnection(id);
+    const { username } = req.user;
+    
+    const result = await redisService.disconnectUser(id, username);
     
     res.json({
       success: true,
-      message: '连接已关闭',
+      message: '用户已断开连接',
       data: result
     });
 
   } catch (error) {
-    console.error('关闭连接失败:', error.message);
+    console.error('用户断开连接失败:', error.message);
     res.status(500).json({
       success: false,
-      message: `关闭连接失败: ${error.message}`
+      message: `断开连接失败: ${error.message}`
     });
   }
 });
@@ -905,21 +901,31 @@ router.post('/:id/share', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const { username } = req.user;
     
-    // 获取连接信息用于记录历史
-    const userConnections = userService.getUserConnections(username);
-    const connection = userConnections.find(conn => conn.id === id);
+    // 获取连接信息并验证权限
+    const connectionInfo = await connectionService.getConnectionInfo(id);
+    if (connectionInfo.owner !== username) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限分享此连接'
+      });
+    }
     
-    const result = await userService.shareConnection(username, id);
+    // 生成分享码
+    const shareCode = Math.random().toString(36).substr(2, 8).toUpperCase();
+    
+    // 设置分享码
+    await connectionService.setShareCode(id, shareCode);
     
     // 记录操作历史
-    if (connection) {
-      await operationHistory.logConnectionShared(id, username, connection.name);
-    }
+    await operationHistory.logConnectionShared(id, username, connectionInfo.redis.name);
     
     res.json({
       success: true,
       message: '连接分享成功',
-      data: result
+      data: {
+        joinCode: shareCode,
+        connection: connectionInfo
+      }
     });
 
   } catch (error) {
@@ -975,12 +981,33 @@ router.post('/join', authenticateToken, async (req, res) => {
       });
     }
     
-    const result = await userService.joinSharedConnection(username, joinCode);
+    // 根据分享码查找连接
+    const connectionInfo = await connectionService.findConnectionByShareCode(joinCode);
+    if (!connectionInfo) {
+      return res.status(404).json({
+        success: false,
+        message: '分享码无效或已过期'
+      });
+    }
+    
+    // 检查是否已经加入过
+    if (connectionInfo.participants.includes(username)) {
+      return res.status(400).json({
+        success: false,
+        message: '已经加入过此连接'
+      });
+    }
+    
+    // 添加参与者
+    await connectionService.addParticipant(connectionInfo.id, username);
     
     res.json({
       success: true,
       message: '成功加入分享的连接',
-      data: result
+      data: {
+        connection: connectionInfo,
+        ownerUsername: connectionInfo.owner
+      }
     });
 
   } catch (error) {

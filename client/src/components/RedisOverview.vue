@@ -237,17 +237,23 @@ const formatMemory = (memoryStr) => {
 }
 
 const formatNumber = (num) => {
-  if (!num) return '0'
-  return num.toLocaleString()
+  if (num === null || num === undefined || num === '') return '0'
+  // 确保num是数字类型
+  const number = typeof num === 'string' ? parseFloat(num) : num
+  if (isNaN(number)) return '0'
+  return number.toLocaleString()
 }
 
 const formatAvgTtl = (ttl) => {
-  if (!ttl || ttl === 0) return '0'
-  if (ttl < 1000) return `${ttl}ms`
-  if (ttl < 60000) return `${Math.round(ttl / 1000)}s`
-  if (ttl < 3600000) return `${Math.round(ttl / 60000)}m`
-  if (ttl < 86400000) return `${Math.round(ttl / 3600000)}h`
-  return `${Math.round(ttl / 86400000)}d`
+  if (ttl === null || ttl === undefined || ttl === '' || ttl === 0) return '0'
+  // 确保ttl是数字类型
+  const number = typeof ttl === 'string' ? parseFloat(ttl) : ttl
+  if (isNaN(number) || number === 0) return '0'
+  if (number < 1000) return `${number}ms`
+  if (number < 60000) return `${Math.round(number / 1000)}s`
+  if (number < 3600000) return `${Math.round(number / 60000)}m`
+  if (number < 86400000) return `${Math.round(number / 3600000)}h`
+  return `${Math.round(number / 86400000)}d`
 }
 
 const refreshInfo = async () => {

@@ -1,9 +1,13 @@
 const { createClient } = require('redis');
 const { v4: uuidv4 } = require('uuid');
 const userService = require('./user');
+const connectionService = require('./connection');
 
 // 存储Redis连接实例
 const redisConnections = new Map();
+
+// 存储用户会话信息：connectionId -> Set<username>
+const userSessions = new Map();
 
 // 创建Redis连接
 const createRedisConnection = async (connectionConfig) => {
@@ -27,18 +31,59 @@ const createRedisConnection = async (connectionConfig) => {
   return redisClient;
 };
 
-// 添加连接
-const addConnection = async (connectionConfig) => {
-  const connectionId = uuidv4();
-  const config = {
-    id: connectionId,
-    ...connectionConfig
-  };
+// 添加用户会话
+const addUserSession = (connectionId, username) => {
+  if (!userSessions.has(connectionId)) {
+    userSessions.set(connectionId, new Set());
+  }
+  userSessions.get(connectionId).add(username);
+  console.log(`用户 ${username} 加入连接 ${connectionId} 的会话`);
+};
 
-  // 只保存配置，不建立连接
-  console.log(`连接配置已保存: ${config.name} (${config.host}:${config.port})`);
+// 移除用户会话
+const removeUserSession = (connectionId, username) => {
+  const sessions = userSessions.get(connectionId);
+  if (sessions) {
+    sessions.delete(username);
+    console.log(`用户 ${username} 离开连接 ${connectionId} 的会话`);
+    
+    // 如果没有用户了，真正关闭Redis连接
+    if (sessions.size === 0) {
+      console.log(`连接 ${connectionId} 没有用户了，关闭Redis连接`);
+      userSessions.delete(connectionId);
+      return closeRedisConnection(connectionId);
+    }
+  }
+  return { disconnected: true, connectionId, username };
+};
+
+// 真正关闭Redis连接
+const closeRedisConnection = async (connectionId) => {
+  const connection = redisConnections.get(connectionId);
+  if (!connection || !connection.client) {
+    throw new Error('连接不存在或未连接');
+  }
+
+  try {
+    await connection.client.quit();
+    redisConnections.delete(connectionId);
+    
+    console.log(`Redis连接已关闭: ${connectionId}`);
+    return { closed: true, connectionId };
+  } catch (error) {
+    console.error(`关闭Redis连接失败: ${connectionId}`, error.message);
+    throw new Error(`关闭连接失败: ${error.message}`);
+  }
+};
+
+// 添加连接
+const addConnection = async (connectionConfig, owner) => {
+  // 使用新的连接服务创建连接信息
+  const connectionInfo = await connectionService.createConnectionInfo(connectionConfig, owner);
   
-  return config; // 返回配置，不包含状态
+  console.log(`连接配置已保存: ${connectionInfo.redis.name} (${connectionInfo.redis.host}:${connectionInfo.redis.port})`);
+  
+  return connectionInfo; // 返回连接信息
 };
 
 // 添加临时连接（不保存到配置文件）
@@ -89,84 +134,71 @@ const establishConnection = async (connectionConfig) => {
 
 // 建立已保存的连接（登录用户使用）
 const establishSavedConnection = async (connectionId, username) => {
-  // 获取用户保存的连接配置
-  const userConnections = userService.getUserConnections(username);
-  const savedConnection = userConnections.find(conn => conn.id === connectionId);
+  // 获取连接信息
+  const connectionInfo = await connectionService.getConnectionInfo(connectionId);
   
-  if (!savedConnection) {
+  // 检查权限
+  if (connectionInfo.owner !== username && !connectionInfo.participants.includes(username)) {
     throw new Error('连接不存在或无权限访问');
   }
 
   // 检查是否已经连接
   const existingConnection = redisConnections.get(connectionId);
   if (existingConnection && existingConnection.client.isReady) {
-    console.log(`连接已存在且活跃: ${savedConnection.name}`);
-    return savedConnection;
+    console.log(`连接已存在且活跃: ${connectionInfo.redis.name}`);
+    // 添加用户会话
+    addUserSession(connectionId, username);
+    return connectionInfo;
   }
 
   try {
-    const redisClient = await createRedisConnection(savedConnection);
+    // 建立新的Redis连接
+    const redisClient = await createRedisConnection(connectionInfo.redis);
     
-    // 在内存中保存连接（包含状态）
-    const connectionWithStatus = {
-      ...savedConnection,
-      status: 'connected'
-    };
+    // 在内存中保存连接
     redisConnections.set(connectionId, {
       client: redisClient,
-      config: connectionWithStatus
+      config: connectionInfo
     });
 
-    console.log(`已保存连接建立成功: ${savedConnection.name} (${savedConnection.host}:${savedConnection.port})`);
+    // 添加用户会话
+    addUserSession(connectionId, username);
+
+    console.log(`Redis连接建立成功: ${connectionInfo.redis.name} (${connectionInfo.redis.host}:${connectionInfo.redis.port})`);
     
-    return savedConnection;
+    return connectionInfo;
   } catch (error) {
-    console.error('已保存连接建立失败:', error.message);
+    console.error('Redis连接建立失败:', error.message);
     throw error;
   }
 };
 
 // 建立分享的连接（需要权限验证）
 const establishSharedConnection = async (connectionId, username) => {
-  // 获取用户的好友连接
-  const user = userService.getUserByUsername(username);
-  if (!user || !user.friendConnections) {
+  // 获取连接信息
+  const connectionInfo = await connectionService.getConnectionInfo(connectionId);
+  
+  // 检查权限（必须是参与者）
+  if (!connectionInfo.participants.includes(username)) {
     throw new Error('无权限访问分享的连接');
-  }
-
-  const friendConnection = user.friendConnections.find(fc => fc.id === connectionId);
-  if (!friendConnection) {
-    throw new Error('分享的连接不存在或无权限访问');
-  }
-
-  // 获取分享者的连接配置
-  const ownerUser = userService.getUserByUsername(friendConnection.ownerUsername);
-  if (!ownerUser || !ownerUser.connections) {
-    throw new Error('分享的连接已失效');
-  }
-
-  const sharedConnection = ownerUser.connections.find(conn => conn.id === connectionId);
-  if (!sharedConnection) {
-    throw new Error('分享的连接已失效');
   }
 
   // 检查是否已经连接
   const existingConnection = redisConnections.get(connectionId);
   if (existingConnection && existingConnection.client.isReady) {
-    console.log(`分享连接已存在且活跃: ${sharedConnection.name}`);
+    console.log(`分享连接已存在且活跃: ${connectionInfo.redis.name}`);
     return {
-      ...sharedConnection,
-      owner: friendConnection.ownerUsername,
+      ...connectionInfo,
       isShared: true
     };
   }
 
   try {
-    const redisClient = await createRedisConnection(sharedConnection);
+    const redisClient = await createRedisConnection(connectionInfo.redis);
     
     // 在内存中保存连接（包含状态）
     const connectionWithStatus = {
-      ...sharedConnection,
+      ...connectionInfo,
       status: 'connected'
     };
     redisConnections.set(connectionId, {
@@ -174,11 +206,10 @@ const establishSharedConnection = async (connectionId, username) => {
       config: connectionWithStatus
     });
 
-    console.log(`分享连接建立成功: ${sharedConnection.name} (${sharedConnection.host}:${sharedConnection.port})`);
+    console.log(`分享连接建立成功: ${connectionInfo.redis.name} (${connectionInfo.redis.host}:${connectionInfo.redis.port})`);
     
     return {
-      ...sharedConnection,
-      owner: friendConnection.ownerUsername,
+      ...connectionInfo,
       isShared: true
     };
   } catch (error) {
@@ -259,10 +290,10 @@ const getAllConnections = () => {
 };
 
 // 获取用户的所有连接（包括未打开的）
-const getUserAllConnections = (username) => {
+const getUserAllConnections = async (username) => {
   try {
     // 获取用户的所有连接（包括自己的和分享的）
-    const allConnections = userService.getUserAllConnections(username);
+    const allConnections = await connectionService.getUserConnections(username);
     
     // 为每个连接检查实际状态
     const connectionsWithStatus = allConnections.map(userConn => {
@@ -281,7 +312,7 @@ const getUserAllConnections = (username) => {
       
       // 调试信息：只在开发环境显示
       if (process.env.NODE_ENV === 'development') {
-        console.log(`连接状态检查: ${userConn.name} (${userConn.id}) - 活跃连接: ${!!activeConnection}, 状态: ${status}`);
+        console.log(`连接状态检查: ${userConn.redis.name} (${userConn.id}) - 活跃连接: ${!!activeConnection}, 状态: ${status}`);
       }
       
       return {
@@ -398,23 +429,28 @@ const pingConnection = async (connectionId) => {
   }
 };
 
-// 关闭连接
-const closeConnection = async (connectionId) => {
-  const connection = redisConnections.get(connectionId);
-  if (!connection || !connection.client) {
-    throw new Error('连接不存在或未连接');
-  }
-
+// 用户断开连接（不关闭Redis连接，除非没有其他用户）
+const disconnectUser = async (connectionId, username) => {
   try {
-    await connection.client.quit();
-    redisConnections.delete(connectionId);
-    
-    console.log(`Redis连接已关闭: ${connectionId}`);
-    return { closed: true, connectionId };
+    const result = removeUserSession(connectionId, username);
+    console.log(`用户 ${username} 断开连接: ${connectionId}`);
+    return result;
   } catch (error) {
-    console.error(`关闭Redis连接失败: ${connectionId}`, error.message);
-    throw new Error(`关闭连接失败: ${error.message}`);
+    console.error(`用户断开连接失败: ${connectionId}`, error.message);
+    throw new Error(`断开连接失败: ${error.message}`);
   }
+};
+
+// 获取连接的用户数量
+const getConnectionUserCount = (connectionId) => {
+  const sessions = userSessions.get(connectionId);
+  return sessions ? sessions.size : 0;
+};
+
+// 获取连接的用户列表
+const getConnectionUsers = (connectionId) => {
+  const sessions = userSessions.get(connectionId);
+  return sessions ? Array.from(sessions) : [];
 };
 
 // 获取键列表
@@ -711,7 +747,8 @@ const getRedisInfo = async (connectionId) => {
     if (line && !line.startsWith('#')) {
       const [key, value] = line.split(':');
       if (key && value !== undefined) {
-        infoObj[key] = value;
+        // 确保值不为undefined，如果是undefined则设为空字符串
+        infoObj[key] = value || '';
       }
     }
   }
@@ -758,9 +795,8 @@ const getRedisInfo = async (connectionId) => {
       });
     }
   }
-  
   // 切换回原始数据库
-  await connection.client.select(connection.config.database);
+  await connection.client.select(connection.config.redis.database);
   
   return {
     redisInfo: infoObj,
@@ -784,9 +820,9 @@ const closeAllConnections = async () => {
   for (const [id, connection] of redisConnections) {
     try {
       await connection.client.quit();
-      console.log(`已关闭连接: ${connection.config.name}`);
+      console.log(`已关闭连接: ${connection.config.redis.name}`);
     } catch (error) {
-      console.error(`关闭连接失败: ${connection.config.name}`, error.message);
+      console.error(`关闭连接失败: ${connection.config.redis.name}`, error.message);
     }
   }
 };
@@ -808,7 +844,9 @@ module.exports = {
   reconnectConnection,
   testConnection,
   pingConnection,
-  closeConnection,
+  disconnectUser,
+  getConnectionUserCount,
+  getConnectionUsers,
   getKeys,
   getKeyValue,
   renameKey,

@@ -1,25 +1,11 @@
 const fs = require('fs').promises
 const path = require('path')
+const connectionService = require('./connection')
 
 // 操作历史存储
 const operationHistory = new Map()
 
-// 确保操作历史目录存在
-const ensureHistoryDir = async () => {
-  const historyDir = path.join(__dirname, '../data/operation-history')
-  try {
-    await fs.access(historyDir)
-  } catch (error) {
-    await fs.mkdir(historyDir, { recursive: true })
-    console.log('操作历史目录已创建:', historyDir)
-  }
-  return historyDir
-}
-
-// 获取操作历史文件路径
-const getHistoryFilePath = (connectionId) => {
-  return path.join(__dirname, '../data/operation-history', `${connectionId}.json`)
-}
+// 注意：操作历史现在使用连接服务来记录，每个连接有自己的历史目录
 
 // 加载连接的操作历史
 const loadConnectionHistory = async (connectionId) => {
@@ -47,23 +33,8 @@ const saveConnectionHistory = async (connectionId, history) => {
 // 记录操作历史
 const logOperation = async (connectionId, operation) => {
   try {
-    const history = await loadConnectionHistory(connectionId)
-    
-    const logEntry = {
-      id: generateId(),
-      timestamp: new Date().toISOString(),
-      ...operation
-    }
-    
-    // 添加到历史记录开头
-    history.unshift(logEntry)
-    
-    // 限制历史记录数量（最多1000条）
-    if (history.length > 1000) {
-      history.splice(1000)
-    }
-    
-    await saveConnectionHistory(connectionId, history)
+    // 使用连接服务记录操作历史
+    await connectionService.logOperation(connectionId, operation)
     
     console.log(`操作历史已记录: ${connectionId} - ${operation.type} - ${operation.operator}`)
   } catch (error) {
@@ -300,7 +271,8 @@ const logFieldSearch = async (connectionId, operator, keyName, searchTerm) => {
 // 获取连接的操作历史
 const getConnectionHistory = async (connectionId, limit = 100) => {
   try {
-    const history = await loadConnectionHistory(connectionId)
+    // 使用连接服务获取操作历史
+    const history = await connectionService.getOperationHistory(connectionId)
     return history.slice(0, limit)
   } catch (error) {
     console.error('获取操作历史失败:', error)

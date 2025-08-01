@@ -2,13 +2,19 @@ const express = require('express');
 const router = express.Router();
 const redisService = require('../services/redis');
 const userService = require('../services/user');
+const connectionService = require('../services/connection');
 const operationHistory = require('../services/operationHistory');
 const { authenticateToken } = require('../middleware/auth');
 
 // 验证用户是否有权限访问指定连接
-const validateConnectionPermission = (username, connectionId) => {
-  const userConnections = userService.getUserAllConnections(username);
-  return userConnections.some(conn => conn.id === connectionId);
+const validateConnectionPermission = async (username, connectionId) => {
+  try {
+    const userConnections = await connectionService.getUserConnections(username);
+    return userConnections.some(conn => conn.id === connectionId);
+  } catch (error) {
+    console.error('验证连接权限失败:', error);
+    return false;
+  }
 };
 
 /**
@@ -67,7 +73,7 @@ router.get('/:id/:db/keys', authenticateToken, async (req, res) => {
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, id)) {
+    if (!(await validateConnectionPermission(username, id))) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'
@@ -125,7 +131,7 @@ router.get('/:id/:db/key/*', authenticateToken, async (req, res) => {
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, id)) {
+    if (!(await validateConnectionPermission(username, id))) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'
@@ -189,7 +195,7 @@ router.put('/:id/:db/key/:oldKeyName/rename', authenticateToken, async (req, res
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, id)) {
+    if (!(await validateConnectionPermission(username, id))) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'
@@ -231,7 +237,7 @@ router.put('/:connectionId/:database/hash/:keyName/field', authenticateToken, as
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, connectionId)) {
+    if (!await validateConnectionPermission(username, connectionId)) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'
@@ -265,7 +271,7 @@ router.put('/:connectionId/:database/string/:keyName', authenticateToken, async 
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, connectionId)) {
+    if (!await validateConnectionPermission(username, connectionId)) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'
@@ -299,7 +305,7 @@ router.delete('/:connectionId/:database/hash/:keyName/field', authenticateToken,
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, connectionId)) {
+    if (!await validateConnectionPermission(username, connectionId)) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'
@@ -333,7 +339,7 @@ router.delete('/:connectionId/:database/hash/:keyName/fields', authenticateToken
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, connectionId)) {
+    if (!await validateConnectionPermission(username, connectionId)) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'
@@ -373,7 +379,7 @@ router.delete('/:id/:db/keys/group/:prefix', authenticateToken, async (req, res)
     const { username } = req.user;
     
     // 验证用户是否有权限访问这个连接
-    if (!validateConnectionPermission(username, id)) {
+    if (!await validateConnectionPermission(username, id)) {
       return res.status(403).json({
         success: false,
         message: '无权限访问此连接'

@@ -2,26 +2,32 @@
   <div class="connection-explorer">
     <!-- 当前连接标题 -->
     <div class="current-connection-header" v-if="currentConnection">
-      <h3 class="connection-title">{{ currentConnection.name }}</h3>
+      <h3 class="connection-title">{{ currentConnection.redis.name }}</h3>
       <div class="connection-status">
         <el-tag 
           :type="currentConnection.status === 'connected' ? 'success' : 'danger'"
           size="small"
+          class="status-tag"
         >
+          <el-icon v-if="currentConnection.status === 'connected'"><CircleCheck /></el-icon>
+          <el-icon v-else><CircleClose /></el-icon>
           {{ currentConnection.status === 'connected' ? '已连接' : '未连接' }}
         </el-tag>
+        <span v-if="currentConnection.status === 'connected'" class="connection-info">
+          {{ currentConnection.redis.host }}:{{ currentConnection.redis.port }}
+        </span>
       </div>
       <div class="connection-actions">
-        <el-button type="text" size="small" @click="refreshKeys">
+        <el-button type="text" size="small" @click="refreshKeys" title="刷新键列表">
           <el-icon><House /></el-icon>
         </el-button>
         <el-button type="text" size="small" @click="openConversionRules" title="转换规则管理">
           <el-icon><Setting /></el-icon>
         </el-button>
-        <el-button type="text" size="small" @click="handleRefresh">
+        <el-button type="text" size="small" @click="handleRefresh" title="刷新连接状态">
           <el-icon><Refresh /></el-icon>
         </el-button>
-        <el-button type="text" size="small" @click="goUp">
+        <el-button type="text" size="small" @click="goUp" title="返回上级">
           <el-icon><ArrowUp /></el-icon>
         </el-button>
       </div>
@@ -352,7 +358,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { House, Folder, Refresh, ArrowUp, ArrowRight, ArrowLeft, Plus, Search, Document, Delete, List, Setting, Loading } from '@element-plus/icons-vue'
+import { House, Folder, Refresh, ArrowUp, ArrowRight, ArrowLeft, Plus, Search, Document, Delete, List, Setting, Loading, CircleCheck, CircleClose } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import { operationLogger } from '../utils/operationLogger'
 
@@ -1525,6 +1531,43 @@ onUnmounted(() => {
 .db-keys-count {
   color: var(--el-text-color-secondary);
   margin-left: 8px;
+}
+
+/* 连接状态样式 */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.status-tag {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 500;
+}
+
+.connection-info {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  font-family: monospace;
+}
+
+.connection-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.connection-actions .el-button {
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.connection-actions .el-button:hover {
+  background-color: var(--el-fill-color-light);
+  transform: scale(1.05);
 }
 
 /* 键列表区域滚动条样式 */

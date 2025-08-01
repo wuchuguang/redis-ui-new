@@ -18,7 +18,7 @@
       
       <div class="toolbar-center">
         <div class="connection-tab" v-if="currentConnection">
-          <span>{{ currentConnection.name }}</span>
+          <span>{{ currentConnection.redis.name }}</span>
           <el-icon class="close-icon" @click="closeConnection">
             <Close />
           </el-icon>

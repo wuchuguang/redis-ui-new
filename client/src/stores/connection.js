@@ -466,6 +466,12 @@ export const useConnectionStore = defineStore('connection', () => {
     } catch (error) {
       console.error('获取键列表失败:', error)
       
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return null
+      }
+      
       // 检查是否是连接问题
       if (isConnectionError(error)) {
         return await handleConnectionError(connectionId, '获取键列表', () => 
@@ -490,6 +496,12 @@ export const useConnectionStore = defineStore('connection', () => {
     } catch (error) {
       console.error('加载更多键失败:', error)
       
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return null
+      }
+      
       // 检查是否是连接问题
       if (isConnectionError(error)) {
         return await handleConnectionError(connectionId, '加载更多键', () => 
@@ -502,6 +514,12 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 检查连接是否已被用户关闭
+  const isConnectionClosedByUser = (connectionId) => {
+    let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
+    return closedIds.includes(connectionId)
+  }
+
   // 获取键值
   const getKeyValue = async (connectionId, database = 0, keyName) => {
     try {
@@ -512,6 +530,12 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('获取键值失败:', error)
+      
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return null
+      }
       
       // 检查是否是连接问题
       if (isConnectionError(error)) {
@@ -538,6 +562,12 @@ export const useConnectionStore = defineStore('connection', () => {
     } catch (error) {
       console.error('重命名键失败:', error)
       
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return null
+      }
+      
       // 检查是否是连接问题
       if (isConnectionError(error)) {
         return await handleConnectionError(connectionId, '重命名键', () => 
@@ -560,6 +590,12 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('删除键组失败:', error)
+      
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return false
+      }
       
       // 检查是否是连接问题
       if (isConnectionError(error)) {
@@ -586,6 +622,12 @@ export const useConnectionStore = defineStore('connection', () => {
     } catch (error) {
       console.error('删除Hash字段失败:', error)
       
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return false
+      }
+      
       // 检查是否是连接问题
       if (isConnectionError(error)) {
         const result = await handleConnectionError(connectionId, '删除Hash字段', () => 
@@ -610,6 +652,12 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('批量删除Hash字段失败:', error)
+      
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return false
+      }
       
       // 检查是否是连接问题
       if (isConnectionError(error)) {
@@ -638,6 +686,12 @@ export const useConnectionStore = defineStore('connection', () => {
     } catch (error) {
       console.error('更新Hash字段失败:', error)
       
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return false
+      }
+      
       // 检查是否是连接问题
       if (isConnectionError(error)) {
         const result = await handleConnectionError(connectionId, '更新Hash字段', () => 
@@ -663,6 +717,12 @@ export const useConnectionStore = defineStore('connection', () => {
     } catch (error) {
       console.error('更新String值失败:', error)
       
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return false
+      }
+      
       // 检查是否是连接问题
       if (isConnectionError(error)) {
         const result = await handleConnectionError(connectionId, '更新String值', () => 
@@ -685,6 +745,12 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('获取连接信息失败:', error)
+      
+      // 检查连接是否已被用户关闭
+      if (isConnectionClosedByUser(connectionId)) {
+        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
+        return null
+      }
       
       // 检查是否是连接问题
       if (isConnectionError(error)) {
@@ -711,16 +777,27 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
-  // 关闭连接
+  // 用户断开连接（不关闭Redis连接，除非没有其他用户）
   const closeConnection = async (connectionId) => {
     try {
-      const response = await axios.post(`/api/connections/${connectionId}/close`)
+      const response = await axios.post(`/api/connections/${connectionId}/disconnect`)
       if (response.data.success) {
-        console.log('连接已关闭:', connectionId)
+        console.log('用户已断开连接:', connectionId)
+        // 记录到localStorage
+        let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
+        if (!closedIds.includes(connectionId)) {
+          closedIds.push(connectionId)
+          localStorage.setItem('closedConnectionIds', JSON.stringify(closedIds))
+        }
+        // 如果当前连接就是被关闭的，清除currentConnection
+        if (currentConnection.value && currentConnection.value.id === connectionId) {
+          currentConnection.value = null
+          localStorage.removeItem('currentConnection')
+        }
         return true
       }
     } catch (error) {
-      console.error('关闭连接失败:', error)
+      console.error('断开连接失败:', error)
       return false
     }
   }
@@ -781,55 +858,49 @@ export const useConnectionStore = defineStore('connection', () => {
     return null
   }
 
-  // 初始化连接状态 - 页面刷新后自动恢复
+  // 初始化连接时，跳过已关闭的连接
   const initializeConnections = async () => {
     try {
-      // 加载临时连接
       loadTempConnections()
-      
-      // 只有登录用户才获取后端连接
       if (userStore.isLoggedIn) {
         await fetchConnections()
       }
+      // 获取关闭ID列表
+      let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
       
-      // 尝试从localStorage恢复当前连接
+      // 恢复当前连接
       const savedCurrentConnection = localStorage.getItem('currentConnection')
       if (savedCurrentConnection) {
         try {
           const savedConn = JSON.parse(savedCurrentConnection)
           const allConnections = getAllConnections.value
-          
-          // 查找匹配的连接（通过主机、端口、数据库匹配）
-          const matchedConnection = allConnections.find(conn => 
-            conn.host === savedConn.host && 
-            conn.port === savedConn.port &&
-            conn.database === savedConn.database
+          // 跳过已关闭的连接
+          const matchedConnection = allConnections.find(conn =>
+            conn.redis.host === savedConn.host &&
+            conn.redis.port === savedConn.port &&
+            conn.redis.database === savedConn.database &&
+            !closedIds.includes(conn.id)
           )
-          
           if (matchedConnection) {
             currentConnection.value = matchedConnection
-            console.log(`从localStorage恢复当前连接配置: ${matchedConnection.name}`)
+            console.log(`从localStorage恢复当前连接配置: ${matchedConnection.redis.name}`)
             return matchedConnection
           } else {
-            console.log('保存的连接配置已不存在，清除localStorage')
+            console.log('保存的连接配置已不存在或已被关闭，清除localStorage')
             localStorage.removeItem('currentConnection')
+            currentConnection.value = null
           }
         } catch (error) {
           console.error('解析保存的连接失败:', error)
           localStorage.removeItem('currentConnection')
+          currentConnection.value = null
         }
       }
       
-      // 自动选择连接配置（不会自动建立连接）
-      const selectedConnection = autoSelectConnection()
-      
-      if (selectedConnection) {
-        console.log(`页面刷新后自动选择连接配置: ${selectedConnection.name}`)
-        // 保存当前连接到localStorage
-        localStorage.setItem('currentConnection', JSON.stringify(selectedConnection))
-      }
-      
-      return selectedConnection
+      // 不自动选择连接，让用户手动选择
+      // 这样可以避免自动连接已关闭的连接
+      console.log('页面刷新完成，等待用户手动选择连接')
+      return null
     } catch (error) {
       console.error('初始化连接配置状态失败:', error)
       return null
