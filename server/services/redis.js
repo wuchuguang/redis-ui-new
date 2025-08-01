@@ -706,6 +706,30 @@ const deleteKeyGroup = async (connectionId, database, prefix) => {
   return { deletedCount: keys.length };
 };
 
+// 删除键
+const deleteKeys = async (connectionId, database, pattern) => {
+  const connection = redisConnections.get(connectionId);
+  if (!connection || !connection.client) {
+    throw new Error('连接不存在或未连接');
+  }
+
+  // 切换到指定数据库
+  await connection.client.select(parseInt(database));
+
+  // 获取匹配的键
+  const keys = await connection.client.keys(pattern);
+  
+  if (keys.length === 0) {
+    return 0; // 没有找到匹配的键
+  }
+
+  // 删除键
+  const deletedCount = await connection.client.del(...keys);
+  
+  console.log(`删除键模式 ${pattern} 成功，删除了 ${deletedCount} 个键`);
+  return deletedCount;
+};
+
 // 获取Redis服务器信息
 const getRedisInfo = async (connectionId) => {
   const connection = redisConnections.get(connectionId);
@@ -831,6 +855,7 @@ module.exports = {
   deleteHashField,
   batchDeleteHashFields,
   deleteKeyGroup,
+  deleteKeys,
   getRedisInfo,
   restoreConnections,
   closeAllConnections

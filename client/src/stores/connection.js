@@ -599,9 +599,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除键组
   const deleteKeyGroup = async (connectionId, database = 0, prefix) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/keys`, {
+      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys`, {
         params: {
-          database,
           pattern: `${prefix}*`
         }
       })
@@ -620,9 +619,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除单个键
   const deleteKey = async (connectionId, database = 0, keyName) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/keys`, {
+      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys`, {
         params: {
-          database,
           pattern: keyName
         }
       })

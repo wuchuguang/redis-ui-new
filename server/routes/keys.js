@@ -372,7 +372,84 @@ router.delete('/:connectionId/:database/hash/:keyName/fields', authenticateToken
   }
 });
 
-// 删除键组
+/**
+ * @api {delete} /api/connections/:id/:db/keys 删除键
+ * @apiName DeleteKey
+ * @apiGroup Keys
+ * @apiVersion 1.0.0
+ * 
+ * @apiDescription 删除指定的键
+ * 
+ * @apiParam {String} id 连接ID
+ * @apiParam {Number} db 数据库编号（0-15）
+ * @apiParam {String} pattern 键模式（支持通配符）
+ * 
+ * @apiExample {curl} 请求示例:
+ *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys?pattern=user:123"
+ * 
+ * @apiSuccess {Boolean} success=true 删除成功
+ * @apiSuccess {String} message 删除结果消息
+ * 
+ * @apiUse KeyError
+ */
+router.delete('/:id/:db/keys', authenticateToken, async (req, res) => {
+  try {
+    const { id, db } = req.params;
+    const { pattern } = req.query;
+    const { username } = req.user;
+    
+    if (!pattern) {
+      return res.status(400).json({
+        success: false,
+        message: '缺少pattern参数'
+      });
+    }
+    
+    // 验证用户是否有权限访问这个连接
+    if (!(await validateConnectionPermission(username, id))) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限访问此连接'
+      });
+    }
+    
+    const result = await redisService.deleteKeys(id, db, pattern);
+    
+    res.json({
+      success: true,
+      message: `成功删除 ${result} 个键`,
+      data: { deletedCount: result }
+    });
+
+  } catch (error) {
+    console.error('删除键失败:', req.params, req.query, error.message);
+    res.status(500).json({
+      success: false,
+      message: `删除键失败: ${error.message}`
+    });
+  }
+});
+
+/**
+ * @api {delete} /api/connections/:id/:db/keys/group/:prefix 删除键组
+ * @apiName DeleteKeyGroup
+ * @apiGroup Keys
+ * @apiVersion 1.0.0
+ * 
+ * @apiDescription 删除指定前缀的键组
+ * 
+ * @apiParam {String} id 连接ID
+ * @apiParam {Number} db 数据库编号（0-15）
+ * @apiParam {String} prefix 键前缀
+ * 
+ * @apiExample {curl} 请求示例:
+ *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys/group/user:"
+ * 
+ * @apiSuccess {Boolean} success=true 删除成功
+ * @apiSuccess {String} message 删除结果消息
+ * 
+ * @apiUse KeyError
+ */
 router.delete('/:id/:db/keys/group/:prefix', authenticateToken, async (req, res) => {
   try {
     const { id, db, prefix } = req.params;
