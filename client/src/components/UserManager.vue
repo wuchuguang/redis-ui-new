@@ -2,18 +2,25 @@
   <div class="user-manager">
     <!-- 未登录状态 -->
     <div v-if="!currentUser" class="user-login">
-      <el-dropdown @command="handleCommand" trigger="click">
-        <div class="user-avatar">
-          <el-avatar :size="32" icon="UserFilled" />
-          <span class="login-text">登录</span>
-        </div>
-        <template #dropdown>
-          <el-dropdown-menu>
-            <el-dropdown-item command="login">登录</el-dropdown-item>
-            <el-dropdown-item command="register">注册</el-dropdown-item>
-          </el-dropdown-menu>
-        </template>
-      </el-dropdown>
+      <!-- 注册按钮 - 右上角 -->
+      <el-button 
+        type="primary" 
+        size="small" 
+        @click="showRegisterDialog = true"
+        class="register-btn"
+      >
+        注册
+      </el-button>
+      
+      <!-- 登录按钮 - 点击弹出登录框 -->
+      <el-button 
+        type="success" 
+        size="small" 
+        @click="handleLoginClick"
+        class="login-btn"
+      >
+        登录
+      </el-button>
     </div>
 
     <!-- 已登录状态 -->
@@ -367,14 +374,6 @@ const clearSavedLoginInfo = () => {
 // 方法
 const handleCommand = (command) => {
   switch (command) {
-    case 'login':
-      showLoginDialog.value = true
-      // 加载保存的登录信息
-      loadSavedLoginInfo()
-      break
-    case 'register':
-      showRegisterDialog.value = true
-      break
     case 'profile':
       showProfileDialog.value = true
       loadProfileData()
@@ -387,6 +386,11 @@ const handleCommand = (command) => {
       handleLogout()
       break
   }
+}
+
+const handleLoginClick = () => {
+  showLoginDialog.value = true
+  loadSavedLoginInfo()
 }
 
 const handleLogin = async () => {
@@ -574,13 +578,20 @@ const getRoleTagType = (role) => {
 .user-info {
   display: flex;
   align-items: center;
+  gap: 8px;
+}
+
+.user-login {
+  cursor: default;
+}
+
+.user-info {
   cursor: pointer;
   padding: 4px 8px;
   border-radius: 4px;
   transition: background-color 0.3s;
 }
 
-.user-login:hover,
 .user-info:hover {
   background-color: var(--el-fill-color-light);
 }
@@ -595,6 +606,12 @@ const getRoleTagType = (role) => {
 .username {
   font-size: 14px;
   color: var(--el-text-color-primary);
+}
+
+.register-btn,
+.login-btn {
+  font-weight: 500;
+  min-width: 60px;
 }
 
 .dialog-footer {
