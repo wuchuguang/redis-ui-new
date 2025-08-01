@@ -221,8 +221,16 @@ export const useConnectionStore = defineStore('connection', () => {
 
   // 建立连接
   const connectToRedis = async (connection) => {
+    // 防抖机制：如果正在连接中，直接返回
+    if (loading.value) {
+      console.log('连接操作正在进行中，忽略重复调用')
+      return false
+    }
+    
     loading.value = true
     try {
+      console.log('开始建立Redis连接:', connection.redis?.name || connection.name)
+      
       let response
       
       if (connection.isTemp) {

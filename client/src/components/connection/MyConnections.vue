@@ -180,12 +180,8 @@ const connectConnection = async (connection) => {
     connection.connecting = true
     connection.status = 'connecting'
     
-    const success = await connectionStore.connectToRedis(connection)
-    if (success) {
-      ElMessage.success(`连接建立成功: ${connection.redis.name}`)
-      operationLogger.logConnectionConnected(connection)
-      emit('connect', connection)
-    }
+    // 只通过事件通知父组件处理连接，避免重复调用
+    emit('connect', connection)
   } catch (error) {
     console.error('建立连接失败:', error)
     ElMessage.error('建立连接失败')

@@ -99,6 +99,10 @@ const emit = defineEmits(['update:modelValue', 'connection-selected', 'connectio
 const connectionStore = useConnectionStore()
 const userStore = useUserStore()
 
+// 防抖机制，防止重复调用
+let connectTimeout = null
+let isConnecting = false
+
 // 响应式数据
 const activeTab = ref('my')
 const loading = ref(false)
@@ -149,17 +153,37 @@ const refreshConnections = async () => {
 }
 
 const handleConnect = async (connection) => {
-  try {
-    const success = await connectionStore.connectToRedis(connection)
-    if (success) {
-      ElMessage.success(`连接建立成功: ${connection.redis.name}`)
-      emit('connection-selected', connection)
-      dialogVisible.value = false
-    }
-  } catch (error) {
-    console.error('建立连接失败:', error)
-    ElMessage.error('建立连接失败')
+  // 防抖机制：如果正在连接中，直接返回
+  if (isConnecting) {
+    console.log('连接操作正在进行中，忽略重复调用')
+    return
   }
+  
+  // 清除之前的定时器
+  if (connectTimeout) {
+    clearTimeout(connectTimeout)
+  }
+  
+  // 设置防抖延迟
+  connectTimeout = setTimeout(async () => {
+    try {
+      isConnecting = true
+      console.log('开始建立连接:', connection.redis.name)
+      
+      const success = await connectionStore.connectToRedis(connection)
+      if (success) {
+        ElMessage.success(`连接建立成功: ${connection.redis.name}`)
+        emit('connection-selected', connection)
+        dialogVisible.value = false
+      }
+    } catch (error) {
+      console.error('建立连接失败:', error)
+      ElMessage.error('建立连接失败')
+    } finally {
+      isConnecting = false
+      connectTimeout = null
+    }
+  }, 100) // 100ms防抖延迟
 }
 
 const handleEdit = (connection) => {

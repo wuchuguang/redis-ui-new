@@ -197,7 +197,10 @@ const handleConnectionCreated = (connection) => {
 
 const handleConnectionSelected = (connection) => {
   currentConnection.value = connection
-  refreshData()
+  // 延迟调用refreshData，避免在连接刚建立后立即检查连接状态
+  setTimeout(() => {
+    refreshData()
+  }, 500)
   // 保存当前状态到localStorage
   saveCurrentState()
   // 记录操作日志
