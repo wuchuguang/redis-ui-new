@@ -257,10 +257,17 @@ const logOperation = async (connectionId, operationData) => {
       ...operationData
     };
     
-    historyData.push(operation);
+    // 使用unshift将新操作添加到数组开头，这样最新的操作会显示在前面
+    historyData.unshift(operation);
+    
+    // 限制历史记录数量，避免文件过大
+    if (historyData.length > 5000) {
+      historyData = historyData.slice(0, 5000);
+    }
+    
     await fs.writeFile(historyPath, JSON.stringify(historyData, null, 2));
     
-    console.log(`操作已记录: ${connectionId} - ${operationData.operation}`);
+    console.log(`操作已记录: ${connectionId} - ${operationData.type || operationData.operation}`);
     return operation;
   } catch (error) {
     throw new Error(`记录操作失败: ${error.message}`);
@@ -303,7 +310,8 @@ const getOperationHistoryRange = async (connectionId, startDate, endDate) => {
       }
     }
     
-    return allHistory.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+    // 按时间倒序排列，最新的操作在前面
+    return allHistory.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   } catch (error) {
     throw new Error(`获取操作历史范围失败: ${error.message}`);
   }
