@@ -26,6 +26,21 @@ axios.interceptors.response.use(
     const originalRequest = error.config
     
     if (error.response?.status === 401 && !originalRequest._retry) {
+      // 检查是否是访问令牌缺失的情况
+      if (error.response.data?.message === '访问令牌缺失') {
+        ElMessage.error('登录已过期，请重新登录')
+        // 清除本地存储的用户信息
+        localStorage.removeItem('userToken')
+        localStorage.removeItem('userInfo')
+        sessionStorage.removeItem('userToken')
+        delete axios.defaults.headers.common['Authorization']
+        // 刷新页面让用户重新登录
+        setTimeout(() => {
+          window.location.reload()
+        }, 1500)
+        return Promise.reject(error)
+      }
+      
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
@@ -71,12 +86,35 @@ axios.interceptors.response.use(
           localStorage.removeItem('userToken')
           sessionStorage.removeItem('userToken')
           delete axios.defaults.headers.common['Authorization']
+          ElMessage.error('登录已过期，请重新登录')
           window.location.reload() // 刷新页面
           return Promise.reject(refreshError)
         } finally {
           isRefreshing = false
         }
+      } else {
+        // 没有token，直接显示错误
+        ElMessage.error('请先登录')
+        return Promise.reject(error)
       }
+    }
+    
+    // 处理其他错误
+    if (error.response) {
+      const { status, data } = error.response
+      
+      if (status === 403) {
+        ElMessage.error('权限不足，无法执行此操作')
+      } else if (status === 404) {
+        ElMessage.error('请求的资源不存在')
+      } else if (status >= 500) {
+        ElMessage.error('服务器错误，请稍后重试')
+      } else if (status !== 401) {
+        // 非401错误，显示具体错误信息
+        ElMessage.error(data.message || '请求失败')
+      }
+    } else if (error.request) {
+      ElMessage.error('网络连接失败，请检查网络设置')
     }
     
     return Promise.reject(error)
