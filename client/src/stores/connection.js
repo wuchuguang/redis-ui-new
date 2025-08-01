@@ -245,6 +245,14 @@ export const useConnectionStore = defineStore('connection', () => {
       if (response.data.success) {
         const connectedConnection = response.data.data
         
+        // 移除关闭标记
+        let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
+        if (closedIds.includes(connection.id)) {
+          closedIds = closedIds.filter(id => id !== connection.id)
+          localStorage.setItem('closedConnectionIds', JSON.stringify(closedIds))
+          console.log(`移除连接 ${connection.id} 的关闭标记`)
+        }
+        
         // 更新连接状态
         if (connection.isTemp) {
           const index = tempConnections.value.findIndex(conn => conn.id === connection.id)
@@ -783,17 +791,27 @@ export const useConnectionStore = defineStore('connection', () => {
       const response = await axios.post(`/api/connections/${connectionId}/disconnect`)
       if (response.data.success) {
         console.log('用户已断开连接:', connectionId)
+        
+        // 立即更新前端连接状态
+        const connection = connections.value.find(conn => conn.id === connectionId)
+        if (connection) {
+          connection.status = 'disconnected'
+          console.log(`更新连接 ${connectionId} 状态为 disconnected`)
+        }
+        
         // 记录到localStorage
         let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
         if (!closedIds.includes(connectionId)) {
           closedIds.push(connectionId)
           localStorage.setItem('closedConnectionIds', JSON.stringify(closedIds))
         }
+        
         // 如果当前连接就是被关闭的，清除currentConnection
         if (currentConnection.value && currentConnection.value.id === connectionId) {
           currentConnection.value = null
           localStorage.removeItem('currentConnection')
         }
+        
         return true
       }
     } catch (error) {

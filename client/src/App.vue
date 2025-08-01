@@ -173,6 +173,13 @@ const closeConnection = () => {
 
 const refreshData = async () => {
   if (currentConnection.value) {
+    // 检查连接是否已被用户关闭
+    let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
+    if (closedIds.includes(currentConnection.value.id)) {
+      console.log(`连接 ${currentConnection.value.id} 已被用户关闭，跳过刷新`)
+      return
+    }
+    
     try {
       redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
     } catch (error) {
@@ -345,8 +352,23 @@ const startAutoRefresh = () => {
   }
   
   if (autoRefresh.value && currentConnection.value) {
+    // 检查连接是否已被用户关闭
+    let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
+    if (closedIds.includes(currentConnection.value.id)) {
+      console.log(`连接 ${currentConnection.value.id} 已被用户关闭，不启动自动刷新`)
+      return
+    }
+    
     autoRefreshInterval = setInterval(async () => {
       if (currentConnection.value && currentConnection.value.status === 'connected') {
+        // 再次检查连接是否已被关闭
+        let currentClosedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
+        if (currentClosedIds.includes(currentConnection.value.id)) {
+          console.log(`连接 ${currentConnection.value.id} 已被用户关闭，停止自动刷新`)
+          stopAutoRefresh()
+          return
+        }
+        
         await refreshData()
         console.log('🔄 自动刷新数据完成')
       }
@@ -387,36 +409,11 @@ onMounted(async () => {
   // 初始化用户状态
   await userStore.initializeUser()
   
-  // 初始化连接状态 - 页面刷新后自动恢复
-  const selectedConnection = await connectionStore.initializeConnections()
-  if (selectedConnection) {
-    currentConnection.value = selectedConnection
-    await refreshData()
-    
-    // 恢复保存的状态
-    const savedState = restoreCurrentState()
-    if (savedState && savedState.currentConnectionId === selectedConnection.id) {
-      // 如果保存的状态与当前连接匹配，恢复选中的key
-      if (savedState.selectedKey) {
-        // 验证key是否仍然存在
-        try {
-          const keyValue = await connectionStore.getKeyValue(
-            selectedConnection.id, 
-            savedState.currentDatabase || 0, 
-            savedState.selectedKey.name
-          )
-          if (keyValue) {
-            selectedKey.value = savedState.selectedKey
-            console.log('✅ 成功恢复选中的key:', savedState.selectedKey.name)
-          } else {
-            console.log('❌ 保存的key已不存在:', savedState.selectedKey.name)
-          }
-        } catch (error) {
-          console.log('❌ 恢复key失败:', error.message)
-        }
-      }
-    }
-  }
+  // 初始化连接列表，但不自动连接
+  await connectionStore.initializeConnections()
+  
+  // 不自动选择连接，让用户手动选择
+  console.log('页面初始化完成，等待用户手动选择连接')
   
   // 启动自动刷新
   if (autoRefresh.value) {
@@ -428,15 +425,15 @@ onMounted(async () => {
     await connectionStore.refreshConnectionStatus()
   }, 30000)
   
-  // 定期ping当前连接（每20秒）
+  // 定期ping当前连接（每20秒）- 只有当用户选择了连接时才ping
   const pingInterval = setInterval(async () => {
     if (currentConnection.value && currentConnection.value.status === 'connected') {
       try {
         const result = await connectionStore.pingConnection(currentConnection.value.id)
         if (!result) {
           console.log('⚠️ Ping失败，连接可能已断开')
-          // 尝试重新连接
-          await connectionStore.reconnect(currentConnection.value.id)
+          // 不自动重连，让用户手动处理
+          console.log('连接已断开，请用户手动重新连接')
         } else {
           console.log('✅ Ping成功，连接正常')
         }
