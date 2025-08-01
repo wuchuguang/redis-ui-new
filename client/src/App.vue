@@ -418,6 +418,9 @@ onMounted(async () => {
   // 不自动选择连接，让用户手动选择
   console.log('页面初始化完成，等待用户手动选择连接')
   
+  // 启动防滚动抖动
+  preventScrollBounce()
+  
   // 启动自动刷新
   if (autoRefresh.value) {
     startAutoRefresh()
@@ -446,27 +449,58 @@ onMounted(async () => {
     }
   }, 20000)
   
-  // 组件卸载时清理定时器和连接
-  onUnmounted(async () => {
-    clearInterval(statusInterval)
-    clearInterval(pingInterval)
-    stopAutoRefresh()
-    
-    // 关闭所有打开的连接
-    if (connectionStore.connections.length > 0) {
-      console.log('页面卸载，关闭所有连接...')
-      for (const connection of connectionStore.connections) {
-        if (connection.status === 'connected') {
-          try {
-            await connectionStore.closeConnection(connection.id)
-          } catch (error) {
-            console.error('关闭连接失败:', connection.id, error)
-          }
-        }
-      }
+  // 组件卸载时清理
+  onUnmounted(() => {
+    if (autoRefreshInterval) {
+      clearInterval(autoRefreshInterval)
+    }
+    if (pingInterval) {
+      clearInterval(pingInterval)
+    }
+    if (statusInterval) {
+      clearInterval(statusInterval)
     }
   })
 })
+
+// 防止滚动抖动的处理
+const preventScrollBounce = () => {
+  // 防止页面整体滚动抖动
+  document.addEventListener('wheel', (e) => {
+    const target = e.target
+    const scrollableElement = target.closest('.overflow-y-auto, [style*="overflow-y: auto"]')
+    
+    if (scrollableElement) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollableElement
+      
+      // 如果滚动到顶部，阻止向上滚动
+      if (scrollTop <= 0 && e.deltaY < 0) {
+        e.preventDefault()
+      }
+      
+      // 如果滚动到底部，阻止向下滚动
+      if (scrollTop + clientHeight >= scrollHeight && e.deltaY > 0) {
+        e.preventDefault()
+      }
+    }
+  }, { passive: false })
+  
+  // 防止触摸设备的滚动抖动
+  document.addEventListener('touchmove', (e) => {
+    const target = e.target
+    const scrollableElement = target.closest('.overflow-y-auto, [style*="overflow-y: auto"]')
+    
+    if (scrollableElement) {
+      const { scrollTop, scrollHeight, clientHeight } = scrollableElement
+      
+      // 如果滚动到顶部或底部，阻止继续滚动
+      if ((scrollTop <= 0 && e.touches[0].clientY > e.touches[0].clientY) ||
+          (scrollTop + clientHeight >= scrollHeight && e.touches[0].clientY < e.touches[0].clientY)) {
+        e.preventDefault()
+      }
+    }
+  }, { passive: false })
+}
 </script>
 
 <style>
@@ -550,6 +584,82 @@ onMounted(async () => {
 * {
   scrollbar-width: thin;
   scrollbar-color: #606266 transparent;
+}
+
+/* 防止滚动抖动 */
+html, body {
+  /* 防止页面整体滚动抖动 */
+  overscroll-behavior: none;
+  /* 确保滚动行为平滑 */
+  scroll-behavior: smooth;
+  /* 防止页面整体滚动 */
+  overflow-x: hidden;
+}
+
+/* 防止容器滚动抖动 */
+.app-container,
+.main-content,
+.left-sidebar,
+.right-content,
+.keys-tree,
+.key-content,
+.el-table__body-wrapper,
+.el-dialog__body {
+  /* 防止过度滚动 */
+  overscroll-behavior: contain;
+  /* 确保滚动行为平滑 */
+  scroll-behavior: smooth;
+}
+
+/* 防止滚动条到达底部时的抖动 */
+.overflow-y-auto,
+[style*="overflow-y: auto"] {
+  overscroll-behavior-y: contain;
+}
+
+/* 防止水平滚动抖动 */
+.overflow-x-auto,
+[style*="overflow-x: auto"] {
+  overscroll-behavior-x: contain;
+}
+
+/* 针对特定组件的滚动优化 */
+.keys-tree {
+  /* 防止键列表滚动抖动 */
+  overscroll-behavior: contain;
+  /* 确保滚动位置稳定 */
+  scroll-behavior: smooth;
+}
+
+.key-content {
+  /* 防止键内容区域滚动抖动 */
+  overscroll-behavior: contain;
+  /* 确保滚动位置稳定 */
+  scroll-behavior: smooth;
+}
+
+/* 对话框内容滚动优化 */
+.el-dialog__body {
+  /* 防止对话框内容滚动抖动 */
+  overscroll-behavior: contain;
+  /* 确保滚动位置稳定 */
+  scroll-behavior: smooth;
+}
+
+/* 搜索历史列表滚动优化 */
+.search-history-list {
+  /* 防止搜索历史滚动抖动 */
+  overscroll-behavior: contain;
+  /* 确保滚动位置稳定 */
+  scroll-behavior: smooth;
+}
+
+/* 连接列表滚动优化 */
+.connection-list {
+  /* 防止连接列表滚动抖动 */
+  overscroll-behavior: contain;
+  /* 确保滚动位置稳定 */
+  scroll-behavior: smooth;
 }
 
 /* Element Plus 组件深色主题覆盖 */
