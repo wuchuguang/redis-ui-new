@@ -115,6 +115,16 @@
           新增Key
         </el-button>
         <el-button 
+          type="danger" 
+          size="small" 
+          @click="showBatchDeleteDialog = true"
+          :disabled="!connection || getTotalKeysCount() === 0"
+          class="batch-delete-btn"
+          title="批量删除"
+        >
+          <el-icon><Delete /></el-icon>
+        </el-button>
+        <el-button 
           type="primary" 
           size="small" 
           @click="showConfigDialog = true"
@@ -286,6 +296,75 @@
       </template>
     </el-dialog>
 
+    <!-- 批量删除对话框 -->
+    <el-dialog
+      v-model="showBatchDeleteDialog"
+      title="批量删除键"
+      width="600px"
+      :close-on-click-modal="false"
+    >
+      <div class="batch-delete-content">
+        <div class="batch-delete-header">
+          <el-alert
+            title="⚠️ 危险操作"
+            description="批量删除操作不可恢复，请谨慎操作！"
+            type="warning"
+            :closable="false"
+            show-icon
+          />
+        </div>
+        
+        <div class="batch-delete-options">
+          <h4>删除选项：</h4>
+          <el-radio-group v-model="batchDeleteOption" class="batch-delete-radio-group">
+            <el-radio label="all">删除所有可见的键 ({{ getTotalKeysCount() }}个)</el-radio>
+            <el-radio label="search">仅删除搜索结果中的键 ({{ getTotalKeysCount() }}个)</el-radio>
+            <el-radio label="custom">自定义删除模式</el-radio>
+          </el-radio-group>
+          
+          <div v-if="batchDeleteOption === 'custom'" class="custom-pattern-section">
+            <el-input
+              v-model="customDeletePattern"
+              placeholder="输入删除模式，例如: user*, temp:*"
+              class="custom-pattern-input"
+            >
+              <template #prepend>删除模式</template>
+            </el-input>
+            <div class="pattern-help">
+              <small>支持通配符：* 匹配任意字符，? 匹配单个字符</small>
+            </div>
+          </div>
+        </div>
+        
+        <div class="batch-delete-preview">
+          <h4>预览将被删除的键：</h4>
+          <div class="preview-keys">
+            <div v-for="key in previewKeys" :key="key" class="preview-key-item">
+              <el-icon><Document /></el-icon>
+              <span>{{ key }}</span>
+            </div>
+            <div v-if="previewKeys.length === 0" class="no-preview">
+              暂无匹配的键
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showBatchDeleteDialog = false">取消</el-button>
+          <el-button 
+            type="danger" 
+            @click="executeBatchDelete" 
+            :loading="batchDeleting"
+            :disabled="previewKeys.length === 0"
+          >
+            确认删除 ({{ previewKeys.length }}个键)
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
     <!-- 添加键对话框 -->
     <el-dialog
       v-model="showAddKeyDialog"
@@ -386,6 +465,7 @@ const selectedDatabase = ref(0)
 const searchTerm = ref('')
 const showAddKeyDialog = ref(false)
 const showConfigDialog = ref(false)
+const showBatchDeleteDialog = ref(false)
 const expandedGroups = ref([])
 const selectedKey = ref(null)
 
@@ -395,6 +475,11 @@ const currentListMode = ref(false)
 const currentListPrefix = ref('')
 const loadingMoreKeys = ref({}) // 记录每个组的加载状态
 const loadedKeyCounts = ref({}) // 记录每个组已加载的键数
+
+// 批量删除相关
+const batchDeleteOption = ref('all')
+const customDeletePattern = ref('')
+const batchDeleting = ref(false)
 
 // 搜索历史相关
 const searchHistory = ref([]) // 搜索历史记录
@@ -1074,6 +1159,120 @@ const getTotalKeysCount = () => {
     total += group.keys.length;
   }
   return total;
+}
+
+// 预览将被删除的键
+const previewKeys = computed(() => {
+  if (batchDeleteOption.value === 'all') {
+    return getAllVisibleKeys()
+  } else if (batchDeleteOption.value === 'search') {
+    return getAllVisibleKeys()
+  } else if (batchDeleteOption.value === 'custom') {
+    return getKeysByPattern(customDeletePattern.value)
+  }
+  return []
+})
+
+// 获取所有可见的键
+const getAllVisibleKeys = () => {
+  const keys = []
+  for (const group of keysData.value) {
+    if (expandedGroups.value.includes(group.prefix) || group.count === 1) {
+      keys.push(...group.keys.map(k => k.name))
+    }
+  }
+  return keys
+}
+
+// 根据模式获取键
+const getKeysByPattern = (pattern) => {
+  if (!pattern || !pattern.trim()) return []
+  
+  const keys = []
+  const regexPattern = pattern
+    .replace(/\*/g, '.*')
+    .replace(/\?/g, '.')
+  
+  try {
+    const regex = new RegExp(regexPattern)
+    for (const group of keysData.value) {
+      for (const key of group.keys) {
+        if (regex.test(key.name)) {
+          keys.push(key.name)
+        }
+      }
+    }
+  } catch (error) {
+    console.error('正则表达式错误:', error)
+  }
+  
+  return keys
+}
+
+// 执行批量删除
+const executeBatchDelete = async () => {
+  if (previewKeys.value.length === 0) {
+    ElMessage.warning('没有可删除的键')
+    return
+  }
+  
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除 ${previewKeys.value.length} 个键吗？此操作不可恢复！`,
+      '确认批量删除',
+      {
+        confirmButtonText: '确定删除',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }
+    )
+    
+    batchDeleting.value = true
+    
+    // 根据删除选项执行不同的删除策略
+    if (batchDeleteOption.value === 'custom' && customDeletePattern.value.trim()) {
+      // 自定义模式删除
+      await deleteKeysByPattern(customDeletePattern.value.trim())
+    } else {
+      // 删除预览中的所有键
+      await deleteKeysByName(previewKeys.value)
+    }
+    
+    ElMessage.success(`成功删除 ${previewKeys.value.length} 个键`)
+    showBatchDeleteDialog.value = false
+    
+    // 刷新键列表
+    await refreshKeys(true)
+    
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('批量删除失败:', error)
+      ElMessage.error('批量删除失败')
+    }
+  } finally {
+    batchDeleting.value = false
+  }
+}
+
+// 根据名称删除键
+const deleteKeysByName = async (keyNames) => {
+  if (!props.connection) return
+  
+  for (const keyName of keyNames) {
+    try {
+      await connectionStore.deleteKey(props.connection.id, selectedDatabase.value, keyName)
+    } catch (error) {
+      console.error(`删除键 ${keyName} 失败:`, error)
+    }
+  }
+}
+
+// 根据模式删除键
+const deleteKeysByPattern = async (pattern) => {
+  if (!props.connection) return
+  
+  const keysToDelete = getKeysByPattern(pattern)
+  await deleteKeysByName(keysToDelete)
 }
 </script>
 
@@ -1784,5 +1983,97 @@ const getTotalKeysCount = () => {
 
 .search-history-list::-webkit-scrollbar-thumb:hover {
   background: #909399;
+}
+
+.batch-delete-btn {
+  margin-right: 8px;
+}
+
+/* 批量删除对话框样式 */
+.batch-delete-content {
+  padding: 16px 0;
+}
+
+.batch-delete-header {
+  margin-bottom: 20px;
+}
+
+.batch-delete-options {
+  margin-bottom: 20px;
+}
+
+.batch-delete-options h4 {
+  margin: 0 0 12px 0;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.batch-delete-radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.custom-pattern-section {
+  margin-top: 16px;
+  padding: 16px;
+  background-color: var(--el-fill-color-light);
+  border-radius: 4px;
+}
+
+.custom-pattern-input {
+  margin-bottom: 8px;
+}
+
+.pattern-help {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+}
+
+.batch-delete-preview {
+  margin-top: 20px;
+}
+
+.batch-delete-preview h4 {
+  margin: 0 0 12px 0;
+  color: var(--el-text-color-primary);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.preview-keys {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid var(--el-border-color);
+  border-radius: 4px;
+  padding: 8px;
+  background-color: var(--el-fill-color-light);
+}
+
+.preview-key-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 2px;
+  font-size: 13px;
+  color: var(--el-text-color-primary);
+}
+
+.preview-key-item:hover {
+  background-color: var(--el-fill-color);
+}
+
+.preview-key-item .el-icon {
+  color: var(--el-color-primary);
+  font-size: 14px;
+}
+
+.no-preview {
+  text-align: center;
+  color: var(--el-text-color-secondary);
+  font-size: 13px;
+  padding: 20px;
 }
 </style> 

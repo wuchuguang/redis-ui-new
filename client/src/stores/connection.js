@@ -599,29 +599,39 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除键组
   const deleteKeyGroup = async (connectionId, database = 0, prefix) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys/group/${prefix}`)
+      const response = await axios.delete(`/api/connections/${connectionId}/keys`, {
+        params: {
+          database,
+          pattern: `${prefix}*`
+        }
+      })
+      
       if (response.data.success) {
-        ElMessage.success(response.data.message)
+        ElMessage.success(`键组 "${prefix}" 删除成功`)
         return true
       }
     } catch (error) {
       console.error('删除键组失败:', error)
-      
-      // 检查连接是否已被用户关闭
-      if (isConnectionClosedByUser(connectionId)) {
-        console.log(`连接 ${connectionId} 已被用户关闭，不进行自动重连`)
-        return false
-      }
-      
-      // 检查是否是连接问题
-      if (isConnectionError(error)) {
-        const result = await handleConnectionError(connectionId, '删除键组', () => 
-          deleteKeyGroup(connectionId, database, prefix)
-        )
-        return result !== null
-      }
-      
       ElMessage.error(error.response?.data?.message || '删除键组失败')
+      return false
+    }
+  }
+
+  // 删除单个键
+  const deleteKey = async (connectionId, database = 0, keyName) => {
+    try {
+      const response = await axios.delete(`/api/connections/${connectionId}/keys`, {
+        params: {
+          database,
+          pattern: keyName
+        }
+      })
+      
+      if (response.data.success) {
+        return true
+      }
+    } catch (error) {
+      console.error(`删除键 ${keyName} 失败:`, error)
       return false
     }
   }
@@ -959,6 +969,7 @@ export const useConnectionStore = defineStore('connection', () => {
     getKeyValue,
     renameKey,
     deleteKeyGroup,
+    deleteKey,
     deleteHashField,
     batchDeleteHashFields,
     updateHashField,
