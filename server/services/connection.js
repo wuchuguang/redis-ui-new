@@ -207,6 +207,30 @@ const findConnectionByShareCode = async (shareCode) => {
   }
 };
 
+// 检查用户是否已有相同的Redis连接
+const checkDuplicateConnection = async (username, connectionData, options = {}) => {
+  try {
+    const userConnections = await getUserConnections(username);
+    
+    // 默认检查选项：主机、端口、数据库
+    const checkDatabase = options.checkDatabase !== false; // 默认检查数据库
+    
+    // 检查是否存在相同的Redis服务器连接
+    const duplicateConnection = userConnections.find(conn => {
+      const hostMatch = conn.redis.host === connectionData.host;
+      const portMatch = conn.redis.port === connectionData.port;
+      const databaseMatch = checkDatabase ? 
+        (conn.redis.database === (connectionData.database || 0)) : true;
+      
+      return hostMatch && portMatch && databaseMatch;
+    });
+    
+    return duplicateConnection || null;
+  } catch (error) {
+    throw new Error(`检查重复连接失败: ${error.message}`);
+  }
+};
+
 // 获取用户的所有连接
 const getUserConnections = async (username) => {
   try {
@@ -326,6 +350,7 @@ module.exports = {
   removeParticipant,
   setShareCode,
   findConnectionByShareCode,
+  checkDuplicateConnection,
   getUserConnections,
   logOperation,
   getOperationHistory,

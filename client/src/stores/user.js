@@ -103,18 +103,16 @@ axios.interceptors.response.use(
     if (error.response) {
       const { status, data } = error.response
       
+      // 只在特定情况下显示错误消息，避免与业务代码重复
       if (status === 403) {
         ElMessage.error('权限不足，无法执行此操作')
       } else if (status === 404) {
         ElMessage.error('请求的资源不存在')
       } else if (status >= 500) {
         ElMessage.error('服务器错误，请稍后重试')
-      } else if (status !== 401) {
-        // 非401错误，显示具体错误信息
-        ElMessage.error(data.message || '请求失败')
       }
-    } else if (error.request) {
-      ElMessage.error('网络连接失败，请检查网络设置')
+      // 移除对400错误的处理，让业务代码自己处理
+      // 移除对网络错误的处理，让业务代码自己处理
     }
     
     return Promise.reject(error)

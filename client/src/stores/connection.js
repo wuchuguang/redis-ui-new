@@ -96,18 +96,44 @@ export const useConnectionStore = defineStore('connection', () => {
           database: tempConn.database
         }
         
-        const response = await axios.post('/api/connections', connectionData)
-        if (response.data.success) {
-          return response.data.data
+        try {
+          const response = await axios.post('/api/connections', connectionData)
+          if (response.data.success) {
+            return response.data.data
+          }
+          return null
+        } catch (error) {
+          // 处理重复连接错误
+          if (error.response?.status === 400 && 
+              (error.response?.data?.message?.includes('已存在相同的Redis连接') || 
+               error.response?.data?.message?.includes('已存在相同的Redis服务器连接'))) {
+            const existingConnection = error.response.data.data?.existingConnection
+            if (existingConnection) {
+              console.log(`临时连接 ${tempConn.name} 与现有连接 ${existingConnection.name} 重复，跳过合并`)
+              // 返回现有连接信息，以便后续处理
+              return {
+                ...existingConnection,
+                isMerged: false, // 标记为未合并（因为已存在）
+                originalTempConnection: tempConn
+              }
+            }
+          }
+          console.error(`合并临时连接 ${tempConn.name} 失败:`, error.response?.data?.message || error.message)
+          return null
         }
-        return null
       })
       
       const mergedConnections = await Promise.all(mergePromises)
       const successfulMerges = mergedConnections.filter(conn => conn !== null)
+      const duplicateConnections = mergedConnections.filter(conn => conn && conn.isMerged === false)
       
       // 将成功合并的连接配置添加到正式连接配置列表，避免重复
       for (const mergedConn of successfulMerges) {
+        if (mergedConn.isMerged === false) {
+          // 这是重复连接，不需要添加到列表中
+          continue
+        }
+        
         const existingIndex = connections.value.findIndex(conn => 
           conn.host === mergedConn.host && 
           conn.port === mergedConn.port &&
@@ -164,7 +190,15 @@ export const useConnectionStore = defineStore('connection', () => {
         }))
       }, 1000)
       
-      ElMessage.success(`成功合并 ${successfulMerges.length} 个临时连接`)
+      const actualMergedCount = successfulMerges.filter(conn => conn.isMerged !== false).length
+      const skippedCount = duplicateConnections.length
+      
+      if (skippedCount > 0) {
+        ElMessage.success(`成功合并 ${actualMergedCount} 个临时连接，跳过 ${skippedCount} 个重复连接`)
+      } else {
+        ElMessage.success(`成功合并 ${actualMergedCount} 个临时连接`)
+      }
+      
       return successfulMerges
     } catch (error) {
       console.error('合并临时连接失败:', error)
@@ -184,42 +218,147 @@ export const useConnectionStore = defineStore('connection', () => {
 
   // 创建新连接
   const createConnection = async (connectionData) => {
-    loading.value = true
-    try {
-      if (userStore.isLoggedIn) {
-        // 登录用户：保存配置到后端
-        const response = await axios.post('/api/connections', connectionData)
-        if (response.data.success) {
-          const newConnection = response.data.data
-          connections.value.push(newConnection)
-          
-          ElMessage.success('连接配置保存成功')
-          return newConnection
-        }
-      } else {
-        // 未登录用户：保存配置到前端localStorage
-        const tempConnection = {
-          ...connectionData,
-          id: Date.now().toString(), // 简单ID生成
-          isTemp: true
-        }
-        
-        tempConnections.value.push(tempConnection)
-        saveTempConnections()
-        
-        ElMessage.success('临时连接配置保存成功')
-        return tempConnection
-      }
-    } catch (error) {
-      console.error('创建连接配置失败:', error)
-      ElMessage.error(error.response?.data?.message || '创建连接配置失败')
+    // 防止重复调用
+    if (loading.value) {
+      console.log('连接创建操作正在进行中，忽略重复调用')
       return false
-    } finally {
+    }
+    
+    loading.value = true
+    
+    try {
+      // 验证连接数据
+      if (!connectionData || !connectionData.name || !connectionData.host || !connectionData.port) {
+        ElMessage.error('连接配置信息不完整')
+        return false
+      }
+      
+      // 根据用户登录状态选择不同的处理逻辑
+      if (userStore.isLoggedIn) {
+        return await createLoggedInUserConnection(connectionData)
+      } else {
+        return await createTempConnection(connectionData)
+      }
+      
+          } catch (error) {
+        console.error('创建连接配置失败:', error)
+        handleCreateConnectionError(error)
+        return false
+      } finally {
       loading.value = false
     }
   }
 
-  // 建立连接
+  // 登录用户创建连接
+  const createLoggedInUserConnection = async (connectionData) => {
+    try {
+      const response = await axios.post('/api/connections', connectionData)
+      
+      if (response.data.success) {
+        const newConnection = response.data.data
+        connections.value.push(newConnection)
+        
+        ElMessage.success('连接配置保存成功')
+        return newConnection
+      } else {
+        ElMessage.error(response.data.message || '创建连接失败')
+        return false
+      }
+    } catch (error) {
+      throw error // 重新抛出错误，由上层处理
+    }
+  }
+
+  // 未登录用户创建临时连接
+  const createTempConnection = async (connectionData) => {
+    // 检查是否已存在相同的临时连接
+    const existingTempConnection = tempConnections.value.find(conn => 
+      conn.host === connectionData.host &&
+      conn.port === connectionData.port &&
+      conn.database === (connectionData.database || 0)
+    )
+    
+    if (existingTempConnection) {
+      ElMessage.error(`已存在相同的临时连接: ${existingTempConnection.name}`)
+      return false
+    }
+    
+    // 创建临时连接对象
+    const tempConnection = {
+      ...connectionData,
+      id: `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // 更安全的ID生成
+      isTemp: true,
+      status: 'disconnected',
+      createdAt: new Date().toISOString()
+    }
+    
+    // 添加到临时连接列表
+    tempConnections.value.push(tempConnection)
+    saveTempConnections()
+    
+    ElMessage.success('临时连接配置保存成功')
+          return tempConnection
+    }
+
+  // 处理创建连接错误
+  const handleCreateConnectionError = (error) => {
+    // 处理重复连接错误
+    if (error.response?.status === 400) {
+      const errorMessage = error.response.data.message
+      
+      if (errorMessage?.includes('已存在相同的Redis连接') || 
+          errorMessage?.includes('已存在相同的Redis服务器连接')) {
+        
+        const existingConnection = error.response.data.data?.existingConnection
+        if (existingConnection) {
+          ElMessage.error(`已存在相同的连接: ${existingConnection.name}`)
+        } else {
+          ElMessage.error(errorMessage)
+        }
+        return
+      }
+      
+      // 其他400错误
+      ElMessage.error(errorMessage || '连接配置无效')
+      return
+    }
+    
+    // 处理网络错误
+    if (error.code === 'ECONNREFUSED' || error.code === 'ENOTFOUND') {
+      ElMessage.error('无法连接到服务器，请检查网络连接')
+      return
+    }
+    
+    // 处理超时错误
+    if (error.code === 'ECONNABORTED') {
+      ElMessage.error('请求超时，请稍后重试')
+      return
+    }
+    
+    // 处理服务器错误
+    if (error.response?.status >= 500) {
+      ElMessage.error('服务器内部错误，请稍后重试')
+      return
+    }
+    
+    // 处理认证错误
+    if (error.response?.status === 401) {
+      ElMessage.error('用户认证失败，请重新登录')
+      // 可以在这里触发重新登录逻辑
+      return
+    }
+    
+    // 处理权限错误
+    if (error.response?.status === 403) {
+      ElMessage.error('权限不足，无法创建连接')
+      return
+    }
+    
+    // 默认错误处理
+    ElMessage.error(error.response?.data?.message || '创建连接配置失败')
+  }
+  
+    // 建立连接
   const connectToRedis = async (connection) => {
     // 防抖机制：如果正在连接中，直接返回
     if (loading.value) {

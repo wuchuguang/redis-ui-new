@@ -80,7 +80,7 @@ import { operationLogger } from '../utils/operationLogger'
 import MyConnections from './connection/MyConnections.vue'
 import ParticipatedConnections from './connection/ParticipatedConnections.vue'
 import SharedConnections from './connection/SharedConnections.vue'
-import NewConnectionDialog from './connection/NewConnectionDialog.vue'
+import NewConnectionDialog from './NewConnectionDialog.vue'
 import EditConnectionDialog from './connection/EditConnectionDialog.vue'
 import ShareConnectionDialog from './connection/ShareConnectionDialog.vue'
 import PermissionManagerDialog from './connection/PermissionManagerDialog.vue'
@@ -229,7 +229,7 @@ const handleRevokeAccess = async (connection, username) => {
 }
 
 const handleConnectionCreated = async (connection) => {
-  ElMessage.success('连接创建成功')
+  // 连接创建成功消息已在 createConnection 方法中显示，这里不需要重复显示
   await refreshConnections()
 }
 

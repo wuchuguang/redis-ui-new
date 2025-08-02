@@ -28,7 +28,6 @@
               <el-input 
                 v-model="form.host" 
                 placeholder="localhost"
-                @keyup.enter="handleCreate"
               />
             </el-form-item>
             
@@ -39,7 +38,6 @@
                 :max="65535"
                 placeholder="6379"
                 style="width: 100%"
-                @keyup.enter="handleCreate"
               />
             </el-form-item>
             
@@ -49,7 +47,6 @@
                 type="password"
                 placeholder="可选，留空表示无密码"
                 show-password
-                @keyup.enter="handleCreate"
               />
             </el-form-item>
             
@@ -60,7 +57,6 @@
                 :max="15"
                 placeholder="0"
                 style="width: 100%"
-                @keyup.enter="handleCreate"
               />
             </el-form-item>
           </el-form>
@@ -351,7 +347,11 @@ const testConnection = async () => {
 }
 
 const handleCreate = async () => {
-  creating.value = true
+  // 防止重复调用
+  if (creating.value) {
+    return
+  }
+  
   try {
     let connectionData
     
@@ -410,9 +410,12 @@ const handleCreate = async () => {
       connectionData = { ...form }
     }
     
+    // 在验证通过后设置loading状态
+    creating.value = true
+    
     const newConnection = await connectionStore.createConnection(connectionData)
     if (newConnection) {
-      ElMessage.success('连接配置创建成功')
+      // createConnection 方法已经显示了成功消息，这里不需要重复显示
       emit('connection-created', newConnection)
       handleClose()
     }

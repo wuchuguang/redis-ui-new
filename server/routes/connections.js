@@ -120,6 +120,30 @@ router.post('/', authenticateToken, async (req, res) => {
       database: parseInt(database)
     };
 
+    // 检查是否已存在相同的Redis连接
+    const duplicateConnection = await connectionService.checkDuplicateConnection(username, connectionConfig, {
+      checkDatabase: true // 检查数据库，允许同一服务器的不同数据库
+    });
+    if (duplicateConnection) {
+      const errorMessage = duplicateConnection.redis.database === connectionConfig.database ?
+        `已存在相同的Redis连接: ${duplicateConnection.redis.name}` :
+        `已存在相同的Redis服务器连接: ${duplicateConnection.redis.name} (数据库 ${duplicateConnection.redis.database})`;
+      
+      return res.status(400).json({
+        success: false,
+        message: errorMessage,
+        data: {
+          existingConnection: {
+            id: duplicateConnection.id,
+            name: duplicateConnection.redis.name,
+            host: duplicateConnection.redis.host,
+            port: duplicateConnection.redis.port,
+            database: duplicateConnection.redis.database
+          }
+        }
+      });
+    }
+
     // 使用新的连接服务创建连接信息
     const connectionInfo = await redisService.addConnection(connectionConfig, username);
 

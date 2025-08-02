@@ -401,13 +401,62 @@
             
             <!-- String类型编辑 -->
             <el-form-item v-if="editForm.type === 'string'" label="值">
-              <el-input
-                v-model="editForm.value"
-                type="textarea"
-                :rows="8"
-                placeholder="请输入字符串值"
-                @keyup.enter="handleEditSave"
-              />
+              <div class="string-edit-container">
+                <div class="edit-toolbar">
+                  <el-button 
+                    type="text" 
+                    size="small"
+                    @click="formatMainJson"
+                    :disabled="!isValidMainJson"
+                    title="格式化JSON"
+                  >
+                    <el-icon><Setting /></el-icon>
+                    格式化JSON
+                  </el-button>
+                  <el-button 
+                    type="text" 
+                    size="small"
+                    @click="validateMainJson"
+                    :disabled="!editForm.value"
+                    title="验证JSON"
+                  >
+                    <el-icon><Check /></el-icon>
+                    验证JSON
+                  </el-button>
+                                  <el-button 
+                  type="text" 
+                  size="small"
+                  @click="minifyMainJson"
+                  :disabled="!isValidMainJson"
+                  title="压缩JSON"
+                >
+                  <el-icon><DocumentCopy /></el-icon>
+                  压缩JSON
+                </el-button>
+                  <el-button 
+                    type="text" 
+                    size="small"
+                    @click="clearMainValue"
+                    title="清空内容"
+                  >
+                    <el-icon><Delete /></el-icon>
+                    清空
+                  </el-button>
+                </div>
+                <el-input
+                  v-model="editForm.value"
+                  type="textarea"
+                  :rows="10"
+                  placeholder="请输入字符串值，支持JSON格式"
+                  @keyup.enter="handleEditSave"
+                  class="string-edit-input"
+                />
+                
+                <div v-if="isValidMainJson" class="json-info">
+                  <el-icon><SuccessFilled /></el-icon>
+                  <span>有效的JSON格式</span>
+                </div>
+              </div>
             </el-form-item>
 
             <!-- Hash类型编辑 -->
@@ -604,7 +653,7 @@
     <el-dialog
       v-model="showEditHashFieldDialog"
       title="编辑Hash字段"
-      width="500px"
+      width="800px"
       :close-on-click-modal="false"
     >
       <el-form
@@ -622,13 +671,62 @@
           />
         </el-form-item>
         <el-form-item label="字段值" prop="value">
-          <el-input 
-            v-model="editHashFieldForm.value" 
-            type="textarea"
-            :rows="4"
-            placeholder="请输入字段值"
-            @keyup.enter="saveHashField"
-          />
+          <div class="string-edit-container">
+            <div class="edit-toolbar">
+              <el-button 
+                type="text" 
+                size="small"
+                @click="formatHashFieldJson"
+                :disabled="!isValidHashFieldJson"
+                title="格式化JSON"
+              >
+                <el-icon><Setting /></el-icon>
+                格式化JSON
+              </el-button>
+              <el-button 
+                type="text" 
+                size="small"
+                @click="validateHashFieldJson"
+                :disabled="!editHashFieldForm.value"
+                title="验证JSON"
+              >
+                <el-icon><Check /></el-icon>
+                验证JSON
+              </el-button>
+                              <el-button 
+                  type="text" 
+                  size="small"
+                  @click="minifyHashFieldJson"
+                  :disabled="!isValidHashFieldJson"
+                  title="压缩JSON"
+                >
+                  <el-icon><DocumentCopy /></el-icon>
+                  压缩JSON
+                </el-button>
+              <el-button 
+                type="text" 
+                size="small"
+                @click="clearHashFieldValue"
+                title="清空内容"
+              >
+                <el-icon><Delete /></el-icon>
+                清空
+              </el-button>
+            </div>
+            <el-input 
+              v-model="editHashFieldForm.value" 
+              type="textarea"
+              :rows="8"
+              placeholder="请输入字段值，支持JSON格式"
+              @keyup.enter="saveHashField"
+              class="string-edit-input"
+            />
+
+            <div v-if="isValidHashFieldJson" class="json-info">
+              <el-icon><SuccessFilled /></el-icon>
+              <span>有效的JSON格式</span>
+            </div>
+          </div>
         </el-form-item>
       </el-form>
 
@@ -650,7 +748,7 @@
     <el-dialog
       v-model="showEditStringDialog"
       title="编辑String值"
-      width="500px"
+      width="800px"
       :close-on-click-modal="false"
     >
       <el-form
@@ -660,13 +758,62 @@
         label-width="80px"
       >
         <el-form-item label="值" prop="value">
-          <el-input 
-            v-model="editStringForm.value" 
-            type="textarea"
-            :rows="8"
-            placeholder="请输入String值"
-            @keyup.enter="saveStringValue"
-          />
+          <div class="string-edit-container">
+            <div class="edit-toolbar">
+              <el-button 
+                type="text" 
+                size="small"
+                @click="formatJson"
+                :disabled="!isValidJson"
+                title="格式化JSON"
+              >
+                <el-icon><Setting /></el-icon>
+                格式化JSON
+              </el-button>
+              <el-button 
+                type="text" 
+                size="small"
+                @click="validateJson"
+                :disabled="!editStringForm.value"
+                title="验证JSON"
+              >
+                <el-icon><Check /></el-icon>
+                验证JSON
+              </el-button>
+                              <el-button 
+                  type="text" 
+                  size="small"
+                  @click="minifyJson"
+                  :disabled="!isValidJson"
+                  title="压缩JSON"
+                >
+                  <el-icon><DocumentCopy /></el-icon>
+                  压缩JSON
+                </el-button>
+              <el-button 
+                type="text" 
+                size="small"
+                @click="clearValue"
+                title="清空内容"
+              >
+                <el-icon><Delete /></el-icon>
+                清空
+              </el-button>
+            </div>
+            <el-input 
+              v-model="editStringForm.value" 
+              type="textarea"
+              :rows="12"
+              placeholder="请输入String值，支持JSON格式"
+              @keyup.enter="saveStringValue"
+              class="string-edit-input"
+            />
+
+            <div v-if="isValidJson" class="json-info">
+              <el-icon><SuccessFilled /></el-icon>
+              <span>有效的JSON格式</span>
+            </div>
+          </div>
         </el-form-item>
       </el-form>
 
@@ -696,7 +843,12 @@ import {
   Edit, 
   Document,
   Search,
-  ArrowLeft
+  ArrowLeft,
+  Setting,
+  Check,
+  Warning,
+  SuccessFilled,
+  DocumentCopy
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import { useUserStore } from '../stores/user'
@@ -810,6 +962,14 @@ const editStringRules = {
     { required: true, message: '请输入String值', trigger: 'blur' }
   ]
 }
+
+// JSON处理相关状态
+const jsonError = ref('')
+const isValidJson = ref(false)
+const hashFieldJsonError = ref('')
+const isValidHashFieldJson = ref(false)
+const mainJsonError = ref('')
+const isValidMainJson = ref(false)
 
 // 格式化事件处理
 const handleFormatted = (data) => {
@@ -1224,6 +1384,195 @@ const saveHashField = async () => {
 const editStringValue = () => {
   editStringForm.value = keyData.value.value || ''
   showEditStringDialog.value = true
+}
+
+// JSON处理相关方法
+const validateJsonInput = () => {
+  if (!editStringForm.value || !editStringForm.value.trim()) {
+    jsonError.value = ''
+    isValidJson.value = false
+    return
+  }
+  
+  try {
+    JSON.parse(editStringForm.value)
+    jsonError.value = ''
+    isValidJson.value = true
+  } catch (error) {
+    // 不显示错误信息，只标记为无效JSON
+    jsonError.value = ''
+    isValidJson.value = false
+  }
+}
+
+const formatJson = () => {
+  if (!isValidJson.value) return
+  
+  try {
+    const parsed = JSON.parse(editStringForm.value)
+    editStringForm.value = JSON.stringify(parsed, null, 2)
+    ElMessage.success('JSON格式化完成')
+  } catch (error) {
+    ElMessage.error('JSON格式化失败')
+  }
+}
+
+const validateJson = () => {
+  if (!editStringForm.value || !editStringForm.value.trim()) {
+    ElMessage.warning('请输入要验证的内容')
+    return
+  }
+  
+  try {
+    JSON.parse(editStringForm.value)
+    ElMessage.success('JSON格式验证通过')
+  } catch (error) {
+    ElMessage.error(`JSON格式验证失败: ${error.message}`)
+  }
+}
+
+const minifyJson = () => {
+  if (!isValidJson.value) return
+  
+  try {
+    const parsed = JSON.parse(editStringForm.value)
+    editStringForm.value = JSON.stringify(parsed)
+    ElMessage.success('JSON压缩完成')
+  } catch (error) {
+    ElMessage.error('JSON压缩失败')
+  }
+}
+
+const clearValue = () => {
+  editStringForm.value = ''
+  jsonError.value = ''
+  isValidJson.value = false
+}
+
+// Hash字段JSON处理相关方法
+const validateHashFieldJsonInput = () => {
+  if (!editHashFieldForm.value || !editHashFieldForm.value.trim()) {
+    hashFieldJsonError.value = ''
+    isValidHashFieldJson.value = false
+    return
+  }
+  
+  try {
+    JSON.parse(editHashFieldForm.value)
+    hashFieldJsonError.value = ''
+    isValidHashFieldJson.value = true
+  } catch (error) {
+    // 不显示错误信息，只标记为无效JSON
+    hashFieldJsonError.value = ''
+    isValidHashFieldJson.value = false
+  }
+}
+
+const formatHashFieldJson = () => {
+  if (!isValidHashFieldJson.value) return
+  
+  try {
+    const parsed = JSON.parse(editHashFieldForm.value)
+    editHashFieldForm.value = JSON.stringify(parsed, null, 2)
+    ElMessage.success('JSON格式化完成')
+  } catch (error) {
+    ElMessage.error('JSON格式化失败')
+  }
+}
+
+const validateHashFieldJson = () => {
+  if (!editHashFieldForm.value || !editHashFieldForm.value.trim()) {
+    ElMessage.warning('请输入要验证的内容')
+    return
+  }
+  
+  try {
+    JSON.parse(editHashFieldForm.value)
+    ElMessage.success('JSON格式验证通过')
+  } catch (error) {
+    ElMessage.error(`JSON格式验证失败: ${error.message}`)
+  }
+}
+
+const minifyHashFieldJson = () => {
+  if (!isValidHashFieldJson.value) return
+  
+  try {
+    const parsed = JSON.parse(editHashFieldForm.value)
+    editHashFieldForm.value = JSON.stringify(parsed)
+    ElMessage.success('JSON压缩完成')
+  } catch (error) {
+    ElMessage.error('JSON压缩失败')
+  }
+}
+
+const clearHashFieldValue = () => {
+  editHashFieldForm.value = ''
+  hashFieldJsonError.value = ''
+  isValidHashFieldJson.value = false
+}
+
+// 主编辑对话框JSON处理相关方法
+const validateMainJsonInput = () => {
+  if (!editForm.value || !editForm.value.trim()) {
+    mainJsonError.value = ''
+    isValidMainJson.value = false
+    return
+  }
+  
+  try {
+    JSON.parse(editForm.value)
+    mainJsonError.value = ''
+    isValidMainJson.value = true
+  } catch (error) {
+    // 不显示错误信息，只标记为无效JSON
+    mainJsonError.value = ''
+    isValidMainJson.value = false
+  }
+}
+
+const formatMainJson = () => {
+  if (!isValidMainJson.value) return
+  
+  try {
+    const parsed = JSON.parse(editForm.value)
+    editForm.value = JSON.stringify(parsed, null, 2)
+    ElMessage.success('JSON格式化完成')
+  } catch (error) {
+    ElMessage.error('JSON格式化失败')
+  }
+}
+
+const validateMainJson = () => {
+  if (!editForm.value || !editForm.value.trim()) {
+    ElMessage.warning('请输入要验证的内容')
+    return
+  }
+  
+  try {
+    JSON.parse(editForm.value)
+    ElMessage.success('JSON格式验证通过')
+  } catch (error) {
+    ElMessage.error(`JSON格式验证失败: ${error.message}`)
+  }
+}
+
+const minifyMainJson = () => {
+  if (!isValidMainJson.value) return
+  
+  try {
+    const parsed = JSON.parse(editForm.value)
+    editForm.value = JSON.stringify(parsed)
+    ElMessage.success('JSON压缩完成')
+  } catch (error) {
+    ElMessage.error('JSON压缩失败')
+  }
+}
+
+const clearMainValue = () => {
+  editForm.value = ''
+  mainJsonError.value = ''
+  isValidMainJson.value = false
 }
 
 const saveStringValue = async () => {
@@ -1706,6 +2055,30 @@ watch(() => props.database, async () => {
     }
   }
 })
+
+// 监听编辑String值变化，自动验证JSON
+watch(() => editStringForm.value, () => {
+  validateJsonInput()
+}, { immediate: true })
+
+// 监听编辑Hash字段值变化，自动验证JSON
+watch(() => editHashFieldForm.value, () => {
+  validateHashFieldJsonInput()
+}, { immediate: true })
+
+// 监听主编辑对话框值变化，自动验证JSON
+watch(() => editForm.value, () => {
+  if (editForm.type === 'string') {
+    validateMainJsonInput()
+  }
+}, { immediate: true })
+
+// 监听主编辑对话框类型变化，自动验证JSON
+watch(() => editForm.type, () => {
+  if (editForm.type === 'string') {
+    validateMainJsonInput()
+  }
+}, { immediate: true })
 </script>
 
 <style scoped>
@@ -2114,5 +2487,75 @@ watch(() => props.database, async () => {
   background-color: #f56c6c;
   border-color: #f56c6c;
   color: #ffffff;
+}
+
+/* String编辑相关样式 */
+.string-edit-container {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.edit-toolbar {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--el-fill-color-light);
+  border-radius: 4px;
+  border: 1px solid var(--el-border-color);
+}
+
+.edit-toolbar .el-button {
+  color: var(--el-text-color-regular);
+  font-size: 12px;
+}
+
+.edit-toolbar .el-button:hover {
+  color: var(--el-color-primary);
+  background-color: var(--el-fill-color);
+}
+
+.edit-toolbar .el-button:disabled {
+  color: var(--el-text-color-placeholder);
+  cursor: not-allowed;
+}
+
+.string-edit-input {
+  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.string-edit-input.json-error {
+  border-color: var(--el-color-danger);
+}
+
+.string-edit-input.json-error:focus {
+  border-color: var(--el-color-danger);
+  box-shadow: 0 0 0 1px var(--el-color-danger);
+}
+
+.json-error-message {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--el-color-danger);
+  font-size: 12px;
+  padding: 4px 8px;
+  background-color: var(--el-color-danger-light-9);
+  border-radius: 4px;
+  border: 1px solid var(--el-color-danger-light-7);
+}
+
+.json-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--el-color-success);
+  font-size: 12px;
+  padding: 4px 8px;
+  background-color: var(--el-color-success-light-9);
+  border-radius: 4px;
+  border: 1px solid var(--el-color-success-light-7);
 }
 </style> 

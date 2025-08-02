@@ -188,12 +188,6 @@ const refreshData = async () => {
   }
 }
 
-const handleConnectionCreated = (connection) => {
-  // 新创建的连接配置已保存，但需要手动建立连接
-  ElMessage.info('连接配置已保存，请点击连接按钮建立Redis连接')
-  // 记录操作日志
-  operationLogger.logConnectionCreated(connection)
-}
 
 const handleConnectionSelected = (connection) => {
   currentConnection.value = connection
@@ -226,6 +220,12 @@ const handleConnectionUpdated = (connection) => {
   if (currentConnection.value && currentConnection.value.id === connection.id) {
     currentConnection.value = connection
   }
+}
+
+const handleConnectionCreated = (connection) => {
+  // 连接创建成功消息已在 createConnection 方法中显示
+  // 这里只记录操作日志，不显示额外消息
+  operationLogger.logConnectionCreated(connection)
 }
 
 const handleDatabaseSelect = (database) => {
