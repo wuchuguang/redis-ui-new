@@ -242,7 +242,6 @@ export const useConnectionStore = defineStore('connection', () => {
       
           } catch (error) {
         console.error('创建连接配置失败:', error)
-        handleCreateConnectionError(error)
         return false
       } finally {
       loading.value = false
@@ -257,11 +256,8 @@ export const useConnectionStore = defineStore('connection', () => {
       if (response.data.success) {
         const newConnection = response.data.data
         connections.value.push(newConnection)
-        
-        ElMessage.success('连接配置保存成功')
         return newConnection
       } else {
-        ElMessage.error(response.data.message || '创建连接失败')
         return false
       }
     } catch (error) {
@@ -269,7 +265,7 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
-  // 未登录用户创建临时连接
+    // 未登录用户创建临时连接
   const createTempConnection = async (connectionData) => {
     // 检查是否已存在相同的临时连接
     const existingTempConnection = tempConnections.value.find(conn => 
@@ -279,6 +275,7 @@ export const useConnectionStore = defineStore('connection', () => {
     )
     
     if (existingTempConnection) {
+      // 临时连接重复检查，这里需要显示消息（因为不涉及API调用）
       ElMessage.error(`已存在相同的临时连接: ${existingTempConnection.name}`)
       return false
     }
@@ -296,9 +293,10 @@ export const useConnectionStore = defineStore('connection', () => {
     tempConnections.value.push(tempConnection)
     saveTempConnections()
     
+    // 临时连接成功，这里需要显示消息（因为不涉及API调用）
     ElMessage.success('临时连接配置保存成功')
-          return tempConnection
-    }
+    return tempConnection
+  }
 
   // 处理创建连接错误
   const handleCreateConnectionError = (error) => {
@@ -416,12 +414,10 @@ export const useConnectionStore = defineStore('connection', () => {
         // 设置为当前连接
         currentConnection.value = { ...connection, status: 'connected' }
         
-        ElMessage.success('Redis连接建立成功')
         return connectedConnection
       }
     } catch (error) {
       console.error('建立Redis连接失败:', error)
-      ElMessage.error(error.response?.data?.message || '建立Redis连接失败')
       return false
     } finally {
       loading.value = false
@@ -439,12 +435,10 @@ export const useConnectionStore = defineStore('connection', () => {
         if (index > -1) {
           connections.value[index] = updatedConnection
         }
-        ElMessage.success('连接更新成功')
         return updatedConnection
       }
     } catch (error) {
       console.error('更新连接失败:', error)
-      ElMessage.error(error.response?.data?.message || '更新连接失败')
       return false
     } finally {
       loading.value = false
@@ -460,12 +454,10 @@ export const useConnectionStore = defineStore('connection', () => {
         if (index > -1) {
           connections.value.splice(index, 1)
         }
-        ElMessage.success('连接删除成功')
         return true
       }
     } catch (error) {
       console.error('删除连接失败:', error)
-      ElMessage.error(error.response?.data?.message || '删除连接失败')
       return false
     }
   }
@@ -475,7 +467,6 @@ export const useConnectionStore = defineStore('connection', () => {
     try {
       const response = await axios.post('/api/connections/test', connectionData)
       if (response.data.success) {
-        ElMessage.success('连接测试成功')
         return true
       }
     } catch (error) {
@@ -555,7 +546,6 @@ export const useConnectionStore = defineStore('connection', () => {
       // 使用新的连接建立逻辑
       const success = await connectToRedis(connection)
       if (success) {
-        ElMessage.success('重新连接成功')
         return true
       }
       return false

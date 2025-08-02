@@ -21,7 +21,13 @@ const processQueue = (error, token = null) => {
 
 // 响应拦截器
 axios.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // 处理成功消息
+    if (response.data && response.data.message && response.data.success) {
+      ElMessage.success(response.data.message)
+    }
+    return response
+  },
   async (error) => {
     const originalRequest = error.config
     
@@ -99,20 +105,31 @@ axios.interceptors.response.use(
       }
     }
     
-    // 处理其他错误
+    // 处理所有错误消息
     if (error.response) {
       const { status, data } = error.response
       
-      // 只在特定情况下显示错误消息，避免与业务代码重复
-      if (status === 403) {
-        ElMessage.error('权限不足，无法执行此操作')
-      } else if (status === 404) {
-        ElMessage.error('请求的资源不存在')
-      } else if (status >= 500) {
-        ElMessage.error('服务器错误，请稍后重试')
+      // 显示后端返回的错误消息
+      if (data && data.message) {
+        ElMessage.error(data.message)
+      } else {
+        // 如果没有具体消息，显示通用错误
+        if (status === 403) {
+          ElMessage.error('权限不足，无法执行此操作')
+        } else if (status === 404) {
+          ElMessage.error('请求的资源不存在')
+        } else if (status >= 500) {
+          ElMessage.error('服务器错误，请稍后重试')
+        } else {
+          ElMessage.error('请求失败')
+        }
       }
-      // 移除对400错误的处理，让业务代码自己处理
-      // 移除对网络错误的处理，让业务代码自己处理
+    } else if (error.request) {
+      // 网络错误
+      ElMessage.error('网络连接失败，请检查网络设置')
+    } else {
+      // 其他错误
+      ElMessage.error('请求失败')
     }
     
     return Promise.reject(error)

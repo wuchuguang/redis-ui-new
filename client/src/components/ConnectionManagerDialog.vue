@@ -172,7 +172,6 @@ const handleConnect = async (connection) => {
       
       const success = await connectionStore.connectToRedis(connection)
       if (success) {
-        ElMessage.success(`连接建立成功: ${connection.redis.name}`)
         emit('connection-selected', connection)
         dialogVisible.value = false
       }
