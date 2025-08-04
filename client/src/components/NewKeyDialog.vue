@@ -20,22 +20,27 @@
       </el-form-item>
       
       <el-form-item label="数据类型" prop="type">
-        <el-select v-model="addKeyForm.type" placeholder="选择数据类型">
-          <el-option label="String" value="string" />
-          <el-option label="Hash" value="hash" />
-          <el-option label="List" value="list" />
-          <el-option label="Set" value="set" />
-          <el-option label="ZSet" value="zset" />
-        </el-select>
-      </el-form-item>
-      
-      <el-form-item label="TTL(秒)" prop="ttl">
-        <el-input-number 
-          v-model="addKeyForm.ttl" 
-          :min="-1" 
-          placeholder="-1表示永不过期"
-          @keyup.enter="handleAddKey"
-        />
+        <div class="type-ttl-row">
+          <el-select v-model="addKeyForm.type" placeholder="选择数据类型" class="type-select">
+            <el-option label="String" value="string" />
+            <el-option label="Hash" value="hash" />
+            <el-option label="List" value="list" />
+            <el-option label="Set" value="set" />
+            <el-option label="ZSet" value="zset" />
+          </el-select>
+          
+          <div class="ttl-section">
+            <span class="ttl-label">TTL(秒):</span>
+                      <el-input-number 
+            v-model="addKeyForm.ttl" 
+            :min="-1" 
+            :max="2147483647"
+            placeholder="-1表示永不过期"
+            @keyup.enter="handleAddKey"
+            class="ttl-input"
+          />
+          </div>
+        </div>
       </el-form-item>
       
       <!-- String类型的值输入 -->
@@ -850,5 +855,52 @@ watch(() => addKeyForm.type, (newType) => {
 :deep(.el-select-dropdown__item.selected) {
   background-color: var(--el-color-primary) !important;
   color: #ffffff !important;
+}
+
+/* 数据类型和TTL同行布局 */
+.type-ttl-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+}
+
+.type-select {
+  width: 100px;
+  min-width: 100px;
+}
+
+.ttl-section {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 180px;
+}
+
+.ttl-label {
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+  white-space: nowrap;
+}
+
+.ttl-input {
+  width: 140px;
+}
+
+/* 响应式布局 */
+@media (max-width: 480px) {
+  .type-ttl-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .ttl-section {
+    min-width: auto;
+  }
+  
+  .ttl-input {
+    width: 100%;
+  }
 }
 </style> 
