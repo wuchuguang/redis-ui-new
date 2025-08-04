@@ -687,6 +687,38 @@ const clearKeyTTL = async (connectionId, database, keyName) => {
   }
 };
 
+// 设置键的TTL
+const setKeyTTL = async (connectionId, database, keyName, ttl) => {
+  try {
+    const connection = await ensureConnection(connectionId);
+    const client = connection.client;
+    
+    // 选择数据库
+    await client.select(parseInt(database));
+    
+    // 检查键是否存在
+    const exists = await client.exists(keyName);
+    if (!exists) {
+      throw new Error('键不存在');
+    }
+    
+    // 验证TTL值
+    if (typeof ttl !== 'number' || ttl < 0) {
+      throw new Error('TTL值必须是非负整数');
+    }
+    
+    // 设置TTL
+    const result = await client.expire(keyName, ttl);
+    
+    console.log(`TTL设置成功: ${keyName}, TTL: ${ttl}秒, 结果: ${result}`);
+    
+    return true;
+  } catch (error) {
+    console.error('设置TTL失败:', error.message);
+    throw error;
+  }
+};
+
 // 重命名键
 const renameKey = async (connectionId, database, oldKeyName, newKeyName) => {
   const connection = await ensureConnection(connectionId);
@@ -967,6 +999,7 @@ module.exports = {
   getKeyValue,
   createKey,
   clearKeyTTL,
+  setKeyTTL,
   renameKey,
   updateHashField,
   updateStringValue,

@@ -403,6 +403,78 @@ router.delete('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @api {put} /api/connections/:id/:db/keys/:keyName/ttl 设置键的TTL
+ * @apiName SetKeyTTL
+ * @apiGroup Keys
+ * @apiVersion 1.0.0
+ * 
+ * @apiDescription 设置Redis键的过期时间（TTL）
+ * 
+ * @apiHeader {String} Authorization Bearer JWT令牌
+ * 
+ * @apiParam {String} id 连接ID
+ * @apiParam {Number} db 数据库编号（0-15）
+ * @apiParam {String} keyName 键名
+ * @apiParam {Number} ttl TTL值（秒）
+ * 
+ * @apiExample {curl} 请求示例:
+ *     curl -X PUT "http://localhost:3000/api/connections/123456/0/keys/mykey/ttl" \
+ *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+ *       -H "Content-Type: application/json" \
+ *       -d '{
+ *         "ttl": 3600
+ *       }'
+ * 
+ * @apiSuccess {Boolean} success=true 设置成功
+ * @apiSuccess {String} message="TTL设置成功" 成功消息
+ * 
+ * @apiUse KeyError
+ * 
+ * @apiError {Object} 400 参数错误
+ * @apiError {String} 400.message 错误消息（TTL值无效等）
+ * @apiError {Object} 404 键不存在
+ * @apiError {String} 404.message 错误消息
+ */
+router.put('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
+  try {
+    const { id, db } = req.params;
+    const keyName = req.params[0]; // 获取通配符匹配的完整路径
+    const { ttl } = req.body;
+    const { username } = req.user;
+    
+    // 验证用户是否有权限访问这个连接
+    if (!(await validateConnectionPermission(username, id))) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限访问此连接'
+      });
+    }
+    
+    // 验证TTL参数
+    if (typeof ttl !== 'number' || ttl < 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'TTL值必须是非负整数'
+      });
+    }
+    
+    const result = await redisService.setKeyTTL(id, db, keyName, ttl);
+    
+    res.json({
+      success: true,
+      message: 'TTL设置成功'
+    });
+
+  } catch (error) {
+    console.error('设置TTL失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `设置TTL失败: ${error.message}`
+    });
+  }
+});
+
+/**
  * @api {put} /api/connections/:id/:db/key/:oldKeyName/rename 重命名键
  * @apiName RenameKey
  * @apiGroup Keys

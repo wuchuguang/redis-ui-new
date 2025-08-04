@@ -797,6 +797,23 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 设置Key的TTL
+  const setKeyTTL = async (connectionId, database = 0, keyName, ttl) => {
+    try {
+      const response = await axios.put(`/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/ttl`, { ttl })
+      if (response.data.success) {
+        console.log('TTL设置成功:', keyName, 'TTL:', ttl)
+        return true
+      } else {
+        console.error('TTL设置失败:', response.data.message)
+        return false
+      }
+    } catch (error) {
+      console.error('设置TTL失败:', error)
+      throw error
+    }
+  }
+
   // 删除Hash字段
   const deleteHashField = async (connectionId, database = 0, keyName, field) => {
     try {
@@ -1133,6 +1150,7 @@ export const useConnectionStore = defineStore('connection', () => {
     deleteKey,
     createKey,
     clearKeyTTL,
+    setKeyTTL,
     deleteHashField,
     batchDeleteHashFields,
     updateHashField,

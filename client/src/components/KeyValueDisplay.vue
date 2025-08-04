@@ -69,7 +69,7 @@
             v-if="keyData.ttl === -1"
             type="text" 
             size="small" 
-            @click="showSetTTLDialog"
+            @click="openSetTTLDialog"
             title="设置过期时间"
           >
             <el-icon><Clock /></el-icon>
@@ -877,6 +877,14 @@
       />
     </el-dialog>
 
+    <!-- TTL设置对话框组件 -->
+    <SetTTLDialog
+      v-model="showSetTTLDialog"
+      :connection="props.connection"
+      :database="props.database"
+      :key-name="keyData.key"
+      @success="handleTTLSetSuccess"
+    />
 
   </div>
 </template>
@@ -905,6 +913,7 @@ import { operationLogger } from '../utils/operationLogger'
 import FormattedValue from './FormattedValue.vue'
 import OperationLock from './OperationLock.vue'
 import KeyHash from './KeyHash.vue'
+import SetTTLDialog from './SetTTLDialog.vue'
 
 
 const connectionStore = useConnectionStore()
@@ -943,6 +952,7 @@ const showEditDialog = ref(false)
 const showEditHashFieldDialog = ref(false)
 const showEditStringDialog = ref(false)
 const showKeyHashDialog = ref(false)
+const showSetTTLDialog = ref(false)
 
 const editingKeyName = ref('')
 const isEditingKeyName = ref(false)
@@ -1885,9 +1895,13 @@ const clearTTL = async () => {
   }
 }
 
-const showSetTTLDialog = () => {
-  // 这里可以添加设置TTL的对话框
-  ElMessage.info('设置TTL功能开发中...')
+const openSetTTLDialog = () => {
+  showSetTTLDialog.value = true
+}
+
+const handleTTLSetSuccess = (result) => {
+  // 更新本地TTL数据
+  keyData.value.ttl = result.ttl
 }
 
 const handleHashFilter = () => {
@@ -2672,4 +2686,5 @@ watch(() => editForm.type, () => {
   border-radius: 4px;
   border: 1px solid var(--el-color-success-light-7);
 }
+
 </style> 

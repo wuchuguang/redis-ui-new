@@ -116,6 +116,15 @@ class OperationLogger {
     this.log('add', `添加Key: ${keyName}`, 'info', { keyName, connection: connection?.name })
   }
 
+  // TTL操作
+  logTTLSet(keyName, ttl, connection) {
+    this.log('ttl', `设置键过期时间: ${keyName} (${this.formatTTL(ttl)})`, 'info', { keyName, ttl, connection: connection?.name })
+  }
+
+  logTTLCleared(keyName, connection) {
+    this.log('ttl', `清除键过期时间: ${keyName}`, 'info', { keyName, connection: connection?.name })
+  }
+
   // Hash字段操作
   logHashFieldAdded(keyName, field, connection) {
     this.log('add', `添加Hash字段: ${keyName}.${field}`, 'info', { keyName, field, connection: connection?.name })
@@ -192,6 +201,28 @@ class OperationLogger {
   // 复制操作
   logCopy(type, content, connection = null) {
     this.log('query', `复制${type}`, 'info', { type, contentLength: content?.length, connection: connection?.name })
+  }
+
+  // 格式化TTL
+  formatTTL(ttl) {
+    if (ttl === -1) return '永不过期'
+    if (ttl === -2) return '键不存在'
+    if (ttl < 0) return '未知'
+    
+    const days = Math.floor(ttl / 86400)
+    const hours = Math.floor((ttl % 86400) / 3600)
+    const minutes = Math.floor((ttl % 3600) / 60)
+    const seconds = ttl % 60
+    
+    if (days > 0) {
+      return `${days}天${hours}小时${minutes}分钟`
+    } else if (hours > 0) {
+      return `${hours}小时${minutes}分钟`
+    } else if (minutes > 0) {
+      return `${minutes}分钟${seconds}秒`
+    } else {
+      return `${seconds}秒`
+    }
   }
 }
 
