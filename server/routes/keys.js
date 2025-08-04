@@ -549,6 +549,80 @@ router.put('/:id/:db/keys/*/value', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @api {delete} /api/connections/:id/:db/keys/batch 批量删除键
+ * @apiName BatchDeleteKeys
+ * @apiGroup Keys
+ * @apiVersion 1.0.0
+ * 
+ * @apiDescription 批量删除Redis键
+ * 
+ * @apiHeader {String} Authorization Bearer JWT令牌
+ * 
+ * @apiParam {String} id 连接ID
+ * @apiParam {Number} db 数据库编号（0-15）
+ * @apiParam {Array} keys 要删除的键列表
+ * 
+ * @apiExample {curl} 请求示例:
+ *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys/batch" \
+ *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+ *       -H "Content-Type: application/json" \
+ *       -d '{
+ *         "keys": ["key1", "key2", "key3"]
+ *       }'
+ * 
+ * @apiSuccess {Boolean} success=true 删除成功
+ * @apiSuccess {String} message="批量删除成功" 成功消息
+ * @apiSuccess {Object} data 删除结果
+ * @apiSuccess {Number} data.deletedCount 删除的键数量
+ * @apiSuccess {Array} data.keys 删除的键列表
+ * 
+ * @apiUse KeyError
+ * 
+ * @apiError {Object} 400 参数错误
+ * @apiError {String} 400.message 错误消息（键列表为空等）
+ * @apiError {Object} 403 无权限
+ * @apiError {String} 403.message 错误消息
+ */
+router.delete('/:id/:db/keys/batch', authenticateToken, async (req, res) => {
+  try {
+    const { id, db } = req.params;
+    const { keys } = req.body;
+    const { username } = req.user;
+    
+    // 验证用户是否有权限访问这个连接
+    if (!(await validateConnectionPermission(username, id))) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限访问此连接'
+      });
+    }
+    
+    // 验证键列表
+    if (!Array.isArray(keys) || keys.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '键列表不能为空'
+      });
+    }
+    
+    const result = await redisService.batchDeleteKeys(id, db, keys);
+    
+    res.json({
+      success: true,
+      message: '批量删除成功',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('批量删除失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `批量删除失败: ${error.message}`
+    });
+  }
+});
+
+/**
  * @api {put} /api/connections/:id/:db/key/:oldKeyName/rename 重命名键
  * @apiName RenameKey
  * @apiGroup Keys

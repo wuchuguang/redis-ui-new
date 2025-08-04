@@ -834,6 +834,25 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 批量删除键
+  const batchDeleteKeys = async (connectionId, database = 0, keys) => {
+    try {
+      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys/batch`, {
+        data: { keys }
+      })
+      if (response.data.success) {
+        console.log('批量删除成功:', keys.length, '个键')
+        return true
+      } else {
+        console.error('批量删除失败:', response.data.message)
+        return false
+      }
+    } catch (error) {
+      console.error('批量删除失败:', error)
+      throw error
+    }
+  }
+
   // 删除Hash字段
   const deleteHashField = async (connectionId, database = 0, keyName, field) => {
     try {
@@ -1172,6 +1191,7 @@ export const useConnectionStore = defineStore('connection', () => {
     clearKeyTTL,
     setKeyTTL,
     updateKeyValue,
+    batchDeleteKeys,
     deleteHashField,
     batchDeleteHashFields,
     updateHashField,

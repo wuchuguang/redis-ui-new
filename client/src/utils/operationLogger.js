@@ -130,6 +130,11 @@ class OperationLogger {
     this.log('edit', `更新键值: ${keyName} (${keyType})`, 'info', { keyName, keyType, connection: connection?.name })
   }
 
+  // 批量删除操作
+  logBatchDeleteKeys(count, connection) {
+    this.log('delete', `批量删除键: ${count} 个键`, 'warning', { count, connection: connection?.name })
+  }
+
   // Hash字段操作
   logHashFieldAdded(keyName, field, connection) {
     this.log('add', `添加Hash字段: ${keyName}.${field}`, 'info', { keyName, field, connection: connection?.name })
