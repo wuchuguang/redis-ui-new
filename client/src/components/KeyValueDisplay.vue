@@ -1879,6 +1879,18 @@ const cancelKeyNameEdit = () => {
 // TTL相关方法
 const clearTTL = async () => {
   try {
+    // 显示确认对话框
+    await ElMessageBox.confirm(
+      `确定要清除键 "${keyData.value.key}" 的过期时间吗？\n\n清除后该键将永不过期。`,
+      '确认清除TTL',
+      {
+        confirmButtonText: '确定清除',
+        cancelButtonText: '取消',
+        type: 'warning',
+        dangerouslyUseHTMLString: false
+      }
+    )
+    
     const result = await connectionStore.clearKeyTTL(
       props.connection.id,
       props.database,
@@ -1891,6 +1903,10 @@ const clearTTL = async () => {
       operationLogger.logTTLCleared(keyData.value.key, props.connection)
     }
   } catch (error) {
+    if (error === 'cancel') {
+      // 用户取消操作，不需要处理
+      return
+    }
     console.error('清除TTL失败:', error)
   }
 }
