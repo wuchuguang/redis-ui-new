@@ -586,6 +586,80 @@ const getKeyValue = async (connectionId, database, keyName) => {
   };
 };
 
+// 创建新的Key
+const createKey = async (connectionId, database, keyData) => {
+  try {
+    const connection = await ensureConnection(connectionId);
+    const client = connection.client;
+    
+    // 选择数据库
+    await client.select(database);
+    
+    const { name, type, ttl, value, fields, items, members } = keyData;
+    
+    // 检查键是否已存在
+    const exists = await client.exists(name);
+    if (exists) {
+      throw new Error('键已存在');
+    }
+    
+    // 根据类型创建键
+    switch (type) {
+      case 'string':
+        await client.set(name, value);
+        break;
+      case 'hash':
+        // 批量设置Hash字段
+        const hashData = {};
+        for (const field of fields) {
+          hashData[field.name] = field.value;
+        }
+        await client.hSet(name, hashData);
+        break;
+      case 'list':
+        // 批量添加List元素
+        if (items.length > 0) {
+          await client.rPush(name, items);
+        }
+        break;
+      case 'set':
+        // 批量添加Set成员
+        if (members.length > 0) {
+          await client.sAdd(name, members);
+        }
+        break;
+      case 'zset':
+        // 批量添加ZSet成员
+        if (members.length > 0) {
+          const zsetData = [];
+          for (const member of members) {
+            zsetData.push({ score: member.score, value: member.value });
+          }
+          await client.zAdd(name, zsetData);
+        }
+        break;
+      default:
+        throw new Error(`不支持的键类型: ${type}`);
+    }
+    
+    // 设置TTL（如果指定了）
+    if (ttl > 0) {
+      await client.expire(name, ttl);
+    }
+    
+    console.log(`成功创建键: ${name} (类型: ${type})`);
+    
+    return {
+      key: name,
+      type,
+      ttl: ttl > 0 ? ttl : -1
+    };
+  } catch (error) {
+    console.error('创建键失败:', error.message);
+    throw error;
+  }
+};
+
 // 重命名键
 const renameKey = async (connectionId, database, oldKeyName, newKeyName) => {
   const connection = await ensureConnection(connectionId);
@@ -864,6 +938,7 @@ module.exports = {
   getConnectionUsers,
   getKeys,
   getKeyValue,
+  createKey,
   renameKey,
   updateHashField,
   updateStringValue,

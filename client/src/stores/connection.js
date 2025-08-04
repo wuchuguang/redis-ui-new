@@ -763,6 +763,23 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 创建新的Key
+  const createKey = async (connectionId, database = 0, keyData) => {
+    try {
+      const response = await axios.post(`/api/connections/${connectionId}/${database}/keys`, keyData)
+      if (response.data.success) {
+        console.log('Key创建成功:', keyData.name)
+        return true
+      } else {
+        console.error('Key创建失败:', response.data.message)
+        return false
+      }
+    } catch (error) {
+      console.error('创建Key失败:', error)
+      throw error
+    }
+  }
+
   // 删除Hash字段
   const deleteHashField = async (connectionId, database = 0, keyName, field) => {
     try {
@@ -1097,6 +1114,7 @@ export const useConnectionStore = defineStore('connection', () => {
     renameKey,
     deleteKeyGroup,
     deleteKey,
+    createKey,
     deleteHashField,
     batchDeleteHashFields,
     updateHashField,

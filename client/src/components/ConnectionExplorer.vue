@@ -366,70 +366,18 @@
     </el-dialog>
 
     <!-- 添加键对话框 -->
-    <el-dialog
+    <NewKeyDialog 
       v-model="showAddKeyDialog"
-      title="新增Key"
-      width="500px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="addKeyFormRef"
-        :model="addKeyForm"
-        :rules="addKeyRules"
-        label-width="100px"
-      >
-        <el-form-item label="Key名称" prop="name">
-          <el-input 
-            v-model="addKeyForm.name" 
-            placeholder="请输入Key名称"
-            @keyup.enter="handleAddKey"
-          />
-        </el-form-item>
-        
-        <el-form-item label="数据类型" prop="type">
-          <el-select v-model="addKeyForm.type" placeholder="选择数据类型">
-            <el-option label="String" value="string" />
-            <el-option label="Hash" value="hash" />
-            <el-option label="List" value="list" />
-            <el-option label="Set" value="set" />
-            <el-option label="ZSet" value="zset" />
-          </el-select>
-        </el-form-item>
-        
-        <el-form-item label="TTL(秒)" prop="ttl">
-          <el-input-number 
-            v-model="addKeyForm.ttl" 
-            :min="-1" 
-            placeholder="-1表示永不过期"
-            @keyup.enter="handleAddKey"
-          />
-        </el-form-item>
-        
-        <el-form-item label="值" prop="value" v-if="addKeyForm.type === 'string'">
-          <el-input
-            v-model="addKeyForm.value"
-            type="textarea"
-            :rows="3"
-            placeholder="请输入值"
-            @keyup.enter="handleAddKey"
-          />
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button type="primary" @click="showAddKeyDialog = false">取消</el-button>
-          <el-button type="primary" @click="handleAddKey">确定</el-button>
-        </div>
-      </template>
-    </el-dialog>
+      @add-key="handleAddKeyFromDialog"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { House, Folder, Refresh, ArrowUp, ArrowRight, ArrowLeft, Plus, Search, Document, Delete, List, Setting, Loading, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import NewKeyDialog from './NewKeyDialog.vue'
 import { useConnectionStore } from '../stores/connection'
 import { operationLogger } from '../utils/operationLogger'
 
@@ -503,21 +451,7 @@ const configForm = reactive({
 // 初始化配置表单
 configForm.maxKeysPerGroup = maxKeysPerGroup.value
 
-const addKeyForm = reactive({
-  name: '',
-  type: 'string',
-  ttl: -1,
-  value: ''
-})
 
-const addKeyRules = {
-  name: [
-    { required: true, message: '请输入Key名称', trigger: 'blur' }
-  ],
-  type: [
-    { required: true, message: '请选择数据类型', trigger: 'change' }
-  ]
-}
 
 // 计算属性
 const filteredKeys = computed(() => {
@@ -897,10 +831,10 @@ const deleteKeyGroup = async (prefix) => {
   }
 }
 
-const handleAddKey = () => {
-  console.log('添加键:', addKeyForm)
-  showAddKeyDialog.value = false
-  emit('add-key', { ...addKeyForm })
+// 处理从NewKeyDialog组件传来的添加Key事件
+const handleAddKeyFromDialog = (keyData) => {
+  console.log('从NewKeyDialog接收到的Key数据:', keyData)
+  emit('add-key', keyData)
 }
 
 const handleConfigSave = async () => {
@@ -1274,6 +1208,12 @@ const deleteKeysByPattern = async (pattern) => {
   const keysToDelete = getKeysByPattern(pattern)
   await deleteKeysByName(keysToDelete)
 }
+
+// 暴露方法给父组件
+defineExpose({
+  refreshKeys,
+  refreshDatabases
+})
 </script>
 
 <style scoped>
@@ -1718,15 +1658,192 @@ const deleteKeysByPattern = async (pattern) => {
   transition: opacity 0.2s;
   color: var(--el-text-color-secondary);
   padding: 2px;
-  margin-left: 8px;
-  min-width: auto;
-  height: auto;
+}
+
+/* 添加Key对话框样式 */
+.hash-fields-container,
+.list-items-container,
+.set-members-container,
+.zset-members-container {
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background-color: var(--el-fill-color-light);
+  overflow: hidden;
+}
+
+.hash-fields-header,
+.list-items-header,
+.set-members-header,
+.zset-members-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--el-fill-color);
+  border-bottom: 1px solid var(--el-border-color);
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.hash-fields-list,
+.list-items-list,
+.set-members-list,
+.zset-members-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.hash-field-item,
+.list-item,
+.set-member,
+.zset-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.hash-field-item:hover,
+.list-item:hover,
+.set-member:hover,
+.zset-member:hover {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.field-name,
+.item-value,
+.member-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-value {
+  flex: 2;
+  min-width: 0;
+}
+
+.member-score {
+  width: 120px;
+}
+
+.field-remove,
+.item-remove,
+.member-remove {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.empty-fields,
+.empty-items,
+.empty-members {
+  padding: 20px;
+  text-align: center;
+  color: var(--el-text-color-secondary);
 }
 
 .delete-history-btn:hover {
   opacity: 1;
   color: var(--el-color-danger);
   background-color: var(--el-fill-color);
+}
+
+/* 添加Key对话框样式 */
+.hash-fields-container,
+.list-items-container,
+.set-members-container,
+.zset-members-container {
+  border: 1px solid var(--el-border-color);
+  border-radius: 8px;
+  background-color: var(--el-fill-color-light);
+  overflow: hidden;
+}
+
+.hash-fields-header,
+.list-items-header,
+.set-members-header,
+.zset-members-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background-color: var(--el-fill-color);
+  border-bottom: 1px solid var(--el-border-color);
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.hash-fields-list,
+.list-items-list,
+.set-members-list,
+.zset-members-list {
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.hash-field-item,
+.list-item,
+.set-member,
+.zset-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+  background-color: var(--el-bg-color);
+  border: 1px solid var(--el-border-color-light);
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.hash-field-item:hover,
+.list-item:hover,
+.set-member:hover,
+.zset-member:hover {
+  border-color: var(--el-color-primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.field-name,
+.item-value,
+.member-value {
+  flex: 1;
+  min-width: 0;
+}
+
+.field-value {
+  flex: 2;
+  min-width: 0;
+}
+
+.member-score {
+  width: 120px;
+}
+
+.field-remove,
+.item-remove,
+.member-remove {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+}
+
+.empty-fields,
+.empty-items,
+.empty-members {
+  padding: 20px;
+  text-align: center;
+  color: var(--el-text-color-secondary);
 }
 
 /* 对话框输入框样式修复 */
@@ -2075,5 +2192,17 @@ const deleteKeysByPattern = async (pattern) => {
   color: var(--el-text-color-secondary);
   font-size: 13px;
   padding: 20px;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tab-hint {
+  color: var(--el-text-color-secondary);
+  font-size: 12px;
+  white-space: nowrap;
 }
 </style> 

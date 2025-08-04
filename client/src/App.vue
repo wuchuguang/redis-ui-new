@@ -47,6 +47,7 @@
       <!-- 左侧边栏 -->
       <div class="left-sidebar">
         <ConnectionExplorer 
+          ref="connectionExplorerRef"
           :connection="currentConnection"
           @select-database="handleDatabaseSelect"
           @add-key="handleAddKey"
@@ -151,6 +152,7 @@ const showConversionRulesManager = ref(false)
 const showDataOperationsTool = ref(false)
 const showOperationHistory = ref(false)
 const operationHistoryRef = ref(null)
+const connectionExplorerRef = ref(null)
 const autoRefresh = ref(true)
 const currentConnection = ref(null)
 const redisInfo = ref(null)
@@ -262,8 +264,33 @@ const handleDatabaseSelect = (database) => {
   operationLogger.logDatabaseSelected(database, currentConnection.value)
 }
 
-const handleAddKey = () => {
-  console.log('添加新键')
+const handleAddKey = async (keyData) => {
+  console.log('添加新键:', keyData)
+  
+  if (!currentConnection.value) {
+    ElMessage.error('请先选择一个连接')
+    return
+  }
+  
+  try {
+    // 调用后端API创建Key
+    const result = await connectionStore.createKey(
+      currentConnection.value.id,
+      currentDatabase.value,
+      keyData
+    )
+    
+    if (result) {
+      ElMessage.success('Key创建成功')
+      // 刷新键列表
+      if (connectionExplorerRef.value) {
+        await connectionExplorerRef.value.refreshKeys(true)
+      }
+    }
+  } catch (error) {
+    console.error('创建Key失败:', error)
+    ElMessage.error('创建Key失败')
+  }
 }
 
 const handleSearchKeys = (searchTerm) => {

@@ -155,6 +155,198 @@ router.get('/:id/:db/key/*', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @api {post} /api/connections/:id/:db/keys 创建新键
+ * @apiName CreateKey
+ * @apiGroup Keys
+ * @apiVersion 1.0.0
+ * 
+ * @apiDescription 创建新的Redis键
+ * 
+ * @apiHeader {String} Authorization Bearer JWT令牌
+ * 
+ * @apiParam {String} id 连接ID
+ * @apiParam {Number} db 数据库编号（0-15）
+ * @apiParam {String} name 键名
+ * @apiParam {String} type 键类型（string/hash/list/set/zset）
+ * @apiParam {Number} [ttl=-1] 过期时间（秒，-1表示永不过期）
+ * @apiParam {String} [value] String类型的值
+ * @apiParam {Array} [fields] Hash类型的字段数组
+ * @apiParam {Array} [items] List类型的元素数组
+ * @apiParam {Array} [members] Set/ZSet类型的成员数组
+ * 
+ * @apiExample {curl} 请求示例:
+ *     curl -X POST "http://localhost:3000/api/connections/123456/0/keys" \
+ *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+ *       -H "Content-Type: application/json" \
+ *       -d '{
+ *         "name": "user:123",
+ *         "type": "hash",
+ *         "ttl": 3600,
+ *         "fields": [
+ *           {"name": "username", "value": "john"},
+ *           {"name": "email", "value": "john@example.com"}
+ *         ]
+ *       }'
+ * 
+ * @apiSuccess {Boolean} success=true 创建成功
+ * @apiSuccess {String} message="键创建成功" 成功消息
+ * @apiSuccess {Object} data 创建结果
+ * 
+ * @apiUse KeyError
+ * 
+ * @apiError {Object} 400 参数错误
+ * @apiError {String} 400.message 错误消息（键名不能为空等）
+ * @apiError {Object} 409 键已存在
+ * @apiError {String} 409.message 错误消息
+ */
+router.post('/:id/:db/keys', authenticateToken, async (req, res) => {
+  try {
+    const { id, db } = req.params;
+    const { name, type, ttl = -1, value, fields, items, members } = req.body;
+    const { username } = req.user;
+    
+    // 验证用户是否有权限访问这个连接
+    if (!(await validateConnectionPermission(username, id))) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限访问此连接'
+      });
+    }
+    
+    // 验证必要参数
+    if (!name || !name.trim()) {
+      return res.status(400).json({
+        success: false,
+        message: '键名不能为空'
+      });
+    }
+    
+    if (!type || !['string', 'hash', 'list', 'set', 'zset'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: '无效的键类型'
+      });
+    }
+    
+    // 根据类型验证数据
+    switch (type) {
+      case 'string':
+        if (!value || !value.trim()) {
+          return res.status(400).json({
+            success: false,
+            message: 'String类型的值不能为空'
+          });
+        }
+        break;
+      case 'hash':
+        if (!fields || !Array.isArray(fields) || fields.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Hash类型必须包含至少一个字段'
+          });
+        }
+        // 验证字段数据
+        for (const field of fields) {
+          if (!field.name || !field.name.trim() || !field.value || !field.value.trim()) {
+            return res.status(400).json({
+              success: false,
+              message: 'Hash字段名和值不能为空'
+            });
+          }
+        }
+        break;
+      case 'list':
+        if (!items || !Array.isArray(items) || items.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'List类型必须包含至少一个元素'
+          });
+        }
+        // 验证元素数据 - items是字符串数组
+        for (const item of items) {
+          if (!item || !item.trim()) {
+            return res.status(400).json({
+              success: false,
+              message: 'List元素值不能为空'
+            });
+          }
+        }
+        break;
+      case 'set':
+        if (!members || !Array.isArray(members) || members.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'Set类型必须包含至少一个成员'
+          });
+        }
+        // 验证成员数据 - members是字符串数组
+        for (const member of members) {
+          if (!member || !member.trim()) {
+            return res.status(400).json({
+              success: false,
+              message: 'Set成员值不能为空'
+            });
+          }
+        }
+        break;
+      case 'zset':
+        if (!members || !Array.isArray(members) || members.length === 0) {
+          return res.status(400).json({
+            success: false,
+            message: 'ZSet类型必须包含至少一个成员'
+          });
+        }
+        // 验证成员数据 - members是对象数组，包含value和score
+        for (const member of members) {
+          if (!member.value || !member.value.trim()) {
+            return res.status(400).json({
+              success: false,
+              message: 'ZSet成员值不能为空'
+            });
+          }
+          if (member.score === undefined || member.score === null) {
+            return res.status(400).json({
+              success: false,
+              message: 'ZSet成员分数不能为空'
+            });
+          }
+          // 验证分数是否为整数
+          if (!Number.isInteger(Number(member.score))) {
+            return res.status(400).json({
+              success: false,
+              message: 'ZSet成员分数必须是整数'
+            });
+          }
+        }
+        break;
+    }
+    
+    const result = await redisService.createKey(id, db, {
+      name: name.trim(),
+      type,
+      ttl,
+      value,
+      fields,
+      items,
+      members
+    });
+    
+    res.json({
+      success: true,
+      message: '键创建成功',
+      data: result
+    });
+
+  } catch (error) {
+    console.error('创建键失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `创建键失败: ${error.message}`
+    });
+  }
+});
+
+/**
  * @api {put} /api/connections/:id/:db/key/:oldKeyName/rename 重命名键
  * @apiName RenameKey
  * @apiGroup Keys
