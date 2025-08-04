@@ -660,6 +660,33 @@ const createKey = async (connectionId, database, keyData) => {
   }
 };
 
+// 清除键的TTL
+const clearKeyTTL = async (connectionId, database, keyName) => {
+  try {
+    const connection = await ensureConnection(connectionId);
+    const client = connection.client;
+    
+    // 选择数据库
+    await client.select(parseInt(database));
+    
+    // 检查键是否存在
+    const exists = await client.exists(keyName);
+    if (!exists) {
+      throw new Error('键不存在');
+    }
+    
+    // 清除TTL（设置为永不过期）
+    const result = await client.persist(keyName);
+    
+    console.log(`TTL清除成功: ${keyName}, 结果: ${result}`);
+    
+    return true;
+  } catch (error) {
+    console.error('清除TTL失败:', error.message);
+    throw error;
+  }
+};
+
 // 重命名键
 const renameKey = async (connectionId, database, oldKeyName, newKeyName) => {
   const connection = await ensureConnection(connectionId);
@@ -939,6 +966,7 @@ module.exports = {
   getKeys,
   getKeyValue,
   createKey,
+  clearKeyTTL,
   renameKey,
   updateHashField,
   updateStringValue,

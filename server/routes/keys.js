@@ -347,6 +347,62 @@ router.post('/:id/:db/keys', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @api {delete} /api/connections/:id/:db/keys/:keyName/ttl 清除键的TTL
+ * @apiName ClearKeyTTL
+ * @apiGroup Keys
+ * @apiVersion 1.0.0
+ * 
+ * @apiDescription 清除Redis键的过期时间（TTL）
+ * 
+ * @apiHeader {String} Authorization Bearer JWT令牌
+ * 
+ * @apiParam {String} id 连接ID
+ * @apiParam {Number} db 数据库编号（0-15）
+ * @apiParam {String} keyName 键名
+ * 
+ * @apiExample {curl} 请求示例:
+ *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys/mykey/ttl" \
+ *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ * 
+ * @apiSuccess {Boolean} success=true 清除成功
+ * @apiSuccess {String} message="TTL清除成功" 成功消息
+ * 
+ * @apiUse KeyError
+ * 
+ * @apiError {Object} 404 键不存在
+ * @apiError {String} 404.message 错误消息
+ */
+router.delete('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
+  try {
+    const { id, db } = req.params;
+    const keyName = req.params[0]; // 获取通配符匹配的完整路径
+    const { username } = req.user;
+    
+    // 验证用户是否有权限访问这个连接
+    if (!(await validateConnectionPermission(username, id))) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限访问此连接'
+      });
+    }
+    
+    const result = await redisService.clearKeyTTL(id, db, keyName);
+    
+    res.json({
+      success: true,
+      message: 'TTL清除成功'
+    });
+
+  } catch (error) {
+    console.error('清除TTL失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `清除TTL失败: ${error.message}`
+    });
+  }
+});
+
+/**
  * @api {put} /api/connections/:id/:db/key/:oldKeyName/rename 重命名键
  * @apiName RenameKey
  * @apiGroup Keys

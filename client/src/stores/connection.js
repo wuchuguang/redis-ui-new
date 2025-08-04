@@ -780,6 +780,23 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 清除Key的TTL
+  const clearKeyTTL = async (connectionId, database = 0, keyName) => {
+    try {
+      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/ttl`)
+      if (response.data.success) {
+        console.log('TTL清除成功:', keyName)
+        return true
+      } else {
+        console.error('TTL清除失败:', response.data.message)
+        return false
+      }
+    } catch (error) {
+      console.error('清除TTL失败:', error)
+      throw error
+    }
+  }
+
   // 删除Hash字段
   const deleteHashField = async (connectionId, database = 0, keyName, field) => {
     try {
@@ -1115,6 +1132,7 @@ export const useConnectionStore = defineStore('connection', () => {
     deleteKeyGroup,
     deleteKey,
     createKey,
+    clearKeyTTL,
     deleteHashField,
     batchDeleteHashFields,
     updateHashField,

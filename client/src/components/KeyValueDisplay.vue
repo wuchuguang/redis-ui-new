@@ -53,6 +53,29 @@
             复制
           </el-button>
         </div>
+        <div class="key-ttl">
+          <span>TTL: {{ formatTTL(keyData.ttl) }}</span>
+          <el-button 
+            v-if="keyData.ttl > 0"
+            type="text" 
+            size="small" 
+            @click="clearTTL"
+            title="清除过期时间"
+          >
+            <el-icon><Clock /></el-icon>
+            清除
+          </el-button>
+          <el-button 
+            v-if="keyData.ttl === -1"
+            type="text" 
+            size="small" 
+            @click="showSetTTLDialog"
+            title="设置过期时间"
+          >
+            <el-icon><Clock /></el-icon>
+            设置
+          </el-button>
+        </div>
       </div>
       <div class="key-actions">
         <el-button 
@@ -1744,6 +1767,28 @@ const formatSize = (size) => {
   return `${(size / (1024 * 1024)).toFixed(1)}MB`
 }
 
+const formatTTL = (ttl) => {
+  if (ttl === -1) return '永不过期'
+  if (ttl === -2) return '键不存在'
+  if (ttl < 0) return '未知'
+  
+  // 格式化剩余时间
+  const days = Math.floor(ttl / 86400)
+  const hours = Math.floor((ttl % 86400) / 3600)
+  const minutes = Math.floor((ttl % 3600) / 60)
+  const seconds = ttl % 60
+  
+  if (days > 0) {
+    return `${days}天${hours}小时${minutes}分钟`
+  } else if (hours > 0) {
+    return `${hours}小时${minutes}分钟`
+  } else if (minutes > 0) {
+    return `${minutes}分钟${seconds}秒`
+  } else {
+    return `${seconds}秒`
+  }
+}
+
 const startKeyNameEdit = () => {
   isEditingKeyName.value = true
   editingKeyName.value = keyData.value.key
@@ -1819,6 +1864,30 @@ const handleKeyNameChange = async () => {
 const cancelKeyNameEdit = () => {
   editingKeyName.value = keyData.value.key
   isEditingKeyName.value = false
+}
+
+// TTL相关方法
+const clearTTL = async () => {
+  try {
+    const result = await connectionStore.clearKeyTTL(
+      props.connection.id,
+      props.database,
+      keyData.value.key
+    )
+    
+    if (result) {
+      keyData.value.ttl = -1
+      // 记录操作日志
+      operationLogger.logTTLCleared(keyData.value.key, props.connection)
+    }
+  } catch (error) {
+    console.error('清除TTL失败:', error)
+  }
+}
+
+const showSetTTLDialog = () => {
+  // 这里可以添加设置TTL的对话框
+  ElMessage.info('设置TTL功能开发中...')
 }
 
 const handleHashFilter = () => {
@@ -2273,6 +2342,15 @@ watch(() => editForm.type, () => {
   gap: 8px;
   color: #909399;
   font-size: 12px;
+}
+
+.key-ttl {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #909399;
+  font-size: 12px;
+  margin-left: 16px;
 }
 
 .key-actions {
