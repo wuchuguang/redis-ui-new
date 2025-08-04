@@ -814,6 +814,26 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
+  // 更新Key的值
+  const updateKeyValue = async (connectionId, database = 0, keyName, keyType, value) => {
+    try {
+      const response = await axios.put(`/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/value`, {
+        type: keyType,
+        value: value
+      })
+      if (response.data.success) {
+        console.log('键值更新成功:', keyName, '类型:', keyType)
+        return true
+      } else {
+        console.error('键值更新失败:', response.data.message)
+        return false
+      }
+    } catch (error) {
+      console.error('更新键值失败:', error)
+      throw error
+    }
+  }
+
   // 删除Hash字段
   const deleteHashField = async (connectionId, database = 0, keyName, field) => {
     try {
@@ -1151,6 +1171,7 @@ export const useConnectionStore = defineStore('connection', () => {
     createKey,
     clearKeyTTL,
     setKeyTTL,
+    updateKeyValue,
     deleteHashField,
     batchDeleteHashFields,
     updateHashField,

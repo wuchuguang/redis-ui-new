@@ -475,6 +475,80 @@ router.put('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
 });
 
 /**
+ * @api {put} /api/connections/:id/:db/keys/:keyName/value 更新键的值
+ * @apiName UpdateKeyValue
+ * @apiGroup Keys
+ * @apiVersion 1.0.0
+ * 
+ * @apiDescription 更新Redis键的值
+ * 
+ * @apiHeader {String} Authorization Bearer JWT令牌
+ * 
+ * @apiParam {String} id 连接ID
+ * @apiParam {Number} db 数据库编号（0-15）
+ * @apiParam {String} keyName 键名
+ * @apiParam {String} type 数据类型（string, list, set, zset, hash）
+ * @apiParam {*} value 新的值
+ * 
+ * @apiExample {curl} 请求示例:
+ *     curl -X PUT "http://localhost:3000/api/connections/123456/0/keys/mykey/value" \
+ *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+ *       -H "Content-Type: application/json" \
+ *       -d '{
+ *         "type": "list",
+ *         "value": ["item1", "item2", "item3"]
+ *       }'
+ * 
+ * @apiSuccess {Boolean} success=true 更新成功
+ * @apiSuccess {String} message="键值更新成功" 成功消息
+ * 
+ * @apiUse KeyError
+ * 
+ * @apiError {Object} 400 参数错误
+ * @apiError {String} 400.message 错误消息（数据类型不支持等）
+ * @apiError {Object} 404 键不存在
+ * @apiError {String} 404.message 错误消息
+ */
+router.put('/:id/:db/keys/*/value', authenticateToken, async (req, res) => {
+  try {
+    const { id, db } = req.params;
+    const keyName = req.params[0]; // 获取通配符匹配的完整路径
+    const { type, value } = req.body;
+    const { username } = req.user;
+    
+    // 验证用户是否有权限访问这个连接
+    if (!(await validateConnectionPermission(username, id))) {
+      return res.status(403).json({
+        success: false,
+        message: '无权限访问此连接'
+      });
+    }
+    
+    // 验证数据类型
+    if (!type || !['string', 'list', 'set', 'zset', 'hash'].includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: '不支持的数据类型'
+      });
+    }
+    
+    const result = await redisService.updateKeyValue(id, db, keyName, type, value);
+    
+    res.json({
+      success: true,
+      message: '键值更新成功'
+    });
+
+  } catch (error) {
+    console.error('更新键值失败:', error.message);
+    res.status(500).json({
+      success: false,
+      message: `更新键值失败: ${error.message}`
+    });
+  }
+});
+
+/**
  * @api {put} /api/connections/:id/:db/key/:oldKeyName/rename 重命名键
  * @apiName RenameKey
  * @apiGroup Keys

@@ -125,6 +125,11 @@ class OperationLogger {
     this.log('ttl', `清除键过期时间: ${keyName}`, 'info', { keyName, connection: connection?.name })
   }
 
+  // 键值更新操作
+  logKeyValueUpdated(keyName, keyType, connection) {
+    this.log('edit', `更新键值: ${keyName} (${keyType})`, 'info', { keyName, keyType, connection: connection?.name })
+  }
+
   // Hash字段操作
   logHashFieldAdded(keyName, field, connection) {
     this.log('add', `添加Hash字段: ${keyName}.${field}`, 'info', { keyName, field, connection: connection?.name })

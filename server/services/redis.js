@@ -719,6 +719,71 @@ const setKeyTTL = async (connectionId, database, keyName, ttl) => {
   }
 };
 
+// 更新键的值
+const updateKeyValue = async (connectionId, database, keyName, keyType, value) => {
+  try {
+    const connection = await ensureConnection(connectionId);
+    const client = connection.client;
+    
+    // 选择数据库
+    await client.select(parseInt(database));
+    
+    // 检查键是否存在
+    const exists = await client.exists(keyName);
+    if (!exists) {
+      throw new Error('键不存在');
+    }
+    
+    // 根据类型更新值
+    switch (keyType) {
+      case 'string':
+        await client.set(keyName, value);
+        break;
+      case 'list':
+        // 删除原键并重新创建
+        await client.del(keyName);
+        if (Array.isArray(value) && value.length > 0) {
+          await client.rPush(keyName, value);
+        }
+        break;
+      case 'set':
+        // 删除原键并重新创建
+        await client.del(keyName);
+        if (Array.isArray(value) && value.length > 0) {
+          await client.sAdd(keyName, value);
+        }
+        break;
+      case 'zset':
+        // 删除原键并重新创建
+        await client.del(keyName);
+        if (Array.isArray(value) && value.length > 0) {
+          const members = value.map(item => ({ score: item.score, value: item.value }));
+          await client.zAdd(keyName, members);
+        }
+        break;
+      case 'hash':
+        // 删除原键并重新创建
+        await client.del(keyName);
+        if (value && typeof value === 'object') {
+          const entries = Object.entries(value);
+          if (entries.length > 0) {
+            await client.hSet(keyName, entries);
+          }
+        }
+        break;
+      default:
+        throw new Error('不支持的数据类型');
+    }
+    
+    console.log(`键值更新成功: ${keyName}, 类型: ${keyType}`);
+    
+    return true;
+  } catch (error) {
+    console.error('更新键值失败:', error.message);
+    throw error;
+  }
+};
+
 // 重命名键
 const renameKey = async (connectionId, database, oldKeyName, newKeyName) => {
   const connection = await ensureConnection(connectionId);
@@ -1000,6 +1065,7 @@ module.exports = {
   createKey,
   clearKeyTTL,
   setKeyTTL,
+  updateKeyValue,
   renameKey,
   updateHashField,
   updateStringValue,

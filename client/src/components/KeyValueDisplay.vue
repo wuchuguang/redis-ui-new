@@ -1976,11 +1976,26 @@ const handleEditSave = async () => {
 }
 
 const handleValueEdit = async () => {
-  // 这里需要调用后端API来更新值
-  // 暂时模拟成功
-  keyData.value.value = editForm.value
-  ElMessage.success('值更新成功')
-  emit('key-updated', { key: keyData.value.key, value: editForm.value })
+  try {
+    const result = await connectionStore.updateKeyValue(
+      props.connection.id,
+      props.database,
+      keyData.value.key,
+      keyData.value.type,
+      editForm.value
+    )
+    
+    if (result) {
+      // 更新本地数据
+      keyData.value.value = editForm.value
+      // 记录操作日志
+      operationLogger.logKeyValueUpdated(keyData.value.key, keyData.value.type, props.connection)
+      emit('key-updated', { key: keyData.value.key, value: editForm.value })
+    }
+  } catch (error) {
+    console.error('更新键值失败:', error)
+    throw error
+  }
 }
 
 // Hash类型编辑方法
