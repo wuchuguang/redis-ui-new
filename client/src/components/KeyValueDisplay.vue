@@ -408,7 +408,7 @@
 
         <!-- 重命名模式 -->
         <div v-if="editForm.isRename" class="rename-mode">
-          <el-form label-width="100px">
+          <el-form label-width="80px">
             <el-form-item label="原键名">
               <el-input v-model="keyData.key" readonly />
             </el-form-item>
@@ -424,7 +424,7 @@
 
         <!-- 编辑值模式 -->
         <div v-else class="edit-value-mode">
-          <el-form label-width="100px">
+          <el-form label-width="80px">
             <el-form-item label="键名">
               <el-input v-model="keyData.key" readonly />
             </el-form-item>
@@ -2313,6 +2313,7 @@ watch(() => editForm.type, () => {
 .edit-dialog-content {
   max-height: 600px;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .edit-mode-selector {
@@ -2321,12 +2322,25 @@ watch(() => editForm.type, () => {
   border-bottom: 1px solid #404040;
 }
 
+.rename-mode,
+.edit-value-mode {
+  width: 100%;
+  overflow-x: hidden;
+}
+
+.rename-mode :deep(.el-form-item__content),
+.edit-value-mode :deep(.el-form-item__content) {
+  width: 100%;
+}
+
 .hash-edit-container,
 .list-edit-container,
 .set-edit-container,
 .zset-edit-container {
   max-height: 400px;
   overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .hash-field-item,
@@ -2336,22 +2350,27 @@ watch(() => editForm.type, () => {
   gap: 8px;
   margin-bottom: 8px;
   align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .hash-field-input,
 .list-item-input,
 .zset-member-input {
   flex: 1;
+  min-width: 200px;
 }
 
 .zset-score-input {
-  width: 120px;
+  flex: 1;
+  min-width: 200px;
 }
 
 .field-name {
   min-width: 80px;
   color: #909399;
   font-size: 12px;
+  flex-shrink: 0;
 }
 
 .add-hash-field,
@@ -2364,6 +2383,8 @@ watch(() => editForm.type, () => {
   padding-top: 16px;
   border-top: 1px solid #404040;
   align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
 }
 
 .new-field-input,
@@ -2371,11 +2392,13 @@ watch(() => editForm.type, () => {
 .new-member-input,
 .new-zset-member-input {
   flex: 1;
+  min-width: 200px;
 }
 
 .new-value-input,
 .new-zset-score-input {
-  width: 200px;
+  flex: 1;
+  min-width: 200px;
 }
 
 .set-member-tag {
