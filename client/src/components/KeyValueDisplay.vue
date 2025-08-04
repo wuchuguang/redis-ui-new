@@ -1977,6 +1977,14 @@ const handleEditSave = async () => {
 
 const handleValueEdit = async () => {
   try {
+    console.log('开始更新键值:', {
+      connectionId: props.connection.id,
+      database: props.database,
+      keyName: keyData.value.key,
+      keyType: keyData.value.type,
+      value: editForm.value
+    })
+    
     const result = await connectionStore.updateKeyValue(
       props.connection.id,
       props.database,
@@ -1986,11 +1994,14 @@ const handleValueEdit = async () => {
     )
     
     if (result) {
+      console.log('键值更新成功')
       // 更新本地数据
       keyData.value.value = editForm.value
       // 记录操作日志
       operationLogger.logKeyValueUpdated(keyData.value.key, keyData.value.type, props.connection)
       emit('key-updated', { key: keyData.value.key, value: editForm.value })
+    } else {
+      console.error('键值更新失败: 返回false')
     }
   } catch (error) {
     console.error('更新键值失败:', error)

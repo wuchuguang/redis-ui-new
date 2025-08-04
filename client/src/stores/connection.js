@@ -817,10 +817,18 @@ export const useConnectionStore = defineStore('connection', () => {
   // 更新Key的值
   const updateKeyValue = async (connectionId, database = 0, keyName, keyType, value) => {
     try {
+      console.log('发送更新键值请求:', {
+        url: `/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/value`,
+        data: { type: keyType, value: value }
+      })
+      
       const response = await axios.put(`/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/value`, {
         type: keyType,
         value: value
       })
+      
+      console.log('更新键值响应:', response.data)
+      
       if (response.data.success) {
         console.log('键值更新成功:', keyName, '类型:', keyType)
         return true
@@ -830,6 +838,7 @@ export const useConnectionStore = defineStore('connection', () => {
       }
     } catch (error) {
       console.error('更新键值失败:', error)
+      console.error('错误详情:', error.response?.data)
       throw error
     }
   }
