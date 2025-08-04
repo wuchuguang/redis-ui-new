@@ -57,6 +57,38 @@ const removeUserSession = (connectionId, username) => {
   return { disconnected: true, connectionId, username };
 };
 
+// 确保连接存在，如果不存在则自动建立
+const ensureConnection = async (connectionId) => {
+  let connection = redisConnections.get(connectionId);
+  
+  if (!connection || !connection.client) {
+    console.log(`连接 ${connectionId} 不存在，尝试自动建立连接...`)
+    
+    try {
+      // 获取连接配置
+      const connectionInfo = await connectionService.getConnectionInfo(connectionId)
+      if (!connectionInfo) {
+        throw new Error('连接配置不存在')
+      }
+      
+      // 建立连接
+      await establishSavedConnection(connectionId, connectionInfo.owner)
+      connection = redisConnections.get(connectionId)
+      
+      if (!connection || !connection.client) {
+        throw new Error('自动建立连接失败')
+      }
+      
+      console.log(`连接 ${connectionId} 自动建立成功`)
+    } catch (error) {
+      console.error(`自动建立连接失败: ${connectionId}`, error.message)
+      throw new Error('连接不存在或未连接')
+    }
+  }
+  
+  return connection;
+};
+
 // 真正关闭Redis连接
 const closeRedisConnection = async (connectionId) => {
   const connection = redisConnections.get(connectionId);
@@ -390,10 +422,7 @@ const testConnection = async (connectionConfig) => {
 
 // Ping连接
 const pingConnection = async (connectionId) => {
-  const connection = redisConnections.get(connectionId);
-  if (!connection || !connection.client) {
-    throw new Error('连接不存在或未连接');
-  }
+  const connection = await ensureConnection(connectionId);
 
   try {
     const result = await connection.client.ping();
@@ -431,10 +460,7 @@ const getConnectionUsers = (connectionId) => {
 
 // 获取键列表
 const getKeys = async (connectionId, database, pattern = '*', prefix, offset = 0, limit = 100) => {
-  const connection = redisConnections.get(connectionId);
-  if (!connection || !connection.client) {
-    throw new Error('连接不存在或未连接');
-  }
+  const connection = await ensureConnection(connectionId);
 
   // 切换到指定数据库
   await connection.client.select(parseInt(database));
@@ -503,10 +529,7 @@ const getKeys = async (connectionId, database, pattern = '*', prefix, offset = 0
 
 // 获取键值
 const getKeyValue = async (connectionId, database, keyName) => {
-  const connection = redisConnections.get(connectionId);
-  if (!connection || !connection.client) {
-    throw new Error('连接不存在或未连接');
-  }
+  const connection = await ensureConnection(connectionId);
 
   // 切换到指定数据库
   await connection.client.select(parseInt(database));
@@ -565,10 +588,7 @@ const getKeyValue = async (connectionId, database, keyName) => {
 
 // 重命名键
 const renameKey = async (connectionId, database, oldKeyName, newKeyName) => {
-  const connection = redisConnections.get(connectionId);
-  if (!connection || !connection.client) {
-    throw new Error('连接不存在或未连接');
-  }
+  const connection = await ensureConnection(connectionId);
 
   // 切换到指定数据库
   await connection.client.select(parseInt(database));
@@ -708,10 +728,7 @@ const deleteKeyGroup = async (connectionId, database, prefix) => {
 
 // 删除键
 const deleteKeys = async (connectionId, database, pattern) => {
-  const connection = redisConnections.get(connectionId);
-  if (!connection || !connection.client) {
-    throw new Error('连接不存在或未连接');
-  }
+  const connection = await ensureConnection(connectionId);
 
   // 切换到指定数据库
   await connection.client.select(parseInt(database));
@@ -732,10 +749,7 @@ const deleteKeys = async (connectionId, database, pattern) => {
 
 // 获取Redis服务器信息
 const getRedisInfo = async (connectionId) => {
-  const connection = redisConnections.get(connectionId);
-  if (!connection || !connection.client) {
-    throw new Error('连接不存在或未连接');
-  }
+  const connection = await ensureConnection(connectionId);
 
   // 获取Redis INFO命令的原始数据
   const infoRaw = await connection.client.info();
@@ -829,6 +843,7 @@ const closeAllConnections = async () => {
 
 module.exports = {
   redisConnections,
+  ensureConnection,
   addConnection,
   addTempConnection,
   establishConnection,

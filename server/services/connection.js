@@ -344,6 +344,7 @@ const getOperationHistoryRange = async (connectionId, startDate, endDate) => {
 module.exports = {
   createConnectionInfo,
   getConnectionInfo,
+  getConnectionById: getConnectionInfo, // 别名
   updateConnectionInfo,
   deleteConnectionInfo,
   addParticipant,

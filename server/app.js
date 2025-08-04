@@ -11,6 +11,9 @@ const connectionRoutes = require('./routes/connections');
 const keyRoutes = require('./routes/keys');
 const lockRoutes = require('./routes/locks');
 const operationRoutes = require('./routes/operations');
+const batchRoutes = require('./routes/tools/batch');
+const converterRoutes = require('./routes/tools/converter');
+const backupRoutes = require('./routes/tools/backup');
 
 const app = express();
 const PORT = process.env.PORT || DEFAULT_CONFIG.PORT;
@@ -28,6 +31,9 @@ app.use('/api/connections', connectionRoutes);
 app.use('/api/connections', keyRoutes); // 键值操作也挂载在connections下
 app.use('/api/locks', lockRoutes);
 app.use('/api/operations', operationRoutes);
+app.use('/api/tools/batch', batchRoutes);
+app.use('/api/tools/converter', converterRoutes);
+app.use('/api/tools/backup', backupRoutes);
 
 // 处理前端路由
 app.get('*', (req, res) => {

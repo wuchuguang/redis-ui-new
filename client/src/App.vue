@@ -35,6 +35,9 @@
           inactive-text=""
           class="auto-refresh-switch"
         />
+        <el-button type="text" class="toolbar-btn" @click="openDataOperationsTool">
+          <el-icon><Operation /></el-icon>
+        </el-button>
         <UserManager />
       </div>
     </div>
@@ -94,6 +97,12 @@
       @rules-changed="handleRulesChanged"
     />
 
+    <!-- 数据操作工具对话框 -->
+    <DataOperationsTool 
+      v-model="showDataOperationsTool"
+      :connection="currentConnection"
+    />
+
     <!-- 操作历史对话框 -->
     <el-dialog
       v-model="showOperationHistory"
@@ -117,7 +126,7 @@
 <script setup>
 import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { Plus, Setting, Clock, Close, Refresh } from '@element-plus/icons-vue'
+import { Plus, Setting, Clock, Close, Refresh, Operation } from '@element-plus/icons-vue'
 import { useConnectionStore } from './stores/connection'
 import { useUserStore } from './stores/user'
 import { operationLogger } from './utils/operationLogger'
@@ -127,6 +136,7 @@ import NewConnectionDialog from './components/NewConnectionDialog.vue'
 import KeyValueDisplay from './components/KeyValueDisplay.vue'
 import ConnectionManagerDialog from './components/ConnectionManagerDialog.vue'
 import ConversionRulesManager from './components/ConversionRulesManager.vue'
+import DataOperationsTool from './components/DataOperationsTool.vue'
 import OperationHistory from './components/OperationHistory.vue'
 import UserManager from './components/UserManager.vue'
 import OperationLock from './components/OperationLock.vue'
@@ -138,6 +148,7 @@ const userStore = useUserStore()
 const showNewConnectionDialog = ref(false)
 const showConnectionManagerDialog = ref(false)
 const showConversionRulesManager = ref(false)
+const showDataOperationsTool = ref(false)
 const showOperationHistory = ref(false)
 const operationHistoryRef = ref(null)
 const autoRefresh = ref(true)
@@ -163,6 +174,14 @@ const openOperationHistory = () => {
   showOperationHistory.value = true
 }
 
+const openDataOperationsTool = () => {
+  if (!currentConnection.value) {
+    ElMessage.warning('请先选择一个连接')
+    return
+  }
+  showDataOperationsTool.value = true
+}
+
 const closeConnection = () => {
   currentConnection.value = null
   redisInfo.value = null
@@ -180,10 +199,15 @@ const refreshData = async () => {
       return
     }
     
-    try {
-      redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
-    } catch (error) {
-      console.error('刷新Redis信息失败:', error)
+    // 检查连接状态，只有已连接的才获取Redis信息
+    if (currentConnection.value.status === 'connected') {
+      try {
+        redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
+      } catch (error) {
+        console.error('刷新Redis信息失败:', error)
+      }
+    } else {
+      console.log(`连接 ${currentConnection.value.id} 未建立，跳过获取Redis信息`)
     }
   }
 }
@@ -372,8 +396,13 @@ const startAutoRefresh = () => {
           return
         }
         
-        await refreshData()
-        console.log('🔄 自动刷新数据完成')
+        try {
+          await refreshData()
+          console.log('🔄 自动刷新数据完成')
+        } catch (error) {
+          console.log('自动刷新失败，静默处理:', error.message)
+          // 不显示错误消息，避免干扰用户
+        }
       }
     }, 10000) // 每10秒自动刷新一次
   }
@@ -428,7 +457,12 @@ onMounted(async () => {
   
   // 定期刷新连接状态（每30秒）
   const statusInterval = setInterval(async () => {
-    await connectionStore.refreshConnectionStatus()
+    try {
+      await connectionStore.refreshConnectionStatus()
+    } catch (error) {
+      console.log('刷新连接状态失败，静默处理:', error.message)
+      // 不显示错误消息，避免干扰用户
+    }
   }, 30000)
   
   // 定期ping当前连接（每20秒）- 只有当用户选择了连接时才ping
@@ -444,7 +478,8 @@ onMounted(async () => {
           console.log('✅ Ping成功，连接正常')
         }
       } catch (error) {
-        console.error('Ping连接出错:', error)
+        console.log('Ping连接出错，静默处理:', error.message)
+        // 不显示错误消息，避免干扰用户
       }
     }
   }, 20000)

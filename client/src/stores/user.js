@@ -125,8 +125,15 @@ axios.interceptors.response.use(
         }
       }
     } else if (error.request) {
-      // 网络错误
-      ElMessage.error('网络连接失败，请检查网络设置')
+      // 网络错误 - 只在非自动刷新的情况下显示错误
+      const isAutoRefresh = error.config?.url?.includes('/api/connections') && 
+                           (error.config?.url?.includes('/info') || error.config?.url?.includes('/ping'))
+      
+      if (!isAutoRefresh) {
+        ElMessage.error('网络连接失败，请检查网络设置')
+      } else {
+        console.log('自动刷新网络错误，静默处理:', error.config?.url)
+      }
     } else {
       // 其他错误
       ElMessage.error('请求失败')

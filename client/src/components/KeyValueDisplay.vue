@@ -98,6 +98,7 @@
         >
           <el-icon><Setting /></el-icon>
         </el-button>
+        
       </div>
     </div>
 
@@ -840,18 +841,20 @@
       </template>
     </el-dialog>
 
-    <!-- KeyHash工具对话框 -->
+        <!-- KeyHash工具对话框 -->
     <el-dialog
       v-model="showKeyHashDialog"
       title="KeyHash工具"
       width="1000px"
       :close-on-click-modal="false"
     >
-      <KeyHash 
+      <KeyHash
         v-if="showKeyHashDialog && keyData.type === 'hash'"
         :hash-data="keyData.value"
       />
     </el-dialog>
+
+
   </div>
 </template>
 
@@ -870,7 +873,8 @@ import {
   Check,
   Warning,
   SuccessFilled,
-  DocumentCopy
+  DocumentCopy,
+  Tools
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import { useUserStore } from '../stores/user'
@@ -878,6 +882,7 @@ import { operationLogger } from '../utils/operationLogger'
 import FormattedValue from './FormattedValue.vue'
 import OperationLock from './OperationLock.vue'
 import KeyHash from './KeyHash.vue'
+
 
 const connectionStore = useConnectionStore()
 const userStore = useUserStore()
@@ -915,6 +920,7 @@ const showEditDialog = ref(false)
 const showEditHashFieldDialog = ref(false)
 const showEditStringDialog = ref(false)
 const showKeyHashDialog = ref(false)
+
 const editingKeyName = ref('')
 const isEditingKeyName = ref(false)
 const keyNameInputRef = ref(null)
@@ -1715,6 +1721,8 @@ const viewRaw = () => {
 const showKeyHash = () => {
   showKeyHashDialog.value = true
 }
+
+
 
 const removeSetItem = (filteredIndex) => {
   if (keyData.value.type === 'set' && keyData.value.value) {
