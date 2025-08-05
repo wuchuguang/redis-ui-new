@@ -222,11 +222,11 @@
           <el-table 
             :data="filteredHashTableData" 
             stripe
-            :max-height="400"
+            height="100%"
             v-loading="hashLoading"
           >
             <el-table-column prop="field" label="字段" width="200" />
-            <el-table-column label="值" min-width="300">
+            <el-table-column label="值" min-width="400">
               <template #default="{ row }">
                 <FormattedValue 
                   :value="row.value" 
@@ -285,11 +285,11 @@
           <el-table 
             :data="listTableData" 
             stripe
-            :max-height="400"
+            height="100%"
             v-loading="listLoading"
           >
             <el-table-column prop="index" label="索引" width="80" />
-            <el-table-column label="值" min-width="300">
+            <el-table-column label="值" min-width="400">
               <template #default="{ row }">
                 <FormattedValue 
                   :value="row.value" 
@@ -362,10 +362,10 @@
 
         <!-- ZSet类型 -->
         <div v-else-if="keyData.type === 'zset'" class="zset-value">
-          <el-table :data="zsetTableData" stripe>
+          <el-table :data="zsetTableData" stripe height="100%">
             <el-table-column prop="rank" label="排名" width="80" />
             <el-table-column prop="score" label="分数" width="100" />
-            <el-table-column label="成员" min-width="300">
+            <el-table-column label="成员" min-width="400">
               <template #default="{ row }">
                 <FormattedValue 
                   :value="row.member" 
@@ -1624,6 +1624,9 @@ watch(() => props.database, async () => {
   flex: 1;
   padding: 16px;
   overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
 }
 
 .no-key-selected,
@@ -1636,6 +1639,10 @@ watch(() => props.database, async () => {
 
 .value-content {
   height: 100%;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* 允许flex项目收缩 */
 }
 
 .string-value {
@@ -1655,6 +1662,50 @@ watch(() => props.database, async () => {
 .list-value,
 .zset-value {
   height: 100%;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 确保表格容器占满剩余空间 */
+.hash-value .el-table,
+.list-value .el-table,
+.zset-value .el-table {
+  flex: 1;
+  min-height: 0; /* 允许flex项目收缩 */
+}
+
+/* 确保表格充分利用可用空间 */
+:deep(.el-table) {
+  width: 100%;
+}
+
+:deep(.el-table__body-wrapper) {
+  width: 100%;
+}
+
+:deep(.el-table__body) {
+  width: 100%;
+}
+
+/* 确保表格单元格内容充分利用空间 */
+:deep(.el-table__cell) {
+  padding: 8px 12px;
+}
+
+:deep(.el-table .cell) {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+}
+
+/* 优化表格行高度，让内容更好地利用空间 */
+:deep(.el-table__row) {
+  min-height: 80px; /* 设置最小行高 */
+}
+
+:deep(.el-table__body tr) {
+  height: auto; /* 允许行高自适应内容 */
 }
 
 /* 表格样式已由全局样式处理 */

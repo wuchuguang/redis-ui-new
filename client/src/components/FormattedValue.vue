@@ -366,7 +366,8 @@ watch([() => props.keyName, () => props.dataType, () => props.fieldName, () => p
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
   font-size: 13px;
   line-height: 1.4;
-  max-height: 400px;
+  min-height: 60px; /* 设置最小高度 */
+  max-height: 200px; /* 增加最大高度 */
   overflow-y: auto;
   padding: 8px;
   background-color: var(--el-bg-color);
@@ -374,6 +375,8 @@ watch([() => props.keyName, () => props.dataType, () => props.fieldName, () => p
   border-radius: 4px;
   scrollbar-width: thin;
   scrollbar-color: #606266 transparent;
+  min-width: 0; /* 确保flex项目可以收缩 */
+  width: 100%; /* 确保占满可用宽度 */
 }
 
 .value-text::-webkit-scrollbar {
