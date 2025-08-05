@@ -197,7 +197,7 @@
             <div class="filter-row">
               <el-input
                 v-model="hashFilter"
-                placeholder="输入关键字搜索字段或值"
+                placeholder="搜索字段或值，支持通配符(*?)和多值搜索(;)"
                 clearable
                 @input="handleHashFilter"
                 class="filter-input"
@@ -227,6 +227,15 @@
               >
                 <el-icon><Delete /></el-icon>
                 批量删除 ({{ filteredHashTableData.length }})
+              </el-button>
+              <el-button 
+                type="text" 
+                size="small"
+                @click="showSearchHelp"
+                title="搜索帮助"
+                class="help-btn"
+              >
+                <el-icon><QuestionFilled /></el-icon>
               </el-button>
             </div>
           </div>
@@ -336,7 +345,7 @@
           <div class="filter-section">
             <el-input
               v-model="setFilter"
-              placeholder="输入关键字搜索成员"
+              placeholder="搜索成员，支持通配符(*?)和多值搜索(;)"
               clearable
               @input="handleSetFilter"
               class="filter-input"
@@ -483,7 +492,8 @@ import {
   Search,
   ArrowLeft,
   Clock,
-  Lock
+  Lock,
+  QuestionFilled
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import { useUserStore } from '../stores/user'
@@ -598,11 +608,11 @@ const hashTableData = computed(() => {
 const filteredHashTableData = computed(() => {
   let data = hashTableData.value
   
-  // 应用过滤器
+  // 应用过滤器，支持通配符和多值搜索
   if (hashFilter.value) {
     data = data.filter(item => 
-      item.field.toLowerCase().includes(hashFilter.value.toLowerCase()) ||
-      item.value.toLowerCase().includes(hashFilter.value.toLowerCase())
+      matchesSearchPattern(item.field, hashFilter.value) ||
+      matchesSearchPattern(item.value, hashFilter.value)
     )
   }
   
@@ -652,7 +662,7 @@ const filteredSetData = computed(() => {
   }
   
   return keyData.value.value.filter(item => 
-    item.toLowerCase().includes(setFilter.value.toLowerCase())
+    matchesSearchPattern(item, setFilter.value)
   )
 })
 
@@ -1393,6 +1403,56 @@ const handleSetFilter = () => {
   // 筛选逻辑已在计算属性中处理
 }
 
+// 通用搜索过滤函数，支持通配符和多值搜索
+const matchesSearchPattern = (text, searchPattern) => {
+  if (!searchPattern || !text) return false
+  
+  // 将搜索模式按分号分割成多个条件
+  const patterns = searchPattern.split(';').map(p => p.trim()).filter(p => p)
+  
+  // 如果只有一个模式，直接匹配
+  if (patterns.length === 1) {
+    return matchesSinglePattern(text, patterns[0])
+  }
+  
+  // 多个模式时，只要匹配其中一个就返回true
+  return patterns.some(pattern => matchesSinglePattern(text, pattern))
+}
+
+// 匹配单个搜索模式，支持通配符
+const matchesSinglePattern = (text, pattern) => {
+  if (!pattern || !text) return false
+  
+  const textLower = text.toLowerCase()
+  const patternLower = pattern.toLowerCase()
+  
+  // 如果模式包含通配符，使用通配符匹配
+  if (patternLower.includes('*') || patternLower.includes('?')) {
+    return matchesWildcard(textLower, patternLower)
+  }
+  
+  // 否则使用普通包含匹配
+  return textLower.includes(patternLower)
+}
+
+// 通配符匹配函数
+const matchesWildcard = (text, pattern) => {
+  // 将通配符模式转换为正则表达式
+  const regexPattern = pattern
+    .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // 转义正则特殊字符
+    .replace(/\*/g, '.*') // * 匹配任意字符
+    .replace(/\?/g, '.')  // ? 匹配单个字符
+  
+  try {
+    const regex = new RegExp(regexPattern, 'i')
+    return regex.test(text)
+  } catch (error) {
+    console.error('通配符匹配错误:', error)
+    // 如果正则表达式无效，回退到普通包含匹配
+    return text.includes(pattern)
+  }
+}
+
 // 切换Hash过滤器锁定状态
 const toggleHashFilterLock = () => {
   isHashFilterLocked.value = !isHashFilterLocked.value
@@ -1403,6 +1463,31 @@ const toggleHashFilterLock = () => {
 const toggleSetFilterLock = () => {
   isSetFilterLocked.value = !isSetFilterLocked.value
   ElMessage.success(isSetFilterLocked.value ? '搜索关键词已锁定' : '搜索关键词已解锁')
+}
+
+// 显示搜索帮助
+const showSearchHelp = () => {
+  ElMessageBox.alert(`
+搜索功能使用说明：
+
+1. 普通搜索：直接输入关键词
+   例如：user
+
+2. 通配符搜索：
+   * 匹配任意字符：user*
+   ? 匹配单个字符：user?
+
+3. 多值搜索：用分号(;)分隔多个条件
+   例如：user;admin;test
+
+4. 组合使用：
+   例如：user*;admin?;test
+
+注意：搜索不区分大小写
+  `, '搜索帮助', {
+    confirmButtonText: '知道了',
+    dangerouslyUseHTMLString: false
+  })
 }
 
 
@@ -1949,6 +2034,16 @@ watch(() => props.database, async () => {
 
 .filter-input .el-input__suffix .el-button:hover {
   background-color: rgba(64, 158, 255, 0.2);
+}
+
+.help-btn {
+  color: #909399;
+  margin-left: 8px;
+}
+
+.help-btn:hover {
+  color: #409eff;
+  background-color: rgba(64, 158, 255, 0.1);
 }
 
 
