@@ -185,9 +185,12 @@ const openDataOperationsTool = () => {
 }
 
 const closeConnection = () => {
+  // 清空所有连接相关数据
   currentConnection.value = null
   redisInfo.value = null
   selectedKey.value = null
+  currentDatabase.value = 0
+  
   // 清除保存的状态
   localStorage.removeItem('redisManagerState')
 }
@@ -216,13 +219,22 @@ const refreshData = async () => {
 
 
 const handleConnectionSelected = (connection) => {
+  // 清空旧连接的所有数据
+  selectedKey.value = null
+  redisInfo.value = null
+  currentDatabase.value = 0
+  
+  // 设置新连接
   currentConnection.value = connection
+  
   // 延迟调用refreshData，避免在连接刚建立后立即检查连接状态
   setTimeout(() => {
     refreshData()
   }, 500)
+  
   // 保存当前状态到localStorage
   saveCurrentState()
+  
   // 记录操作日志
   operationLogger.logConnectionSelected(connection)
 }
@@ -231,9 +243,11 @@ const handleConnectionDeleted = (connectionId) => {
   // 如果删除的是当前连接，清空当前连接
   if (currentConnection.value && currentConnection.value.id === connectionId) {
     const connectionName = currentConnection.value.name
+    // 清空所有连接相关数据
     currentConnection.value = null
     redisInfo.value = null
     selectedKey.value = null
+    currentDatabase.value = 0
     // 清除保存的状态
     localStorage.removeItem('redisManagerState')
     // 记录操作日志
