@@ -4,12 +4,14 @@
     title="编辑连接"
     width="500px"
     :close-on-click-modal="false"
+    class="edit-connection-dialog"
   >
     <el-form
       ref="formRef"
       :model="form"
       :rules="rules"
       label-width="100px"
+      class="connection-form"
     >
       <el-form-item label="连接名称" prop="name">
         <el-input 
@@ -18,6 +20,7 @@
           @keyup.enter="handleUpdate"
         />
       </el-form-item>
+      
       <el-form-item label="主机地址" prop="host">
         <el-input 
           v-model="form.host" 
@@ -25,14 +28,17 @@
           @keyup.enter="handleUpdate"
         />
       </el-form-item>
+      
       <el-form-item label="端口" prop="port">
         <el-input-number 
           v-model="form.port" 
           :min="1" 
           :max="65535"
           @keyup.enter="handleUpdate"
+          controls-position="right"
         />
       </el-form-item>
+      
       <el-form-item label="密码" prop="password">
         <el-input 
           v-model="form.password" 
@@ -42,12 +48,14 @@
           @keyup.enter="handleUpdate"
         />
       </el-form-item>
+      
       <el-form-item label="数据库" prop="database">
         <el-input-number 
           v-model="form.database" 
           :min="0" 
           :max="15"
           @keyup.enter="handleUpdate"
+          controls-position="right"
         />
       </el-form-item>
     </el-form>
@@ -56,7 +64,7 @@
       <div class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" @click="handleUpdate" :loading="updating">
-          保存
+          {{ updating ? '保存中...' : '保存' }}
         </el-button>
       </div>
     </template>
@@ -66,6 +74,7 @@
 <script setup>
 import { ref, reactive, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+
 import { useConnectionStore } from '../../stores/connection'
 import { operationLogger } from '../../utils/operationLogger'
 
@@ -154,9 +163,79 @@ const handleUpdate = async () => {
 </script>
 
 <style scoped>
+/* 对话框样式 */
+.edit-connection-dialog :deep(.el-dialog) {
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
+
+.edit-connection-dialog :deep(.el-dialog__header) {
+  border-bottom: 1px solid var(--el-border-color-light);
+  padding: 20px 24px 16px;
+}
+
+.edit-connection-dialog :deep(.el-dialog__title) {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.edit-connection-dialog :deep(.el-dialog__body) {
+  padding: 24px;
+}
+
+.edit-connection-dialog :deep(.el-dialog__footer) {
+  border-top: 1px solid var(--el-border-color-light);
+  padding: 16px 24px;
+}
+
+/* 表单样式 */
+.connection-form :deep(.el-form-item) {
+  margin-bottom: 20px;
+}
+
+.connection-form :deep(.el-form-item__label) {
+  font-weight: 500;
+  color: var(--el-text-color-primary);
+}
+
+.connection-form :deep(.el-input__wrapper) {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.connection-form :deep(.el-input__wrapper:hover) {
+  border-color: var(--el-color-primary);
+}
+
+.connection-form :deep(.el-input-number__wrapper) {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.connection-form :deep(.el-input-number__wrapper:hover) {
+  border-color: var(--el-color-primary);
+}
+
+/* 底部按钮 */
 .dialog-footer {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 12px;
+}
+
+.dialog-footer .el-button {
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.dialog-footer .el-button:hover {
+  transform: translateY(-1px);
+}
+
+.dialog-footer .el-button--primary:hover {
+  box-shadow: 0 4px 12px rgba(64, 158, 255, 0.3);
 }
 </style> 

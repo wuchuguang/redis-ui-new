@@ -328,7 +328,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
     res.json({
       success: true,
       message: 'Redis连接更新成功',
-      data: updatedConfig
+      data: updatedConnectionInfo
     });
 
   } catch (error) {
