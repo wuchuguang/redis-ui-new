@@ -205,6 +205,17 @@
                 <template #prefix>
                   <el-icon><Search /></el-icon>
                 </template>
+                <template #suffix>
+                  <el-button
+                    type="text"
+                    size="small"
+                    @click="toggleHashFilterLock"
+                    :class="{ 'locked': isHashFilterLocked }"
+                    title="锁定搜索关键词"
+                  >
+                    <el-icon><Lock /></el-icon>
+                  </el-button>
+                </template>
               </el-input>
               <el-button 
                 v-if="hashFilter && filteredHashTableData.length > 0"
@@ -333,6 +344,17 @@
               <template #prefix>
                 <el-icon><Search /></el-icon>
               </template>
+              <template #suffix>
+                <el-button
+                  type="text"
+                  size="small"
+                  @click="toggleSetFilterLock"
+                  :class="{ 'locked': isSetFilterLocked }"
+                  title="锁定搜索关键词"
+                >
+                  <el-icon><Lock /></el-icon>
+                </el-button>
+              </template>
             </el-input>
           </div>
           <div class="set-items">
@@ -460,7 +482,8 @@ import {
   Document,
   Search,
   ArrowLeft,
-  Clock
+  Clock,
+  Lock
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import { useUserStore } from '../stores/user'
@@ -519,6 +542,8 @@ const keyNameInputRef = ref(null)
 const operationLockRef = ref(null)
 const hashFilter = ref('')
 const setFilter = ref('')
+const isHashFilterLocked = ref(false)
+const isSetFilterLocked = ref(false)
 
 // 分页加载相关状态
 const hashLoading = ref(false)
@@ -1368,6 +1393,18 @@ const handleSetFilter = () => {
   // 筛选逻辑已在计算属性中处理
 }
 
+// 切换Hash过滤器锁定状态
+const toggleHashFilterLock = () => {
+  isHashFilterLocked.value = !isHashFilterLocked.value
+  ElMessage.success(isHashFilterLocked.value ? '搜索关键词已锁定' : '搜索关键词已解锁')
+}
+
+// 切换Set过滤器锁定状态
+const toggleSetFilterLock = () => {
+  isSetFilterLocked.value = !isSetFilterLocked.value
+  ElMessage.success(isSetFilterLocked.value ? '搜索关键词已锁定' : '搜索关键词已解锁')
+}
+
 
 
 // 监听选中键的变化
@@ -1383,10 +1420,16 @@ watch(() => props.selectedKey, async (newKey, oldKey) => {
       keyData.value = { key: '', type: 'unknown', value: null, ttl: -1, size: 0 }
       editingKeyName.value = ''
     }
-    // 重置编辑状态和筛选状态
+    // 重置编辑状态
     isEditingKeyName.value = false
-    hashFilter.value = ''
-    setFilter.value = ''
+    
+    // 只有在未锁定时才清空搜索关键词
+    if (!isHashFilterLocked.value) {
+      hashFilter.value = ''
+    }
+    if (!isSetFilterLocked.value) {
+      setFilter.value = ''
+    }
   } catch (error) {
     console.error('KeyValueDisplay - watch error:', error)
   }
@@ -1896,6 +1939,16 @@ watch(() => props.database, async () => {
   background-color: #f56c6c;
   border-color: #f56c6c;
   color: #ffffff;
+}
+
+/* 锁定按钮样式 */
+.filter-input .el-input__suffix .el-button.locked {
+  color: #409eff;
+  background-color: rgba(64, 158, 255, 0.1);
+}
+
+.filter-input .el-input__suffix .el-button:hover {
+  background-color: rgba(64, 158, 255, 0.2);
 }
 
 
