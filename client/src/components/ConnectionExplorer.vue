@@ -4,8 +4,8 @@
     <div class="current-connection-header" v-if="currentConnection">
       <h3 class="connection-title">{{ currentConnection.redis.name }}</h3>
       <div class="connection-actions">
-        <el-button type="text" size="small" @click="refreshKeys" title="刷新键列表">
-          <el-icon><House /></el-icon>
+        <el-button type="text" size="small" @click="openRedisInfo" title="Redis服务信息">
+          <el-icon><InfoFilled /></el-icon>
         </el-button>
         <el-button type="text" size="small" @click="openConversionRules" title="转换规则管理">
           <el-icon><Setting /></el-icon>
@@ -319,7 +319,7 @@
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { House, Folder, Refresh, ArrowUp, ArrowRight, ArrowLeft, Plus, Search, Document, Delete, List, Setting, Loading, CircleCheck, CircleClose } from '@element-plus/icons-vue'
+import { House, Folder, Refresh, ArrowUp, ArrowRight, ArrowLeft, Plus, Search, Document, Delete, List, Setting, Loading, CircleCheck, CircleClose, InfoFilled } from '@element-plus/icons-vue'
 import NewKeyDialog from './NewKeyDialog.vue'
 import BatchDeleteDialog from './BatchDeleteDialog.vue'
 import { useConnectionStore } from '../stores/connection'
@@ -334,7 +334,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['select-database', 'add-key', 'search-keys', 'select-key', 'open-conversion-rules'])
+const emit = defineEmits(['select-database', 'add-key', 'search-keys', 'select-key', 'open-conversion-rules', 'open-redis-info'])
 
 const connectionStore = useConnectionStore()
 
@@ -513,6 +513,10 @@ const handleRefresh = async () => {
 
 const openConversionRules = () => {
   emit('open-conversion-rules')
+}
+
+const openRedisInfo = () => {
+  emit('open-redis-info')
 }
 
 const refreshListModeData = async (isConverting = false) => {

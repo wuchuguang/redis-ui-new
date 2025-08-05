@@ -25,8 +25,25 @@
     </div>
 
     <!-- 加载状态 -->
-    <div v-if="!redisInfo && !loading" class="no-data">
-      <el-empty description="暂无Redis信息，请先建立连接" />
+    <div v-if="!props.connection" class="no-data">
+      <el-empty description="暂无Redis信息，请先建立连接">
+        <template #extra>
+          <div class="quick-connect-actions">
+            <el-button type="primary" @click="quickConnectLast" :loading="quickConnectLoading">
+              <el-icon><Connection /></el-icon>
+              {{ props.lastConnectionName ? `快速连接 ${props.lastConnectionName}` : '快速连接最后一次连接' }}
+            </el-button>
+            <el-button @click="openConnectionManager">
+              <el-icon><Setting /></el-icon>
+              连接管理
+            </el-button>
+          </div>
+        </template>
+      </el-empty>
+    </div>
+    
+    <div v-else-if="!redisInfo && !loading" class="no-data">
+      <el-empty description="正在获取Redis信息..." />
     </div>
     
     <div v-else-if="loading" class="loading-content">
@@ -170,7 +187,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Search, Refresh } from '@element-plus/icons-vue'
+import { Search, Refresh, Connection } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 
 // Props
@@ -182,11 +199,15 @@ const props = defineProps({
   redisInfo: {
     type: Object,
     default: null
+  },
+  lastConnectionName: {
+    type: String,
+    default: ''
   }
 })
 
 // Emits
-const emit = defineEmits(['refresh'])
+const emit = defineEmits(['refresh', 'quick-connect-last', 'open-connection-manager'])
 
 const connectionStore = useConnectionStore()
 
@@ -195,6 +216,7 @@ const searchTerm = ref('')
 const loading = ref(false)
 const autoRefresh = ref(true)
 const autoRefreshTimer = ref(null)
+const quickConnectLoading = ref(false)
 
 // 键值统计数据
 const keysStats = ref([])
@@ -269,6 +291,24 @@ const refreshInfo = async () => {
   }
 }
 
+// 快速连接最后一次连接
+const quickConnectLast = async () => {
+  quickConnectLoading.value = true
+  try {
+    // 触发父组件的快速连接方法
+    emit('quick-connect-last')
+  } catch (error) {
+    console.error('快速连接失败:', error)
+  } finally {
+    quickConnectLoading.value = false
+  }
+}
+
+// 打开连接管理
+const openConnectionManager = () => {
+  emit('open-connection-manager')
+}
+
 const startAutoRefresh = () => {
   stopAutoRefresh()
   if (autoRefresh.value) {
@@ -298,8 +338,24 @@ watch(autoRefresh, (newValue) => {
 watch(() => props.connection, (newConnection) => {
   if (newConnection) {
     startAutoRefresh()
+    // 如果有连接但没有Redis信息，自动获取
+    if (!props.redisInfo && !loading.value) {
+      refreshInfo()
+    }
   } else {
     stopAutoRefresh()
+  }
+}, { immediate: true })
+
+// 监听Redis信息变化，当有连接但没有Redis信息时自动获取
+watch(() => props.redisInfo, (newRedisInfo) => {
+  if (props.connection && !newRedisInfo && !loading.value) {
+    // 延迟一下避免频繁请求
+    setTimeout(() => {
+      if (props.connection && !props.redisInfo && !loading.value) {
+        refreshInfo()
+      }
+    }, 1000)
   }
 }, { immediate: true })
 
@@ -413,6 +469,13 @@ onUnmounted(() => {
   align-items: center;
   min-height: 400px;
   padding: 20px;
+}
+
+.quick-connect-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .info-panels {

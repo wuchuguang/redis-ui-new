@@ -58,6 +58,7 @@
           @select-connection="handleSelectConnection"
           @select-key="handleSelectKey"
           @open-conversion-rules="handleOpenConversionRules"
+          @open-redis-info="handleOpenRedisInfo"
         />
       </div>
 
@@ -67,7 +68,10 @@
           v-if="!selectedKey"
           :connection="currentConnection"
           :redis-info="redisInfo"
+          :last-connection-name="getLastConnectionName()"
           @refresh="refreshData"
+          @quick-connect-last="quickConnectLastConnection"
+          @open-connection-manager="openConnectionManagerDialog"
         />
         <KeyValueDisplay 
           v-else
@@ -213,6 +217,8 @@ const closeConnection = () => {
 }
 
 const refreshData = async () => {
+  console.log('refreshData 被调用，当前连接:', currentConnection.value)
+  
   if (currentConnection.value) {
     // 检查连接是否已被用户关闭
     let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
@@ -221,21 +227,25 @@ const refreshData = async () => {
       return
     }
     
-    // 检查连接状态，只有已连接的才获取Redis信息
-    if (currentConnection.value.status === 'connected') {
-      try {
-        redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
-      } catch (error) {
-        console.error('刷新Redis信息失败:', error)
-      }
-    } else {
-      console.log(`连接 ${currentConnection.value.id} 未建立，跳过获取Redis信息`)
+    // 尝试获取Redis信息，不管连接状态如何
+    try {
+      console.log(`尝试获取连接 ${currentConnection.value.id} 的Redis信息，连接状态:`, currentConnection.value.status)
+      redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
+      console.log('Redis信息获取成功:', redisInfo.value)
+    } catch (error) {
+      console.error('刷新Redis信息失败:', error)
+      // 如果获取失败，清空Redis信息
+      redisInfo.value = null
     }
+  } else {
+    console.log('没有当前连接，跳过刷新')
   }
 }
 
 
 const handleConnectionSelected = (connection) => {
+  console.log('handleConnectionSelected 被调用，连接:', connection)
+  
   // 清空旧连接的所有数据
   selectedKey.value = null
   redisInfo.value = null
@@ -244,10 +254,17 @@ const handleConnectionSelected = (connection) => {
   // 设置新连接
   currentConnection.value = connection
   
-  // 延迟调用refreshData，避免在连接刚建立后立即检查连接状态
-  setTimeout(() => {
+  // 如果连接状态是connected，立即获取Redis信息
+  if (connection.status === 'connected') {
+    console.log('连接状态为connected，立即获取Redis信息')
     refreshData()
-  }, 500)
+  } else {
+    console.log('连接状态不是connected，延迟500ms后获取Redis信息')
+    // 延迟调用refreshData，避免在连接刚建立后立即检查连接状态
+    setTimeout(() => {
+      refreshData()
+    }, 500)
+  }
   
   // 保存当前状态到localStorage
   saveCurrentState()
@@ -386,6 +403,20 @@ const handleOpenConversionRules = () => {
   showConversionRulesManager.value = true
 }
 
+const handleOpenRedisInfo = () => {
+  console.log('handleOpenRedisInfo 被调用，当前连接:', currentConnection.value)
+  
+  // 切换到Redis服务信息视图（清空选中的键，显示RedisOverview）
+  selectedKey.value = null
+  // 立即刷新Redis信息
+  if (currentConnection.value) {
+    console.log('有当前连接，立即刷新Redis信息')
+    refreshData()
+  } else {
+    console.log('没有当前连接')
+  }
+}
+
 // 保存当前状态到localStorage
 const saveCurrentState = () => {
   const state = {
@@ -416,6 +447,54 @@ const restoreCurrentState = () => {
     console.error('恢复状态失败:', error)
   }
   return null
+}
+
+// 获取最后一次连接的连接信息
+const getLastConnection = () => {
+  try {
+    const savedState = localStorage.getItem('redisManagerState')
+    if (savedState) {
+      const state = JSON.parse(savedState)
+      if (state.currentConnectionId) {
+        // 从连接store中查找对应的连接
+        const allConnections = connectionStore.getAllConnections
+        return allConnections.find(conn => conn.id === state.currentConnectionId)
+      }
+    }
+  } catch (error) {
+    console.error('获取最后一次连接失败:', error)
+  }
+  return null
+}
+
+// 获取最后一次连接的名称
+const getLastConnectionName = () => {
+  const lastConnection = getLastConnection()
+  return lastConnection ? lastConnection.name : ''
+}
+
+// 快速连接最后一次连接
+const quickConnectLastConnection = async () => {
+  const lastConnection = getLastConnection()
+  if (!lastConnection) {
+    ElMessage.warning('没有找到上次连接的记录')
+    return
+  }
+  
+  try {
+    // 尝试连接
+    const success = await connectionStore.connectToRedis(lastConnection)
+    if (success) {
+      // 连接成功，设置为当前连接
+      handleConnectionSelected(lastConnection)
+      ElMessage.success(`已快速连接到 ${lastConnection.name}`)
+    } else {
+      ElMessage.error('连接失败，请检查连接配置')
+    }
+  } catch (error) {
+    console.error('快速连接失败:', error)
+    ElMessage.error('快速连接失败')
+  }
 }
 
 const handleRulesChanged = (rules) => {
@@ -501,6 +580,12 @@ onMounted(async () => {
   
   // 初始化连接列表，但不自动连接
   await connectionStore.initializeConnections()
+  
+  // 尝试恢复最后一次连接的状态
+  const savedState = restoreCurrentState()
+  if (savedState && savedState.currentConnectionId) {
+    console.log('发现上次连接记录，等待用户选择是否快速连接')
+  }
   
   // 不自动选择连接，让用户手动选择
   console.log('页面初始化完成，等待用户手动选择连接')
