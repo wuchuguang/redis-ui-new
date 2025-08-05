@@ -102,6 +102,15 @@
 
           <!-- Hash类型编辑 -->
           <el-form-item v-else-if="editForm.type === 'hash'" label="字段值">
+            <!-- 变化摘要 -->
+            <div v-if="getHashChangesSummary() !== '无变化'" class="changes-summary">
+              <el-alert
+                :title="`变更摘要: ${getHashChangesSummary()}`"
+                type="info"
+                :closable="false"
+                show-icon
+              />
+            </div>
             <div class="hash-edit-container">
               <div 
                 v-for="(value, field) in editForm.value" 
@@ -274,8 +283,13 @@
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="handleCancel">取消</el-button>
-        <el-button type="primary" @click="handleSave" :loading="loading">
-          保存
+        <el-button 
+          type="primary" 
+          @click="handleSave" 
+          :loading="loading"
+          :disabled="!hasChanges"
+        >
+          {{ saveButtonText }}
         </el-button>
       </div>
     </template>
@@ -354,6 +368,9 @@ const isValidMainJson = computed(() => {
   }
 })
 
+// 原始数据备份，用于比较变化
+const originalHashData = ref({})
+
 // 监听器
 watch(() => visible.value, (newVal) => {
   if (newVal) {
@@ -362,6 +379,11 @@ watch(() => visible.value, (newVal) => {
     editForm.value = JSON.parse(JSON.stringify(props.keyData.value)) // 深拷贝
     editForm.type = props.keyData.type
     editForm.isRename = false
+    
+    // 保存原始Hash数据用于比较
+    if (props.keyData.type === 'hash' && props.keyData.value) {
+      originalHashData.value = JSON.parse(JSON.stringify(props.keyData.value))
+    }
     
     // 清空新增字段
     newHashField.value = ''
@@ -387,6 +409,11 @@ watch(() => editForm.type, () => {
 
 // 方法
 const handleSave = async () => {
+  // 如果没有变化，直接返回
+  if (!hasChanges.value) {
+    return
+  }
+  
   loading.value = true
   try {
     if (editForm.isRename) {
@@ -409,10 +436,21 @@ const handleSave = async () => {
       })
     } else {
       // 编辑值模式
-      emit('save', {
-        type: 'edit',
-        value: editForm.value
-      })
+      if (editForm.type === 'hash') {
+        // 对于Hash类型，只提交变化的部分
+        const changes = calculateHashChanges()
+        emit('save', {
+          type: 'edit',
+          value: editForm.value,
+          changes: changes
+        })
+      } else {
+        // 对于其他类型，提交完整值
+        emit('save', {
+          type: 'edit',
+          value: editForm.value
+        })
+      }
     }
   } catch (error) {
     console.error('保存失败:', error)
@@ -425,6 +463,99 @@ const handleCancel = () => {
   emit('cancel')
   visible.value = false
 }
+
+// 计算Hash字段变化
+const calculateHashChanges = () => {
+  if (editForm.type !== 'hash' || !editForm.value) {
+    return null
+  }
+  
+  const changes = {
+    added: {},      // 新增的字段
+    modified: {},   // 修改的字段
+    deleted: []     // 删除的字段
+  }
+  
+  const currentFields = Object.keys(editForm.value)
+  const originalFields = Object.keys(originalHashData.value)
+  
+  // 检查新增和修改的字段
+  for (const field of currentFields) {
+    const currentValue = editForm.value[field]
+    const originalValue = originalHashData.value[field]
+    
+    if (!(field in originalHashData.value)) {
+      // 新增的字段
+      changes.added[field] = currentValue
+    } else if (currentValue !== originalValue) {
+      // 修改的字段
+      changes.modified[field] = currentValue
+    }
+  }
+  
+  // 检查删除的字段
+  for (const field of originalFields) {
+    if (!(field in editForm.value)) {
+      changes.deleted.push(field)
+    }
+  }
+  
+  return changes
+}
+
+// 获取Hash变化摘要
+const getHashChangesSummary = () => {
+  const changes = calculateHashChanges()
+  if (!changes) return ''
+  
+  const summary = []
+  if (Object.keys(changes.added).length > 0) {
+    summary.push(`新增 ${Object.keys(changes.added).length} 个字段`)
+  }
+  if (Object.keys(changes.modified).length > 0) {
+    summary.push(`修改 ${Object.keys(changes.modified).length} 个字段`)
+  }
+  if (changes.deleted.length > 0) {
+    summary.push(`删除 ${changes.deleted.length} 个字段`)
+  }
+  
+  return summary.length > 0 ? summary.join(', ') : '无变化'
+}
+
+// 检查是否有变化
+const hasChanges = computed(() => {
+  // 确保数据已初始化
+  if (!props.keyData || !editForm.keyName) {
+    return false
+  }
+  
+  if (editForm.isRename) {
+    // 重命名模式：检查键名是否改变
+    return editForm.keyName.trim() !== props.keyData.key
+  } else {
+    // 编辑值模式
+    if (editForm.type === 'hash') {
+      // Hash类型：检查是否有字段变化
+      const changes = calculateHashChanges()
+      return changes && (
+        Object.keys(changes.added).length > 0 ||
+        Object.keys(changes.modified).length > 0 ||
+        changes.deleted.length > 0
+      )
+    } else {
+      // 其他类型：检查值是否改变
+      return JSON.stringify(editForm.value) !== JSON.stringify(props.keyData.value)
+    }
+  }
+})
+
+// 获取保存按钮文本
+const saveButtonText = computed(() => {
+  if (!hasChanges.value) {
+    return '未更改'
+  }
+  return editForm.isRename ? '重命名' : '保存'
+})
 
 // JSON处理相关方法
 const validateMainJsonInput = () => {
@@ -661,6 +792,21 @@ const removeZSetItem = (index) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
+}
+
+.changes-summary {
+  margin-bottom: 16px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.dialog-footer .el-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 /* String编辑相关样式 */

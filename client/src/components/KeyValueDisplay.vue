@@ -1022,21 +1022,100 @@ const handleEditKeySave = async (data) => {
       }
     } else {
       // 编辑值模式
-      const result = await connectionStore.updateKeyValue(
-        props.connection.id,
-        props.database,
-        keyData.value.key,
-        keyData.value.type,
-        data.value
-      )
-      
-      if (result) {
-        // 更新本地数据
-        keyData.value.value = data.value
-        // 记录操作日志
-        operationLogger.logKeyValueUpdated(keyData.value.key, keyData.value.type, props.connection)
-        emit('key-updated', { key: keyData.value.key, value: data.value })
-        showEditDialog.value = false
+      if (keyData.value.type === 'hash' && data.changes) {
+        // 对于Hash类型，处理变化的部分
+        const changes = data.changes
+        let success = true
+        let errorMessage = ''
+        
+        // 处理删除的字段
+        for (const field of changes.deleted) {
+          try {
+            const deleteResult = await connectionStore.deleteHashField(
+              props.connection.id,
+              props.database,
+              keyData.value.key,
+              field
+            )
+            if (!deleteResult) {
+              success = false
+              errorMessage = `删除字段 "${field}" 失败`
+              break
+            }
+          } catch (error) {
+            success = false
+            errorMessage = `删除字段 "${field}" 失败: ${error.message}`
+            break
+          }
+        }
+        
+        // 处理新增和修改的字段
+        if (success) {
+          const allFields = { ...changes.added, ...changes.modified }
+          for (const [field, value] of Object.entries(allFields)) {
+            try {
+              const updateResult = await connectionStore.updateHashField(
+                props.connection.id,
+                props.database,
+                keyData.value.key,
+                field,
+                field,
+                value
+              )
+              if (!updateResult) {
+                success = false
+                errorMessage = `更新字段 "${field}" 失败`
+                break
+              }
+            } catch (error) {
+              success = false
+              errorMessage = `更新字段 "${field}" 失败: ${error.message}`
+              break
+            }
+          }
+        }
+        
+        if (success) {
+          // 更新本地数据
+          keyData.value.value = data.value
+          
+          // 记录操作日志
+          const changeSummary = []
+          if (changes.added && Object.keys(changes.added).length > 0) {
+            changeSummary.push(`新增 ${Object.keys(changes.added).length} 个字段`)
+          }
+          if (changes.modified && Object.keys(changes.modified).length > 0) {
+            changeSummary.push(`修改 ${Object.keys(changes.modified).length} 个字段`)
+          }
+          if (changes.deleted && changes.deleted.length > 0) {
+            changeSummary.push(`删除 ${changes.deleted.length} 个字段`)
+          }
+          
+          ElMessage.success(`Hash更新成功: ${changeSummary.join(', ')}`)
+          operationLogger.logKeyValueUpdated(keyData.value.key, keyData.value.type, props.connection)
+          emit('key-updated', { key: keyData.value.key, value: data.value })
+          showEditDialog.value = false
+        } else {
+          ElMessage.error(errorMessage)
+        }
+      } else {
+        // 对于其他类型，使用原有的更新方式
+        const result = await connectionStore.updateKeyValue(
+          props.connection.id,
+          props.database,
+          keyData.value.key,
+          keyData.value.type,
+          data.value
+        )
+        
+        if (result) {
+          // 更新本地数据
+          keyData.value.value = data.value
+          // 记录操作日志
+          operationLogger.logKeyValueUpdated(keyData.value.key, keyData.value.type, props.connection)
+          emit('key-updated', { key: keyData.value.key, value: data.value })
+          showEditDialog.value = false
+        }
       }
     }
   } catch (error) {
