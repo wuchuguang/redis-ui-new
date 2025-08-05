@@ -1,6 +1,12 @@
 <template>
   <div class="formatted-value">
-    <span class="value-text">{{ displayValue }}</span>
+    <span class="value-text">
+      <HighlightText 
+        :text="displayValue" 
+        :search-pattern="searchPattern"
+        highlight-class="value-highlight"
+      />
+    </span>
     <div class="action-buttons">
       <el-button 
         type="text" 
@@ -36,6 +42,7 @@ import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { Setting, CopyDocument } from '@element-plus/icons-vue'
 import { conversionEngine } from '../utils/conversionEngine'
+import HighlightText from './HighlightText.vue'
 
 // Props
 const props = defineProps({
@@ -56,6 +63,10 @@ const props = defineProps({
     default: 'string'
   },
   fieldName: {
+    type: String,
+    default: ''
+  },
+  searchPattern: {
     type: String,
     default: ''
   }
@@ -418,5 +429,14 @@ watch([() => props.keyName, () => props.dataType, () => props.fieldName, () => p
 .copy-btn:hover,
 .format-btn:hover {
   background-color: var(--el-fill-color);
+}
+
+/* 值高亮样式 */
+:deep(.value-highlight) {
+  background-color: #ffeb3b;
+  color: #000;
+  padding: 1px 2px;
+  border-radius: 2px;
+  font-weight: bold;
 }
 </style> 

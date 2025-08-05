@@ -245,7 +245,15 @@
             height="100%"
             v-loading="hashLoading"
           >
-            <el-table-column prop="field" label="字段" width="200" />
+            <el-table-column label="字段" width="200">
+              <template #default="{ row }">
+                <HighlightText 
+                  :text="row.field" 
+                  :search-pattern="hashFilter"
+                  highlight-class="field-highlight"
+                />
+              </template>
+            </el-table-column>
             <el-table-column label="值" min-width="400">
               <template #default="{ row }">
                 <FormattedValue 
@@ -254,6 +262,7 @@
                   :key-name="keyData.key"
                   :data-type="'hash'"
                   :field-name="row.field"
+                  :search-pattern="hashFilter"
                   @formatted="handleFormatted"
                 />
               </template>
@@ -302,8 +311,43 @@
 
         <!-- List类型 -->
         <div v-else-if="keyData.type === 'list'" class="list-value">
+          <div class="filter-section">
+            <div class="filter-row">
+              <el-input
+                v-model="listFilter"
+                placeholder="搜索列表项，支持通配符(*?)和多值搜索(;)"
+                clearable
+                @input="handleListFilter"
+                class="filter-input"
+              >
+                <template #prefix>
+                  <el-icon><Search /></el-icon>
+                </template>
+                <template #suffix>
+                  <el-button
+                    type="text"
+                    size="small"
+                    @click="toggleListFilterLock"
+                    :class="{ 'locked': isListFilterLocked }"
+                    title="锁定搜索关键词"
+                  >
+                    <el-icon><Lock /></el-icon>
+                  </el-button>
+                </template>
+              </el-input>
+              <el-button 
+                type="text" 
+                size="small"
+                @click="showSearchHelp"
+                title="搜索帮助"
+                class="help-btn"
+              >
+                <el-icon><QuestionFilled /></el-icon>
+              </el-button>
+            </div>
+          </div>
           <el-table 
-            :data="listTableData" 
+            :data="filteredListTableData" 
             stripe
             height="100%"
             v-loading="listLoading"
@@ -316,6 +360,7 @@
                   :row-key="`${row.index}`"
                   :key-name="keyData.key"
                   :data-type="'list'"
+                  :search-pattern="listFilter"
                   @formatted="handleFormatted"
                 />
               </template>
@@ -365,6 +410,15 @@
                 </el-button>
               </template>
             </el-input>
+            <el-button 
+              type="text" 
+              size="small"
+              @click="showSearchHelp"
+              title="搜索帮助"
+              class="help-btn"
+            >
+              <el-icon><QuestionFilled /></el-icon>
+            </el-button>
           </div>
           <div class="set-items">
             <div
@@ -377,6 +431,7 @@
                 :row-key="`set_${index}`"
                 :key-name="keyData.key"
                 :data-type="'set'"
+                :search-pattern="setFilter"
                 @formatted="handleFormatted"
               />
               <el-button 
@@ -506,6 +561,7 @@ import EditKeyDialog from './dialogs/EditKeyDialog.vue'
 import RawDataDialog from './dialogs/RawDataDialog.vue'
 import EditHashFieldDialog from './dialogs/EditHashFieldDialog.vue'
 import EditStringDialog from './dialogs/EditStringDialog.vue'
+import HighlightText from './HighlightText.vue'
 
 
 const connectionStore = useConnectionStore()
@@ -552,8 +608,10 @@ const keyNameInputRef = ref(null)
 const operationLockRef = ref(null)
 const hashFilter = ref('')
 const setFilter = ref('')
+const listFilter = ref('')
 const isHashFilterLocked = ref(false)
 const isSetFilterLocked = ref(false)
+const isListFilterLocked = ref(false)
 
 // 分页加载相关状态
 const hashLoading = ref(false)
@@ -638,6 +696,19 @@ const listTableData = computed(() => {
     return data.slice(0, listLoadedCount.value)
   }
   return []
+})
+
+const filteredListTableData = computed(() => {
+  let data = listTableData.value
+  
+  // 应用过滤器，支持通配符和多值搜索
+  if (listFilter.value) {
+    data = data.filter(item => 
+      matchesSearchPattern(item.value, listFilter.value)
+    )
+  }
+  
+  return data
 })
 
 const listHasMore = computed(() => {
@@ -1403,6 +1474,10 @@ const handleSetFilter = () => {
   // 筛选逻辑已在计算属性中处理
 }
 
+const handleListFilter = () => {
+  // 筛选逻辑已在计算属性中处理
+}
+
 // 通用搜索过滤函数，支持通配符和多值搜索
 const matchesSearchPattern = (text, searchPattern) => {
   if (!searchPattern || !text) return false
@@ -1465,6 +1540,12 @@ const toggleSetFilterLock = () => {
   ElMessage.success(isSetFilterLocked.value ? '搜索关键词已锁定' : '搜索关键词已解锁')
 }
 
+// 切换List过滤器锁定状态
+const toggleListFilterLock = () => {
+  isListFilterLocked.value = !isListFilterLocked.value
+  ElMessage.success(isListFilterLocked.value ? '搜索关键词已锁定' : '搜索关键词已解锁')
+}
+
 // 显示搜索帮助
 const showSearchHelp = () => {
   ElMessageBox.alert(`
@@ -1514,6 +1595,9 @@ watch(() => props.selectedKey, async (newKey, oldKey) => {
     }
     if (!isSetFilterLocked.value) {
       setFilter.value = ''
+    }
+    if (!isListFilterLocked.value) {
+      listFilter.value = ''
     }
   } catch (error) {
     console.error('KeyValueDisplay - watch error:', error)
@@ -2044,6 +2128,15 @@ watch(() => props.database, async () => {
 .help-btn:hover {
   color: #409eff;
   background-color: rgba(64, 158, 255, 0.1);
+}
+
+/* 字段高亮样式 */
+:deep(.field-highlight) {
+  background-color: #ff9800;
+  color: #fff;
+  padding: 1px 2px;
+  border-radius: 2px;
+  font-weight: bold;
 }
 
 
