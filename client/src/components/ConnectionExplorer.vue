@@ -23,10 +23,10 @@
     <div class="database-selector">
       <el-select 
         v-model="selectedDatabase" 
-        placeholder="选择数据库"
+        :placeholder="!props.connection ? '请先选择连接' : '选择数据库'"
         @change="handleDatabaseChange"
         class="database-select"
-        :disabled="!props.connection"
+        :disabled="!props.connection || databases.length === 0"
       >
         <el-option
           v-for="db in databases"
@@ -568,7 +568,10 @@ const refreshListModeData = async (isConverting = false) => {
 const nextRefreshTime = {};
 
 const refreshDatabases = async (interval) => {
-  if (!props.connection) return
+  if (!props.connection || !props.connection.id) {
+    console.log('连接无效，跳过数据库刷新')
+    return
+  }
   
   try {
     // 创建新的数据库列表
@@ -643,6 +646,11 @@ const goUp = () => {
 }
 
 const handleDatabaseChange = async (dbId) => {
+  if (!props.connection || databases.value.length === 0) {
+    console.log('连接无效或数据库列表为空，跳过数据库切换')
+    return
+  }
+  
   selectedDatabase.value = dbId
   emit('select-database', dbId)
   await refreshKeys(true)
@@ -948,10 +956,18 @@ watch(() => props.connection, async (newConnection) => {
     selectedDatabase.value = 0
     searchTerm.value = ''
     keysData.value = []
-    databases.value = Array.from({ length: 16 }, (_, i) => ({
-      id: i,
-      keys: 0
-    }))
+    expandedGroups.value = []
+    selectedKey.value = null
+    currentListMode.value = false
+    currentListPrefix.value = ''
+    
+    // 清空数据库列表
+    databases.value = []
+    
+    // 清空数据库刷新时间缓存
+    Object.keys(nextRefreshTime).forEach(key => {
+      delete nextRefreshTime[key]
+    })
     
     console.log('连接已断开，状态已清理')
   }
