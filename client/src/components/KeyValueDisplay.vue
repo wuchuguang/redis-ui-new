@@ -391,478 +391,38 @@
     </div>
 
     <!-- 编辑键对话框 -->
-    <el-dialog
+    <EditKeyDialog
       v-model="showEditDialog"
-      title="编辑键"
-      width="800px"
-      :close-on-click-modal="false"
-    >
-      <div class="edit-dialog-content">
-        <!-- 编辑模式选择 -->
-        <div class="edit-mode-selector">
-          <el-radio-group v-model="editForm.isRename">
-            <el-radio :label="false">编辑值</el-radio>
-            <el-radio :label="true">重命名键</el-radio>
-          </el-radio-group>
-        </div>
-
-        <!-- 重命名模式 -->
-        <div v-if="editForm.isRename" class="rename-mode">
-          <el-form label-width="80px">
-            <el-form-item label="原键名">
-              <el-input v-model="keyData.key" readonly />
-            </el-form-item>
-            <el-form-item label="新键名">
-              <el-input 
-                v-model="editForm.keyName" 
-                placeholder="请输入新的键名"
-                @keyup.enter="handleEditSave"
-              />
-            </el-form-item>
-          </el-form>
-        </div>
-
-        <!-- 编辑值模式 -->
-        <div v-else class="edit-value-mode">
-          <el-form label-width="80px">
-            <el-form-item label="键名">
-              <el-input v-model="keyData.key" readonly />
-            </el-form-item>
-            <el-form-item label="数据类型">
-              <el-input v-model="editForm.type" readonly />
-            </el-form-item>
-            
-            <!-- String类型编辑 -->
-            <el-form-item v-if="editForm.type === 'string'" label="值">
-              <div class="string-edit-container">
-                <div class="edit-toolbar">
-                  <el-button 
-                    type="text" 
-                    size="small"
-                    @click="formatMainJson"
-                    :disabled="!isValidMainJson"
-                    title="格式化JSON"
-                  >
-                    <el-icon><Setting /></el-icon>
-                    格式化JSON
-                  </el-button>
-                  <el-button 
-                    type="text" 
-                    size="small"
-                    @click="validateMainJson"
-                    :disabled="!editForm.value"
-                    title="验证JSON"
-                  >
-                    <el-icon><Check /></el-icon>
-                    验证JSON
-                  </el-button>
-                                  <el-button 
-                  type="text" 
-                  size="small"
-                  @click="minifyMainJson"
-                  :disabled="!isValidMainJson"
-                  title="压缩JSON"
-                >
-                  <el-icon><DocumentCopy /></el-icon>
-                  压缩JSON
-                </el-button>
-                  <el-button 
-                    type="text" 
-                    size="small"
-                    @click="clearMainValue"
-                    title="清空内容"
-                  >
-                    <el-icon><Delete /></el-icon>
-                    清空
-                  </el-button>
-                </div>
-                <el-input
-                  v-model="editForm.value"
-                  type="textarea"
-                  :rows="10"
-                  placeholder="请输入字符串值，支持JSON格式"
-                  @keyup.enter="handleEditSave"
-                  class="string-edit-input"
-                />
-                
-                <div v-if="isValidMainJson" class="json-info">
-                  <el-icon><SuccessFilled /></el-icon>
-                  <span>有效的JSON格式</span>
-                </div>
-              </div>
-            </el-form-item>
-
-            <!-- Hash类型编辑 -->
-            <el-form-item v-else-if="editForm.type === 'hash'" label="字段值">
-              <div class="hash-edit-container">
-                <div 
-                  v-for="(value, field) in editForm.value" 
-                  :key="field"
-                  class="hash-field-item"
-                >
-                  <el-input
-                    v-model="editForm.value[field]"
-                    :placeholder="`字段: ${field}`"
-                    class="hash-field-input"
-                  >
-                    <template #prepend>
-                      <span class="field-name">{{ field }}</span>
-                    </template>
-                  </el-input>
-                  <el-button 
-                    type="danger" 
-                    size="small"
-                    @click="removeHashField(field)"
-                  >
-                    删除
-                  </el-button>
-                </div>
-                <div class="add-hash-field">
-                  <el-input
-                    v-model="newHashField"
-                    placeholder="新字段名"
-                    class="new-field-input"
-                    @keyup.enter="addHashField"
-                  />
-                  <el-input
-                    v-model="newHashValue"
-                    placeholder="新字段值"
-                    class="new-value-input"
-                    @keyup.enter="addHashField"
-                  />
-                  <el-button 
-                    type="primary" 
-                    size="small"
-                    @click="addHashField"
-                  >
-                    添加字段
-                  </el-button>
-                </div>
-              </div>
-            </el-form-item>
-
-            <!-- List类型编辑 -->
-            <el-form-item v-else-if="editForm.type === 'list'" label="列表项">
-              <div class="list-edit-container">
-                <div 
-                  v-for="(item, index) in editForm.value" 
-                  :key="index"
-                  class="list-item"
-                >
-                  <el-input
-                    v-model="editForm.value[index]"
-                    :placeholder="`项目 ${index + 1}`"
-                    class="list-item-input"
-                  />
-                  <el-button 
-                    type="danger" 
-                    size="small"
-                    @click="removeListItem(index)"
-                  >
-                    删除
-                  </el-button>
-                </div>
-                <div class="add-list-item">
-                  <el-input
-                    v-model="newListItem"
-                    placeholder="新列表项"
-                    class="new-item-input"
-                    @keyup.enter="addListItem"
-                  />
-                  <el-button 
-                    type="primary" 
-                    size="small"
-                    @click="addListItem"
-                  >
-                    添加项目
-                  </el-button>
-                </div>
-              </div>
-            </el-form-item>
-
-            <!-- Set类型编辑 -->
-            <el-form-item v-else-if="editForm.type === 'set'" label="集合成员">
-              <div class="set-edit-container">
-                <el-tag
-                  v-for="(item, index) in editForm.value"
-                  :key="index"
-                  class="set-member-tag"
-                  closable
-                  @close="removeSetMember(index)"
-                >
-                  {{ item }}
-                </el-tag>
-                <div class="add-set-member">
-                  <el-input
-                    v-model="newSetMember"
-                    placeholder="新成员"
-                    class="new-member-input"
-                    @keyup.enter="addSetMember"
-                  />
-                  <el-button 
-                    type="primary" 
-                    size="small"
-                    @click="addSetMember"
-                  >
-                    添加成员
-                  </el-button>
-                </div>
-              </div>
-            </el-form-item>
-
-            <!-- ZSet类型编辑 -->
-            <el-form-item v-else-if="editForm.type === 'zset'" label="有序集合">
-              <div class="zset-edit-container">
-                <div 
-                  v-for="(item, index) in editForm.value" 
-                  :key="index"
-                  class="zset-item"
-                >
-                  <el-input
-                    v-model="editForm.value[index].value"
-                    placeholder="成员"
-                    class="zset-member-input"
-                  />
-                  <el-input-number
-                    v-model="editForm.value[index].score"
-                    placeholder="分数"
-                    class="zset-score-input"
-                  />
-                  <el-button 
-                    type="danger" 
-                    size="small"
-                    @click="removeZSetItem(index)"
-                  >
-                    删除
-                  </el-button>
-                </div>
-                <div class="add-zset-item">
-                  <el-input
-                    v-model="newZSetMember"
-                    placeholder="新成员"
-                    class="new-zset-member-input"
-                    @keyup.enter="addZSetItem"
-                  />
-                  <el-input-number
-                    v-model="newZSetScore"
-                    placeholder="分数"
-                    class="new-zset-score-input"
-                    @keyup.enter="addZSetItem"
-                  />
-                  <el-button 
-                    type="primary" 
-                    size="small"
-                    @click="addZSetItem"
-                  >
-                    添加成员
-                  </el-button>
-                </div>
-              </div>
-            </el-form-item>
-          </el-form>
-        </div>
-      </div>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showEditDialog = false">取消</el-button>
-          <el-button type="primary" @click="handleEditSave" :loading="editLoading">
-            保存
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
+      :key-data="keyData"
+      :connection="props.connection"
+      :database="props.database"
+      @save="handleEditKeySave"
+      @cancel="showEditDialog = false"
+    />
 
     <!-- 原始数据对话框 -->
-    <el-dialog
+    <RawDataDialog
       v-model="showRawDialog"
-      title="原始数据"
-      width="800px"
-    >
-      <pre class="raw-data">{{ JSON.stringify(keyData, null, 2) }}</pre>
-    </el-dialog>
+      :key-data="keyData"
+    />
 
     <!-- 编辑Hash字段对话框 -->
-    <el-dialog
+    <EditHashFieldDialog
       v-model="showEditHashFieldDialog"
-      title="编辑Hash字段"
-      width="800px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="editHashFieldFormRef"
-        :model="editHashFieldForm"
-        :rules="editHashFieldRules"
-        label-width="80px"
-      >
-        <el-form-item label="字段名" prop="field">
-          <el-input 
-            v-model="editHashFieldForm.field" 
-            placeholder="请输入字段名"
-            :disabled="editHashFieldForm.isEditField"
-            @keyup.enter="saveHashField"
-          />
-        </el-form-item>
-        <el-form-item label="字段值" prop="value">
-          <div class="string-edit-container">
-            <div class="edit-toolbar">
-              <el-button 
-                type="text" 
-                size="small"
-                @click="formatHashFieldJson"
-                :disabled="!isValidHashFieldJson"
-                title="格式化JSON"
-              >
-                <el-icon><Setting /></el-icon>
-                格式化JSON
-              </el-button>
-              <el-button 
-                type="text" 
-                size="small"
-                @click="validateHashFieldJson"
-                :disabled="!editHashFieldForm.value"
-                title="验证JSON"
-              >
-                <el-icon><Check /></el-icon>
-                验证JSON
-              </el-button>
-                              <el-button 
-                  type="text" 
-                  size="small"
-                  @click="minifyHashFieldJson"
-                  :disabled="!isValidHashFieldJson"
-                  title="压缩JSON"
-                >
-                  <el-icon><DocumentCopy /></el-icon>
-                  压缩JSON
-                </el-button>
-              <el-button 
-                type="text" 
-                size="small"
-                @click="clearHashFieldValue"
-                title="清空内容"
-              >
-                <el-icon><Delete /></el-icon>
-                清空
-              </el-button>
-            </div>
-            <el-input 
-              v-model="editHashFieldForm.value" 
-              type="textarea"
-              :rows="8"
-              placeholder="请输入字段值，支持JSON格式"
-              @keyup.enter="saveHashField"
-              class="string-edit-input"
-            />
-
-            <div v-if="isValidHashFieldJson" class="json-info">
-              <el-icon><SuccessFilled /></el-icon>
-              <span>有效的JSON格式</span>
-            </div>
-          </div>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showEditHashFieldDialog = false">取消</el-button>
-          <el-button 
-            type="primary" 
-            @click="saveHashField"
-            :loading="editHashFieldLoading"
-          >
-            保存
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
+      :field="editHashFieldForm.field"
+      :value="editHashFieldForm.value"
+      :is-edit-field="editHashFieldForm.isEditField"
+      @save="handleEditHashFieldSave"
+      @cancel="showEditHashFieldDialog = false"
+    />
 
     <!-- 编辑String值对话框 -->
-    <el-dialog
+    <EditStringDialog
       v-model="showEditStringDialog"
-      title="编辑String值"
-      width="800px"
-      :close-on-click-modal="false"
-    >
-      <el-form
-        ref="editStringFormRef"
-        :model="editStringForm"
-        :rules="editStringRules"
-        label-width="80px"
-      >
-        <el-form-item label="值" prop="value">
-          <div class="string-edit-container">
-            <div class="edit-toolbar">
-              <el-button 
-                type="text" 
-                size="small"
-                @click="formatJson"
-                :disabled="!isValidJson"
-                title="格式化JSON"
-              >
-                <el-icon><Setting /></el-icon>
-                格式化JSON
-              </el-button>
-              <el-button 
-                type="text" 
-                size="small"
-                @click="validateJson"
-                :disabled="!editStringForm.value"
-                title="验证JSON"
-              >
-                <el-icon><Check /></el-icon>
-                验证JSON
-              </el-button>
-                              <el-button 
-                  type="text" 
-                  size="small"
-                  @click="minifyJson"
-                  :disabled="!isValidJson"
-                  title="压缩JSON"
-                >
-                  <el-icon><DocumentCopy /></el-icon>
-                  压缩JSON
-                </el-button>
-              <el-button 
-                type="text" 
-                size="small"
-                @click="clearValue"
-                title="清空内容"
-              >
-                <el-icon><Delete /></el-icon>
-                清空
-              </el-button>
-            </div>
-            <el-input 
-              v-model="editStringForm.value" 
-              type="textarea"
-              :rows="12"
-              placeholder="请输入String值，支持JSON格式"
-              @keyup.enter="saveStringValue"
-              class="string-edit-input"
-            />
-
-            <div v-if="isValidJson" class="json-info">
-              <el-icon><SuccessFilled /></el-icon>
-              <span>有效的JSON格式</span>
-            </div>
-          </div>
-        </el-form-item>
-      </el-form>
-
-      <template #footer>
-        <div class="dialog-footer">
-          <el-button @click="showEditStringDialog = false">取消</el-button>
-          <el-button 
-            type="primary" 
-            @click="saveStringValue"
-            :loading="editStringLoading"
-          >
-            保存
-          </el-button>
-        </div>
-      </template>
-    </el-dialog>
+      :value="editStringForm.value"
+      @save="handleEditStringSave"
+      @cancel="showEditStringDialog = false"
+    />
 
         <!-- KeyHash工具对话框 -->
     <el-dialog
@@ -900,12 +460,7 @@ import {
   Document,
   Search,
   ArrowLeft,
-  Setting,
-  Check,
-  Warning,
-  SuccessFilled,
-  DocumentCopy,
-  Tools
+  Clock
 } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import { useUserStore } from '../stores/user'
@@ -914,6 +469,10 @@ import FormattedValue from './FormattedValue.vue'
 import OperationLock from './OperationLock.vue'
 import KeyHash from './KeyHash.vue'
 import SetTTLDialog from './SetTTLDialog.vue'
+import EditKeyDialog from './dialogs/EditKeyDialog.vue'
+import RawDataDialog from './dialogs/RawDataDialog.vue'
+import EditHashFieldDialog from './dialogs/EditHashFieldDialog.vue'
+import EditStringDialog from './dialogs/EditStringDialog.vue'
 
 
 const connectionStore = useConnectionStore()
@@ -982,22 +541,6 @@ const listCurrentPage = ref(0)
 // 缓存机制
 const keyValueCache = ref(new Map())
 const cacheTimeout = 5 * 60 * 1000 // 5分钟缓存
-const editForm = reactive({
-  keyName: '',
-  value: null,
-  type: '',
-  isRename: false
-})
-const editLoading = ref(false)
-const editHashFieldLoading = ref(false)
-const editStringLoading = ref(false)
-const newHashField = ref('')
-const newHashValue = ref('')
-const newListItem = ref('')
-const newSetMember = ref('')
-const newZSetMember = ref('')
-const newZSetScore = ref(0)
-
 // 编辑Hash字段表单
 const editHashFieldForm = reactive({
   field: '',
@@ -1006,33 +549,10 @@ const editHashFieldForm = reactive({
   originalField: '' // 原始字段名，用于编辑时判断是否修改了字段名
 })
 
-const editHashFieldRules = {
-  field: [
-    { required: true, message: '请输入字段名', trigger: 'blur' }
-  ],
-  value: [
-    { required: true, message: '请输入字段值', trigger: 'blur' }
-  ]
-}
-
 // 编辑String值表单
 const editStringForm = reactive({
   value: ''
 })
-
-const editStringRules = {
-  value: [
-    { required: true, message: '请输入String值', trigger: 'blur' }
-  ]
-}
-
-// JSON处理相关状态
-const jsonError = ref('')
-const isValidJson = ref(false)
-const hashFieldJsonError = ref('')
-const isValidHashFieldJson = ref(false)
-const mainJsonError = ref('')
-const isValidMainJson = ref(false)
 
 // 格式化事件处理
 const handleFormatted = (data) => {
@@ -1398,276 +918,10 @@ const editHashField = (field, value) => {
   showEditHashFieldDialog.value = true
 }
 
-const saveHashField = async () => {
-  if (!props.connection || !keyData.value.key) return
-  
-  try {
-    editHashFieldLoading.value = true
-    
-    // 验证表单
-    const formRef = document.querySelector('.el-form')
-    if (!formRef) return
-    
-    // 调用后端API保存字段
-    const success = await connectionStore.updateHashField(
-      props.connection.id,
-      props.database,
-      keyData.value.key,
-      editHashFieldForm.originalField,
-      editHashFieldForm.field,
-      editHashFieldForm.value
-    )
-    
-    if (success) {
-      // 更新本地数据
-      if (keyData.value.value) {
-        // 如果字段名改变了，先删除原字段
-        if (editHashFieldForm.originalField !== editHashFieldForm.field) {
-          delete keyData.value.value[editHashFieldForm.originalField]
-        }
-        // 设置新字段
-        keyData.value.value[editHashFieldForm.field] = editHashFieldForm.value
-      }
-      
-      showEditHashFieldDialog.value = false
-      ElMessage.success('字段保存成功')
-      // 记录操作日志
-      operationLogger.logHashFieldEdited(keyData.value.key, editHashFieldForm.field, props.connection)
-    } else {
-      ElMessage.error('保存字段失败')
-    }
-  } catch (error) {
-    ElMessage.error('保存字段失败')
-  } finally {
-    editHashFieldLoading.value = false
-  }
-}
-
 // 编辑String值方法
 const editStringValue = () => {
   editStringForm.value = keyData.value.value || ''
   showEditStringDialog.value = true
-}
-
-// JSON处理相关方法
-const validateJsonInput = () => {
-  if (!editStringForm.value || !editStringForm.value.trim()) {
-    jsonError.value = ''
-    isValidJson.value = false
-    return
-  }
-  
-  try {
-    JSON.parse(editStringForm.value)
-    jsonError.value = ''
-    isValidJson.value = true
-  } catch (error) {
-    // 不显示错误信息，只标记为无效JSON
-    jsonError.value = ''
-    isValidJson.value = false
-  }
-}
-
-const formatJson = () => {
-  if (!isValidJson.value) return
-  
-  try {
-    const parsed = JSON.parse(editStringForm.value)
-    editStringForm.value = JSON.stringify(parsed, null, 2)
-    ElMessage.success('JSON格式化完成')
-  } catch (error) {
-    ElMessage.error('JSON格式化失败')
-  }
-}
-
-const validateJson = () => {
-  if (!editStringForm.value || !editStringForm.value.trim()) {
-    ElMessage.warning('请输入要验证的内容')
-    return
-  }
-  
-  try {
-    JSON.parse(editStringForm.value)
-    ElMessage.success('JSON格式验证通过')
-  } catch (error) {
-    ElMessage.error(`JSON格式验证失败: ${error.message}`)
-  }
-}
-
-const minifyJson = () => {
-  if (!isValidJson.value) return
-  
-  try {
-    const parsed = JSON.parse(editStringForm.value)
-    editStringForm.value = JSON.stringify(parsed)
-    ElMessage.success('JSON压缩完成')
-  } catch (error) {
-    ElMessage.error('JSON压缩失败')
-  }
-}
-
-const clearValue = () => {
-  editStringForm.value = ''
-  jsonError.value = ''
-  isValidJson.value = false
-}
-
-// Hash字段JSON处理相关方法
-const validateHashFieldJsonInput = () => {
-  if (!editHashFieldForm.value || !editHashFieldForm.value.trim()) {
-    hashFieldJsonError.value = ''
-    isValidHashFieldJson.value = false
-    return
-  }
-  
-  try {
-    JSON.parse(editHashFieldForm.value)
-    hashFieldJsonError.value = ''
-    isValidHashFieldJson.value = true
-  } catch (error) {
-    // 不显示错误信息，只标记为无效JSON
-    hashFieldJsonError.value = ''
-    isValidHashFieldJson.value = false
-  }
-}
-
-const formatHashFieldJson = () => {
-  if (!isValidHashFieldJson.value) return
-  
-  try {
-    const parsed = JSON.parse(editHashFieldForm.value)
-    editHashFieldForm.value = JSON.stringify(parsed, null, 2)
-    ElMessage.success('JSON格式化完成')
-  } catch (error) {
-    ElMessage.error('JSON格式化失败')
-  }
-}
-
-const validateHashFieldJson = () => {
-  if (!editHashFieldForm.value || !editHashFieldForm.value.trim()) {
-    ElMessage.warning('请输入要验证的内容')
-    return
-  }
-  
-  try {
-    JSON.parse(editHashFieldForm.value)
-    ElMessage.success('JSON格式验证通过')
-  } catch (error) {
-    ElMessage.error(`JSON格式验证失败: ${error.message}`)
-  }
-}
-
-const minifyHashFieldJson = () => {
-  if (!isValidHashFieldJson.value) return
-  
-  try {
-    const parsed = JSON.parse(editHashFieldForm.value)
-    editHashFieldForm.value = JSON.stringify(parsed)
-    ElMessage.success('JSON压缩完成')
-  } catch (error) {
-    ElMessage.error('JSON压缩失败')
-  }
-}
-
-const clearHashFieldValue = () => {
-  editHashFieldForm.value = ''
-  hashFieldJsonError.value = ''
-  isValidHashFieldJson.value = false
-}
-
-// 主编辑对话框JSON处理相关方法
-const validateMainJsonInput = () => {
-  if (!editForm.value || !editForm.value.trim()) {
-    mainJsonError.value = ''
-    isValidMainJson.value = false
-    return
-  }
-  
-  try {
-    JSON.parse(editForm.value)
-    mainJsonError.value = ''
-    isValidMainJson.value = true
-  } catch (error) {
-    // 不显示错误信息，只标记为无效JSON
-    mainJsonError.value = ''
-    isValidMainJson.value = false
-  }
-}
-
-const formatMainJson = () => {
-  if (!isValidMainJson.value) return
-  
-  try {
-    const parsed = JSON.parse(editForm.value)
-    editForm.value = JSON.stringify(parsed, null, 2)
-    ElMessage.success('JSON格式化完成')
-  } catch (error) {
-    ElMessage.error('JSON格式化失败')
-  }
-}
-
-const validateMainJson = () => {
-  if (!editForm.value || !editForm.value.trim()) {
-    ElMessage.warning('请输入要验证的内容')
-    return
-  }
-  
-  try {
-    JSON.parse(editForm.value)
-    ElMessage.success('JSON格式验证通过')
-  } catch (error) {
-    ElMessage.error(`JSON格式验证失败: ${error.message}`)
-  }
-}
-
-const minifyMainJson = () => {
-  if (!isValidMainJson.value) return
-  
-  try {
-    const parsed = JSON.parse(editForm.value)
-    editForm.value = JSON.stringify(parsed)
-    ElMessage.success('JSON压缩完成')
-  } catch (error) {
-    ElMessage.error('JSON压缩失败')
-  }
-}
-
-const clearMainValue = () => {
-  editForm.value = ''
-  mainJsonError.value = ''
-  isValidMainJson.value = false
-}
-
-const saveStringValue = async () => {
-  if (!props.connection || !keyData.value.key) return
-  
-  try {
-    editStringLoading.value = true
-    
-    // 调用后端API保存String值
-    const success = await connectionStore.updateStringValue(
-      props.connection.id,
-      props.database,
-      keyData.value.key,
-      editStringForm.value
-    )
-    
-    if (success) {
-      // 更新本地数据
-      keyData.value.value = editStringForm.value
-      
-      showEditStringDialog.value = false
-      ElMessage.success('String值保存成功')
-      // 记录操作日志
-      operationLogger.logStringValueEdited(keyData.value.key, props.connection)
-    } else {
-      ElMessage.error('保存String值失败')
-    }
-  } catch (error) {
-    ElMessage.error('保存String值失败')
-  } finally {
-    editStringLoading.value = false
-  }
 }
 
 const copyValue = () => {
@@ -1741,10 +995,117 @@ const deleteKey = async () => {
 const editKey = () => {
   // 打开编辑对话框
   showEditDialog.value = true
-  // 初始化编辑表单
-  editForm.keyName = keyData.value.key
-  editForm.value = JSON.parse(JSON.stringify(keyData.value.value)) // 深拷贝
-  editForm.type = keyData.value.type
+}
+
+// 处理编辑键保存
+const handleEditKeySave = async (data) => {
+  try {
+    if (data.type === 'rename') {
+      // 重命名模式
+      const result = await connectionStore.renameKey(
+        props.connection.id,
+        props.database,
+        keyData.value.key,
+        data.newKeyName
+      )
+      
+      if (result) {
+        const oldKeyName = keyData.value.key
+        // 更新本地数据
+        keyData.value = {
+          ...keyData.value,
+          key: data.newKeyName
+        }
+        ElMessage.success(`键名已更新: ${oldKeyName} → ${data.newKeyName}`)
+        emit('key-updated', { oldKey: oldKeyName, newKey: data.newKeyName })
+        showEditDialog.value = false
+      }
+    } else {
+      // 编辑值模式
+      const result = await connectionStore.updateKeyValue(
+        props.connection.id,
+        props.database,
+        keyData.value.key,
+        keyData.value.type,
+        data.value
+      )
+      
+      if (result) {
+        // 更新本地数据
+        keyData.value.value = data.value
+        // 记录操作日志
+        operationLogger.logKeyValueUpdated(keyData.value.key, keyData.value.type, props.connection)
+        emit('key-updated', { key: keyData.value.key, value: data.value })
+        showEditDialog.value = false
+      }
+    }
+  } catch (error) {
+    console.error('保存失败:', error)
+    ElMessage.error('保存失败')
+  }
+}
+
+// 处理编辑Hash字段保存
+const handleEditHashFieldSave = async (data) => {
+  try {
+    // 调用后端API保存字段
+    const success = await connectionStore.updateHashField(
+      props.connection.id,
+      props.database,
+      keyData.value.key,
+      data.originalField,
+      data.field,
+      data.value
+    )
+    
+    if (success) {
+      // 更新本地数据
+      if (keyData.value.value) {
+        // 如果字段名改变了，先删除原字段
+        if (data.originalField !== data.field) {
+          delete keyData.value.value[data.originalField]
+        }
+        // 设置新字段
+        keyData.value.value[data.field] = data.value
+      }
+      
+      showEditHashFieldDialog.value = false
+      ElMessage.success('字段保存成功')
+      // 记录操作日志
+      operationLogger.logHashFieldEdited(keyData.value.key, data.field, props.connection)
+    } else {
+      ElMessage.error('保存字段失败')
+    }
+  } catch (error) {
+    ElMessage.error('保存字段失败')
+  }
+}
+
+// 处理编辑String保存
+const handleEditStringSave = async (value) => {
+  try {
+    // 调用后端API保存String值
+    const success = await connectionStore.updateStringValue(
+      props.connection.id,
+      props.database,
+      keyData.value.key,
+      value
+    )
+    
+    if (success) {
+      // 更新本地数据
+      keyData.value.value = value
+      
+      showEditStringDialog.value = false
+      ElMessage.success('String值保存成功')
+      // 记录操作日志
+      operationLogger.logStringValueEdited(keyData.value.key, props.connection)
+    } else {
+      ElMessage.error('保存String值失败')
+    }
+  } catch (error) {
+    ElMessage.error('保存String值失败')
+  }
 }
 
 const viewRaw = () => {
@@ -1928,161 +1289,7 @@ const handleSetFilter = () => {
   // 筛选逻辑已在计算属性中处理
 }
 
-// 编辑相关方法
-const handleEditSave = async () => {
-  editLoading.value = true
-  try {
-    if (editForm.isRename) {
-      // 重命名模式
-      const newKeyName = editForm.keyName.trim()
-      if (!newKeyName) {
-        ElMessage.error('键名不能为空')
-        return
-      }
-      
-      if (newKeyName === keyData.value.key) {
-        showEditDialog.value = false
-        return
-      }
-      
-      const result = await connectionStore.renameKey(
-        props.connection.id,
-        props.database,
-        keyData.value.key,
-        newKeyName
-      )
-      
-      if (result) {
-        const oldKeyName = keyData.value.key
-        // 更新本地数据
-        keyData.value = {
-          ...keyData.value,
-          key: newKeyName
-        }
-        ElMessage.success(`键名已更新: ${oldKeyName} → ${newKeyName}`)
-        emit('key-updated', { oldKey: oldKeyName, newKey: newKeyName })
-        showEditDialog.value = false
-      }
-    } else {
-      // 编辑值模式
-      await handleValueEdit()
-      showEditDialog.value = false
-    }
-  } catch (error) {
-    console.error('保存失败:', error)
-  } finally {
-    editLoading.value = false
-  }
-}
 
-const handleValueEdit = async () => {
-  try {
-    console.log('开始更新键值:', {
-      connectionId: props.connection.id,
-      database: props.database,
-      keyName: keyData.value.key,
-      keyType: keyData.value.type,
-      value: editForm.value
-    })
-    
-    const result = await connectionStore.updateKeyValue(
-      props.connection.id,
-      props.database,
-      keyData.value.key,
-      keyData.value.type,
-      editForm.value
-    )
-    
-    if (result) {
-      console.log('键值更新成功')
-      // 更新本地数据
-      keyData.value.value = editForm.value
-      // 记录操作日志
-      operationLogger.logKeyValueUpdated(keyData.value.key, keyData.value.type, props.connection)
-      emit('key-updated', { key: keyData.value.key, value: editForm.value })
-    } else {
-      console.error('键值更新失败: 返回false')
-    }
-  } catch (error) {
-    console.error('更新键值失败:', error)
-    throw error
-  }
-}
-
-// Hash类型编辑方法
-const addHashField = () => {
-  if (!newHashField.value.trim()) {
-    ElMessage.warning('请输入字段名')
-    return
-  }
-  if (!editForm.value) {
-    editForm.value = {}
-  }
-  editForm.value[newHashField.value] = newHashValue.value
-  newHashField.value = ''
-  newHashValue.value = ''
-}
-
-const removeHashField = (field) => {
-  delete editForm.value[field]
-}
-
-// List类型编辑方法
-const addListItem = () => {
-  if (!newListItem.value.trim()) {
-    ElMessage.warning('请输入列表项')
-    return
-  }
-  if (!editForm.value) {
-    editForm.value = []
-  }
-  editForm.value.push(newListItem.value)
-  newListItem.value = ''
-}
-
-const removeListItem = (index) => {
-  editForm.value.splice(index, 1)
-}
-
-// Set类型编辑方法
-const addSetMember = () => {
-  if (!newSetMember.value.trim()) {
-    ElMessage.warning('请输入成员')
-    return
-  }
-  if (!editForm.value) {
-    editForm.value = []
-  }
-  if (!editForm.value.includes(newSetMember.value)) {
-    editForm.value.push(newSetMember.value)
-  }
-  newSetMember.value = ''
-}
-
-const removeSetMember = (index) => {
-  editForm.value.splice(index, 1)
-}
-
-// ZSet类型编辑方法
-const addZSetItem = () => {
-  if (!newZSetMember.value.trim()) {
-    ElMessage.warning('请输入成员')
-    return
-  }
-  if (!editForm.value) {
-    editForm.value = []
-  }
-  editForm.value.push({
-    value: newZSetMember.value,
-    score: newZSetScore.value
-  })
-  newZSetMember.value = ''
-  newZSetScore.value = 0
-}
-
-const removeZSetItem = (index) => {
-  editForm.value.splice(index, 1)
-}
 
 // 监听选中键的变化
 watch(() => props.selectedKey, async (newKey, oldKey) => {
@@ -2217,29 +1424,7 @@ watch(() => props.database, async () => {
   }
 })
 
-// 监听编辑String值变化，自动验证JSON
-watch(() => editStringForm.value, () => {
-  validateJsonInput()
-}, { immediate: true })
 
-// 监听编辑Hash字段值变化，自动验证JSON
-watch(() => editHashFieldForm.value, () => {
-  validateHashFieldJsonInput()
-}, { immediate: true })
-
-// 监听主编辑对话框值变化，自动验证JSON
-watch(() => editForm.value, () => {
-  if (editForm.type === 'string') {
-    validateMainJsonInput()
-  }
-}, { immediate: true })
-
-// 监听主编辑对话框类型变化，自动验证JSON
-watch(() => editForm.type, () => {
-  if (editForm.type === 'string') {
-    validateMainJsonInput()
-  }
-}, { immediate: true })
 </script>
 
 <style scoped>
@@ -2310,106 +1495,7 @@ watch(() => editForm.type, () => {
   gap: 8px;
 }
 
-.edit-dialog-content {
-  max-height: 600px;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
 
-.edit-mode-selector {
-  margin-bottom: 20px;
-  padding-bottom: 16px;
-  border-bottom: 1px solid #404040;
-}
-
-.rename-mode,
-.edit-value-mode {
-  width: 100%;
-  overflow-x: hidden;
-}
-
-.rename-mode :deep(.el-form-item__content),
-.edit-value-mode :deep(.el-form-item__content) {
-  width: 100%;
-}
-
-.hash-edit-container,
-.list-edit-container,
-.set-edit-container,
-.zset-edit-container {
-  max-height: 400px;
-  overflow-y: auto;
-  overflow-x: hidden;
-  width: 100%;
-}
-
-.hash-field-item,
-.list-item,
-.zset-item {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-.hash-field-input,
-.list-item-input,
-.zset-member-input {
-  flex: 1;
-  min-width: 200px;
-}
-
-.zset-score-input {
-  flex: 1;
-  min-width: 200px;
-}
-
-.field-name {
-  min-width: 80px;
-  color: #909399;
-  font-size: 12px;
-  flex-shrink: 0;
-}
-
-.add-hash-field,
-.add-list-item,
-.add-set-member,
-.add-zset-item {
-  display: flex;
-  gap: 8px;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #404040;
-  align-items: center;
-  flex-wrap: wrap;
-  width: 100%;
-}
-
-.new-field-input,
-.new-item-input,
-.new-member-input,
-.new-zset-member-input {
-  flex: 1;
-  min-width: 200px;
-}
-
-.new-value-input,
-.new-zset-score-input {
-  flex: 1;
-  min-width: 200px;
-}
-
-.set-member-tag {
-  margin: 4px;
-}
-
-.set-edit-container {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
 
 .key-type-selector {
   min-width: 120px;
@@ -2682,74 +1768,6 @@ watch(() => editForm.type, () => {
   color: #ffffff;
 }
 
-/* String编辑相关样式 */
-.string-edit-container {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
 
-.edit-toolbar {
-  display: flex;
-  gap: 8px;
-  padding: 8px;
-  background-color: var(--el-fill-color-light);
-  border-radius: 4px;
-  border: 1px solid var(--el-border-color);
-}
-
-.edit-toolbar .el-button {
-  color: var(--el-text-color-regular);
-  font-size: 12px;
-}
-
-.edit-toolbar .el-button:hover {
-  color: var(--el-color-primary);
-  background-color: var(--el-fill-color);
-}
-
-.edit-toolbar .el-button:disabled {
-  color: var(--el-text-color-placeholder);
-  cursor: not-allowed;
-}
-
-.string-edit-input {
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.string-edit-input.json-error {
-  border-color: var(--el-color-danger);
-}
-
-.string-edit-input.json-error:focus {
-  border-color: var(--el-color-danger);
-  box-shadow: 0 0 0 1px var(--el-color-danger);
-}
-
-.json-error-message {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--el-color-danger);
-  font-size: 12px;
-  padding: 4px 8px;
-  background-color: var(--el-color-danger-light-9);
-  border-radius: 4px;
-  border: 1px solid var(--el-color-danger-light-7);
-}
-
-.json-info {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  color: var(--el-color-success);
-  font-size: 12px;
-  padding: 4px 8px;
-  background-color: var(--el-color-success-light-9);
-  border-radius: 4px;
-  border: 1px solid var(--el-color-success-light-7);
-}
 
 </style> 
