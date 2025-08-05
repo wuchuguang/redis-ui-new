@@ -240,7 +240,7 @@ class BatchOperationsService {
     if (command.target.includes('*')) {
       // 模式匹配，需要扫描键
       const keys = await this.scanKeys(client, command.target)
-      const deletedCount = 0
+      let deletedCount = 0
       
       for (const key of keys) {
         await promisify(client.del).bind(client)(key)

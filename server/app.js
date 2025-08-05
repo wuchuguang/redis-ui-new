@@ -19,14 +19,11 @@ const conversionRulesRoutes = require('./routes/conversionRules');
 const app = express();
 const PORT = process.env.PORT || DEFAULT_CONFIG.PORT;
 
-
-
 // 中间件
 app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '../client/dist')));
 
-// 注册路由
+// 注册API路由
 app.use('/api/auth', authRoutes);
 app.use('/api/connections', connectionRoutes);
 app.use('/api/connections', keyRoutes); // 键值操作也挂载在connections下
@@ -37,11 +34,30 @@ app.use('/api/tools/converter', converterRoutes);
 app.use('/api/tools/backup', backupRoutes);
 app.use('/api/conversion-rules', conversionRulesRoutes);
 
-// 处理前端路由
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+// 前端静态文件服务 - /web 路由
+const clientDistPath = path.join(__dirname, '../client/build/web');
+const clientAssetsPath = path.join(clientDistPath, 'assets');
+
+// 服务 /web 路由下的静态资源
+app.use('/web/assets', express.static(clientAssetsPath));
+
+// 服务 /web 路由下的 index.html
+app.get('/web', (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
 });
 
+// 处理 /web 路由下的前端路由（SPA路由）
+app.get('/web/*', (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
+
+// 保持原有的根路径静态文件服务（向后兼容）
+app.use(express.static(clientDistPath));
+
+// 处理根路径的前端路由
+app.get('*', (req, res) => {
+  res.sendFile(path.join(clientDistPath, 'index.html'));
+});
 
 // 启动服务器
 app.listen(PORT, async () => {
