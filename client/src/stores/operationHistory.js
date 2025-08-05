@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import request from '../utils/http.js'
 import { ElMessage } from 'element-plus'
 
 export const useOperationHistoryStore = defineStore('operationHistory', () => {
@@ -17,16 +17,13 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   const fetchHistory = async (params = {}) => {
     loading.value = true
     try {
-      const response = await axios.get('/api/operations/history', { params })
+      const response = await request.get('/operations/history', params)
       if (response.data.success) {
         history.value = response.data.data.list
         total.value = response.data.data.total
-      } else {
-        ElMessage.error(response.data.message || '获取操作历史失败')
       }
     } catch (error) {
       console.error('获取操作历史失败:', error)
-      ElMessage.error(error.response?.data?.message || '获取操作历史失败')
     } finally {
       loading.value = false
     }
@@ -35,18 +32,15 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   // 添加操作记录
   const addOperation = async (operationData) => {
     try {
-      const response = await axios.post('/api/operations', operationData)
+      const response = await request.post('/operations', operationData)
       if (response.data.success) {
         // 刷新历史记录
         await fetchHistory()
         return true
-      } else {
-        ElMessage.error(response.data.message || '添加操作记录失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('添加操作记录失败:', error)
-      ElMessage.error(error.response?.data?.message || '添加操作记录失败')
       return false
     }
   }
@@ -55,19 +49,15 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   const rollbackOperation = async (operationId) => {
     rollbackLoading.value = true
     try {
-      const response = await axios.post(`/api/operations/${operationId}/rollback`)
+      const response = await request.post(`/operations/${operationId}/rollback`)
       if (response.data.success) {
-        ElMessage.success('操作回滚成功')
         // 刷新历史记录
         await fetchHistory()
         return true
-      } else {
-        ElMessage.error(response.data.message || '操作回滚失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('操作回滚失败:', error)
-      ElMessage.error(error.response?.data?.message || '操作回滚失败')
       return false
     } finally {
       rollbackLoading.value = false
@@ -77,16 +67,13 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   // 获取操作详情
   const getOperationDetails = async (operationId) => {
     try {
-      const response = await axios.get(`/api/operations/${operationId}`)
+      const response = await request.get(`/operations/${operationId}`)
       if (response.data.success) {
         return response.data.data
-      } else {
-        ElMessage.error(response.data.message || '获取操作详情失败')
-        return null
       }
+      return null
     } catch (error) {
       console.error('获取操作详情失败:', error)
-      ElMessage.error(error.response?.data?.message || '获取操作详情失败')
       return null
     }
   }
@@ -94,19 +81,15 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   // 删除操作记录
   const deleteOperation = async (operationId) => {
     try {
-      const response = await axios.delete(`/api/operations/${operationId}`)
+      const response = await request.delete(`/operations/${operationId}`)
       if (response.data.success) {
-        ElMessage.success('删除操作记录成功')
         // 刷新历史记录
         await fetchHistory()
         return true
-      } else {
-        ElMessage.error(response.data.message || '删除操作记录失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('删除操作记录失败:', error)
-      ElMessage.error(error.response?.data?.message || '删除操作记录失败')
       return false
     }
   }
@@ -114,21 +97,15 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   // 批量删除操作记录
   const batchDeleteOperations = async (operationIds) => {
     try {
-      const response = await axios.delete('/api/operations/batch', {
-        data: { operationIds }
-      })
+      const response = await request.delete('/operations/batch', { operationIds })
       if (response.data.success) {
-        ElMessage.success(`成功删除 ${operationIds.length} 条操作记录`)
         // 刷新历史记录
         await fetchHistory()
         return true
-      } else {
-        ElMessage.error(response.data.message || '批量删除操作记录失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('批量删除操作记录失败:', error)
-      ElMessage.error(error.response?.data?.message || '批量删除操作记录失败')
       return false
     }
   }
@@ -136,19 +113,15 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   // 清空操作历史
   const clearHistory = async () => {
     try {
-      const response = await axios.delete('/api/operations/clear')
+      const response = await request.delete('/operations/clear')
       if (response.data.success) {
-        ElMessage.success('清空操作历史成功')
         history.value = []
         total.value = 0
         return true
-      } else {
-        ElMessage.error(response.data.message || '清空操作历史失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('清空操作历史失败:', error)
-      ElMessage.error(error.response?.data?.message || '清空操作历史失败')
       return false
     }
   }
@@ -156,10 +129,7 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   // 导出操作历史
   const exportHistory = async (format = 'json') => {
     try {
-      const response = await axios.get('/api/operations/export', {
-        params: { format },
-        responseType: 'blob'
-      })
+      const response = await request.get('/operations/export', { format }, { responseType: 'blob' })
       
       // 创建下载链接
       const blob = new Blob([response.data])
@@ -187,7 +157,7 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
       const formData = new FormData()
       formData.append('file', file)
       
-      const response = await axios.post('/api/operations/import', formData, {
+      const response = await request.post('/operations/import', formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -213,16 +183,13 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   const searchHistory = async (searchParams) => {
     loading.value = true
     try {
-      const response = await axios.get('/api/operations/search', { params: searchParams })
+      const response = await request.get('/operations/search', searchParams)
       if (response.data.success) {
         history.value = response.data.data.list
         total.value = response.data.data.total
-      } else {
-        ElMessage.error(response.data.message || '搜索操作历史失败')
       }
     } catch (error) {
       console.error('搜索操作历史失败:', error)
-      ElMessage.error(error.response?.data?.message || '搜索操作历史失败')
       return false
     } finally {
       loading.value = false
@@ -232,7 +199,7 @@ export const useOperationHistoryStore = defineStore('operationHistory', () => {
   // 获取操作统计
   const getOperationStats = async () => {
     try {
-      const response = await axios.get('/api/operations/stats')
+      const response = await request.get('/operations/stats')
       if (response.data.success) {
         return response.data.data
       }

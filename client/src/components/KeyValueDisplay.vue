@@ -171,6 +171,7 @@
                     :row-key="'string_value'"
                     :key-name="keyData.key"
                     :data-type="'string'"
+                    :connection-id="props.connection?.id"
                     @formatted="handleFormatted"
                   />
                 </template>
@@ -263,6 +264,7 @@
                   :data-type="'hash'"
                   :field-name="row.field"
                   :search-pattern="hashFilter"
+                  :connection-id="props.connection?.id"
                   @formatted="handleFormatted"
                 />
               </template>
@@ -361,6 +363,7 @@
                   :key-name="keyData.key"
                   :data-type="'list'"
                   :search-pattern="listFilter"
+                  :connection-id="props.connection?.id"
                   @formatted="handleFormatted"
                 />
               </template>
@@ -432,6 +435,7 @@
                 :key-name="keyData.key"
                 :data-type="'set'"
                 :search-pattern="setFilter"
+                :connection-id="props.connection?.id"
                 @formatted="handleFormatted"
               />
               <el-button 
@@ -458,6 +462,7 @@
                   :row-key="`${row.rank}`"
                   :key-name="keyData.key"
                   :data-type="'zset'"
+                  :connection-id="props.connection?.id"
                   @formatted="handleFormatted"
                 />
               </template>

@@ -188,7 +188,7 @@ import {
   Setting, Edit, VideoPlay, Refresh, Delete,
   DataAnalysis, DataBoard, Loading, CircleCheck, CircleClose
 } from '@element-plus/icons-vue'
-import axios from 'axios'
+import request from '../../utils/http.js'
 
 const props = defineProps({
   connection: {
@@ -247,7 +247,7 @@ const handleExecute = async () => {
     result.value.processing = true
     result.value.progress = 0
 
-    const response = await axios.post('/api/tools/batch/execute', {
+    const response = await request.post('/tools/batch/execute', {
       connectionId: props.connection.id,
       ...config.value
     })
@@ -259,14 +259,6 @@ const handleExecute = async () => {
         progress: 100
       }
       
-      const modeText = {
-        preview: '预览',
-        'dry-run': '试运行',
-        execute: '执行'
-      }[config.value.mode]
-      
-      ElMessage.success(`${modeText}完成！总命令数: ${result.value.total}, 成功: ${result.value.success}, 失败: ${result.value.failed}`)
-      
       emit('operation-complete', {
         mode: config.value.mode,
         total: result.value.total,
@@ -277,7 +269,6 @@ const handleExecute = async () => {
   } catch (error) {
     if (error !== 'cancel') {
       console.error('执行操作失败:', error)
-      ElMessage.error('执行操作失败')
     }
     result.value.processing = false
   }

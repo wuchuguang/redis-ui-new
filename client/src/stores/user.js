@@ -1,147 +1,9 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import request from '../utils/http.js'
 import { ElMessage } from 'element-plus'
 
-// 设置axios拦截器
-let isRefreshing = false
-let failedQueue = []
 
-const processQueue = (error, token = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error)
-    } else {
-      prom.resolve(token)
-    }
-  })
-  
-  failedQueue = []
-}
-
-// 响应拦截器
-axios.interceptors.response.use(
-  (response) => {
-    // 处理成功消息
-    if (response.data && response.data.message && response.data.success) {
-      ElMessage.success(response.data.message)
-    }
-    return response
-  },
-  async (error) => {
-    const originalRequest = error.config
-    
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      // 检查是否是访问令牌缺失的情况
-      if (error.response.data?.message === '访问令牌缺失') {
-        ElMessage.error('登录已过期，请重新登录')
-        // 清除本地存储的用户信息
-        localStorage.removeItem('userToken')
-        localStorage.removeItem('userInfo')
-        sessionStorage.removeItem('userToken')
-        delete axios.defaults.headers.common['Authorization']
-        // 刷新页面让用户重新登录
-        setTimeout(() => {
-          window.location.reload()
-        }, 1500)
-        return Promise.reject(error)
-      }
-      
-      if (isRefreshing) {
-        return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject })
-        }).then(token => {
-          originalRequest.headers['Authorization'] = 'Bearer ' + token
-          return axios(originalRequest)
-        }).catch(err => {
-          return Promise.reject(err)
-        })
-      }
-      
-      originalRequest._retry = true
-      isRefreshing = true
-      
-      // 尝试刷新token
-      const currentToken = localStorage.getItem('userToken') || sessionStorage.getItem('userToken')
-      if (currentToken) {
-        try {
-          const response = await axios.post('/api/auth/refresh-token', {}, {
-            headers: { Authorization: `Bearer ${currentToken}` }
-          })
-          
-          if (response.data.success) {
-            const newToken = response.data.data.token
-            
-            // 更新存储中的token
-            if (sessionStorage.getItem('userToken')) {
-              sessionStorage.setItem('userToken', newToken)
-            } else if (localStorage.getItem('userToken')) {
-              localStorage.setItem('userToken', newToken)
-            }
-            
-            // 更新axios默认headers
-            axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
-            originalRequest.headers['Authorization'] = 'Bearer ' + newToken
-            
-            processQueue(null, newToken)
-            return axios(originalRequest)
-          }
-        } catch (refreshError) {
-          processQueue(refreshError, null)
-          // 刷新失败，清除登录状态
-          localStorage.removeItem('userToken')
-          sessionStorage.removeItem('userToken')
-          delete axios.defaults.headers.common['Authorization']
-          ElMessage.error('登录已过期，请重新登录')
-          window.location.reload() // 刷新页面
-          return Promise.reject(refreshError)
-        } finally {
-          isRefreshing = false
-        }
-      } else {
-        // 没有token，直接显示错误
-        ElMessage.error('请先登录')
-        return Promise.reject(error)
-      }
-    }
-    
-    // 处理所有错误消息
-    if (error.response) {
-      const { status, data } = error.response
-      
-      // 显示后端返回的错误消息
-      if (data && data.message) {
-        ElMessage.error(data.message)
-      } else {
-        // 如果没有具体消息，显示通用错误
-        if (status === 403) {
-          ElMessage.error('权限不足，无法执行此操作')
-        } else if (status === 404) {
-          ElMessage.error('请求的资源不存在')
-        } else if (status >= 500) {
-          ElMessage.error('服务器错误，请稍后重试')
-        } else {
-          ElMessage.error('请求失败')
-        }
-      }
-    } else if (error.request) {
-      // 网络错误 - 只在非自动刷新的情况下显示错误
-      const isAutoRefresh = error.config?.url?.includes('/api/connections') && 
-                           (error.config?.url?.includes('/info') || error.config?.url?.includes('/ping'))
-      
-      if (!isAutoRefresh) {
-        ElMessage.error('网络连接失败，请检查网络设置')
-      } else {
-        console.log('自动刷新网络错误，静默处理:', error.config?.url)
-      }
-    } else {
-      // 其他错误
-      ElMessage.error('请求失败')
-    }
-    
-    return Promise.reject(error)
-  }
-)
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref(null)
@@ -178,13 +40,8 @@ export const useUserStore = defineStore('user', () => {
   // 初始化用户状态
   const initializeUser = async () => {
     if (token.value) {
-      // 设置axios默认headers
-      axios.defaults.headers.common['Authorization'] = `Bearer ${token.value}`
-      
       try {
-        const response = await axios.get('/api/auth/profile', {
-          headers: { Authorization: `Bearer ${token.value}` }
-        })
+        const response = await request.get('/auth/profile')
         if (response.data.success) {
           currentUser.value = response.data.data
           console.log('✅ 用户状态恢复成功:', currentUser.value.username)
@@ -204,9 +61,7 @@ export const useUserStore = defineStore('user', () => {
           if (refreshSuccess) {
             // 刷新成功，重新获取用户信息
             try {
-              const retryResponse = await axios.get('/api/auth/profile', {
-                headers: { Authorization: `Bearer ${token.value}` }
-              })
+              const retryResponse = await request.get('/auth/profile')
               if (retryResponse.data.success) {
                 currentUser.value = retryResponse.data.data
                 console.log('✅ Token刷新后用户状态恢复成功:', currentUser.value.username)
@@ -236,7 +91,7 @@ export const useUserStore = defineStore('user', () => {
   const login = async (credentials) => {
     loading.value = true
     try {
-      const response = await axios.post('/api/auth/login', credentials)
+      const response = await request.post('/auth/login', credentials)
       if (response.data.success) {
         const { user, token: userToken } = response.data.data
         currentUser.value = user
@@ -253,17 +108,11 @@ export const useUserStore = defineStore('user', () => {
           localStorage.removeItem('userToken')
         }
         
-        // 设置axios默认headers
-        axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`
-        
         return true
-      } else {
-        ElMessage.error(response.data.message || '登录失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('登录失败:', error)
-      ElMessage.error(error.response?.data?.message || '登录失败')
       return false
     } finally {
       loading.value = false
@@ -274,7 +123,7 @@ export const useUserStore = defineStore('user', () => {
   const register = async (userData) => {
     loading.value = true
     try {
-      const response = await axios.post('/api/auth/register', userData)
+      const response = await request.post('/auth/register', userData)
       if (response.data.success) {
         // 注册成功后自动登录
         const { user, token: userToken } = response.data.data
@@ -285,18 +134,11 @@ export const useUserStore = defineStore('user', () => {
         localStorage.setItem('userToken', userToken)
         sessionStorage.removeItem('userToken')
         
-        // 设置axios默认headers
-        axios.defaults.headers.common['Authorization'] = `Bearer ${userToken}`
-        
-        ElMessage.success('注册成功并自动登录')
         return true
-      } else {
-        ElMessage.error(response.data.message || '注册失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('注册失败:', error)
-      ElMessage.error(error.response?.data?.message || '注册失败')
       return false
     } finally {
       loading.value = false
@@ -308,9 +150,7 @@ export const useUserStore = defineStore('user', () => {
     if (!token.value) return false
     
     try {
-      const response = await axios.post('/api/auth/refresh-token', {}, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      const response = await request.post('/auth/refresh-token')
       
       if (response.data.success) {
         const newToken = response.data.data.token
@@ -322,9 +162,6 @@ export const useUserStore = defineStore('user', () => {
         } else if (localStorage.getItem('userToken')) {
           localStorage.setItem('userToken', newToken)
         }
-        
-        // 更新axios默认headers
-        axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`
         
         console.log('✅ Token刷新成功')
         return true
@@ -345,27 +182,20 @@ export const useUserStore = defineStore('user', () => {
     token.value = null
     localStorage.removeItem('userToken')
     sessionStorage.removeItem('userToken')
-    delete axios.defaults.headers.common['Authorization']
   }
 
   // 更新用户资料
   const updateProfile = async (profileData) => {
     loading.value = true
     try {
-      const response = await axios.put('/api/auth/profile', profileData, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      const response = await request.put('/auth/profile', profileData)
       if (response.data.success) {
         currentUser.value = { ...currentUser.value, ...response.data.data }
-        ElMessage.success('个人资料更新成功')
         return true
-      } else {
-        ElMessage.error(response.data.message || '更新失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('更新个人资料失败:', error)
-      ElMessage.error(error.response?.data?.message || '更新失败')
       return false
     } finally {
       loading.value = false
@@ -376,19 +206,13 @@ export const useUserStore = defineStore('user', () => {
   const changePassword = async (passwordData) => {
     loading.value = true
     try {
-      const response = await axios.put('/api/auth/password', passwordData, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      const response = await request.put('/auth/password', passwordData)
       if (response.data.success) {
-        ElMessage.success('密码修改成功')
         return true
-      } else {
-        ElMessage.error(response.data.message || '密码修改失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('密码修改失败:', error)
-      ElMessage.error(error.response?.data?.message || '密码修改失败')
       return false
     } finally {
       loading.value = false
@@ -403,9 +227,7 @@ export const useUserStore = defineStore('user', () => {
     }
     
     try {
-      const response = await axios.get('/api/admin/users', {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      const response = await request.get('/admin/users')
       if (response.data.success) {
         return response.data.data
       }
@@ -424,19 +246,13 @@ export const useUserStore = defineStore('user', () => {
     }
     
     try {
-      const response = await axios.put(`/api/admin/users/${userId}/role`, { role }, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      const response = await request.put(`/admin/users/${userId}/role`, { role })
       if (response.data.success) {
-        ElMessage.success('用户角色更新成功')
         return true
-      } else {
-        ElMessage.error(response.data.message || '更新失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('更新用户角色失败:', error)
-      ElMessage.error(error.response?.data?.message || '更新失败')
       return false
     }
   }
@@ -449,19 +265,13 @@ export const useUserStore = defineStore('user', () => {
     }
     
     try {
-      const response = await axios.delete(`/api/admin/users/${userId}`, {
-        headers: { Authorization: `Bearer ${token.value}` }
-      })
+      const response = await request.delete(`/admin/users/${userId}`)
       if (response.data.success) {
-        ElMessage.success('用户删除成功')
         return true
-      } else {
-        ElMessage.error(response.data.message || '删除失败')
-        return false
       }
+      return false
     } catch (error) {
       console.error('删除用户失败:', error)
-      ElMessage.error(error.response?.data?.message || '删除失败')
       return false
     }
   }

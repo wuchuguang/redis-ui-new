@@ -38,6 +38,9 @@
         <el-button type="text" class="toolbar-btn" @click="openDataOperationsTool">
           <el-icon><Operation /></el-icon>
         </el-button>
+        <el-button type="text" class="toolbar-btn" @click="openConversionRulesManager">
+          <el-icon><Setting /></el-icon>
+        </el-button>
         <UserManager />
       </div>
     </div>
@@ -121,6 +124,12 @@
         <el-empty description="请先选择一个连接" />
       </div>
     </el-dialog>
+
+    <!-- 转换规则管理对话框 -->
+    <ConversionRulesManager
+      v-model="showConversionRulesManager"
+      :connection-id="currentConnection?.id"
+    />
   </div>
 </template>
 
@@ -182,6 +191,14 @@ const openDataOperationsTool = () => {
     return
   }
   showDataOperationsTool.value = true
+}
+
+const openConversionRulesManager = () => {
+  if (!currentConnection.value) {
+    ElMessage.warning('请先选择一个连接')
+    return
+  }
+  showConversionRulesManager.value = true
 }
 
 const closeConnection = () => {

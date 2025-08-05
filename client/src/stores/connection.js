@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import request from '../utils/http.js'
 import { ElMessage } from 'element-plus'
 import { useUserStore } from './user'
 
@@ -33,7 +33,7 @@ export const useConnectionStore = defineStore('connection', () => {
     try {
       // 只有登录用户才从后端获取连接配置
       if (userStore.isLoggedIn) {
-        const response = await axios.get('/api/connections')
+        const response = await request.get('/connections')
         if (response.data.success) {
           connections.value = response.data.data
         }
@@ -97,7 +97,7 @@ export const useConnectionStore = defineStore('connection', () => {
         }
         
         try {
-          const response = await axios.post('/api/connections', connectionData)
+          const response = await request.post('/connections', connectionData)
           if (response.data.success) {
             return response.data.data
           }
@@ -251,7 +251,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 登录用户创建连接
   const createLoggedInUserConnection = async (connectionData) => {
     try {
-      const response = await axios.post('/api/connections', connectionData)
+      const response = await request.post('/connections', connectionData)
       
       if (response.data.success) {
         const newConnection = response.data.data
@@ -372,7 +372,7 @@ export const useConnectionStore = defineStore('connection', () => {
       
       if (connection.isTemp) {
         // 临时连接：发送完整配置
-        response = await axios.post('/api/connections/establish', {
+        response = await request.post('/connections/establish', {
           name: connection.name,
           host: connection.host,
           port: connection.port,
@@ -381,10 +381,10 @@ export const useConnectionStore = defineStore('connection', () => {
         })
       } else if (connection.isShared) {
         // 分享连接：使用分享连接API
-        response = await axios.post(`/api/connections/${connection.id}/connect-shared`)
+        response = await request.post(`/connections/${connection.id}/connect-shared`)
       } else {
         // 已保存连接：只发送连接ID
-        response = await axios.post(`/api/connections/${connection.id}/connect`)
+        response = await request.post(`/connections/${connection.id}/connect`)
       }
       
       if (response.data.success) {
@@ -428,7 +428,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const updateConnection = async (connectionData) => {
     loading.value = true
     try {
-      const response = await axios.put(`/api/connections/${connectionData.id}`, connectionData)
+      const response = await request.put(`/connections/${connectionData.id}`, connectionData)
       if (response.data.success) {
         const updatedConnection = response.data.data
         const index = connections.value.findIndex(conn => conn.id === connectionData.id)
@@ -448,7 +448,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除连接
   const deleteConnection = async (connectionId) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}`)
+      const response = await request.delete(`/connections/${connectionId}`)
       if (response.data.success) {
         const index = connections.value.findIndex(conn => conn.id === connectionId)
         if (index > -1) {
@@ -465,7 +465,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 测试连接
   const testConnection = async (connectionData) => {
     try {
-      const response = await axios.post('/api/connections/test', connectionData)
+      const response = await request.post('/connections/test', connectionData)
       if (response.data.success) {
         return true
       }
@@ -559,7 +559,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 刷新连接状态
   const refreshConnectionStatus = async () => {
     try {
-      const response = await axios.get('/api/connections')
+      const response = await request.get('/connections')
       if (response.data.success) {
         // 保存当前连接的关键信息
         const currentConn = currentConnection.value
@@ -602,8 +602,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 获取键列表
   const getKeys = async (connectionId, database = 0, pattern = '*', limit = 100) => {
     try {
-      const response = await axios.get(`/api/connections/${connectionId}/${database}/keys`, {
-        params: { pattern, limit }
+      const response = await request.get(`/connections/${connectionId}/${database}/keys`, {
+        pattern, limit
       })
       if (response.data.success) {
         return response.data.data
@@ -632,8 +632,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 加载更多键
   const loadMoreKeys = async (connectionId, database = 0, prefix, offset = 0, limit = 100) => {
     try {
-      const response = await axios.get(`/api/connections/${connectionId}/${database}/keys`, {
-        params: { prefix, offset, limit }
+      const response = await request.get(`/connections/${connectionId}/${database}/keys`, {
+        prefix, offset, limit
       })
       if (response.data.success) {
         return response.data.data
@@ -669,7 +669,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const getKeyValue = async (connectionId, database = 0, keyName) => {
     try {
       const encodedKeyName = encodeURIComponent(keyName)
-      const response = await axios.get(`/api/connections/${connectionId}/${database}/key/${encodedKeyName}`)
+      const response = await request.get(`/connections/${connectionId}/${database}/key/${encodedKeyName}`)
       if (response.data.success) {
         return response.data.data
       }
@@ -698,7 +698,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const renameKey = async (connectionId, database = 0, oldKeyName, newKeyName) => {
     try {
       const encodedOldKeyName = encodeURIComponent(oldKeyName)
-      const response = await axios.put(`/api/connections/${connectionId}/${database}/key/${encodedOldKeyName}/rename`, {
+      const response = await request.put(`/connections/${connectionId}/${database}/key/${encodedOldKeyName}/rename`, {
         newKeyName
       })
       if (response.data.success) {
@@ -728,10 +728,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除键组
   const deleteKeyGroup = async (connectionId, database = 0, prefix) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys`, {
-        params: {
-          pattern: `${prefix}*`
-        }
+      const response = await request.delete(`/connections/${connectionId}/${database}/keys`, {
+        pattern: `${prefix}*`
       })
       
       if (response.data.success) {
@@ -748,10 +746,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除单个键
   const deleteKey = async (connectionId, database = 0, keyName) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys`, {
-        params: {
-          pattern: keyName
-        }
+      const response = await request.delete(`/connections/${connectionId}/${database}/keys`, {
+        pattern: keyName
       })
       
       if (response.data.success) {
@@ -766,7 +762,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 创建新的Key
   const createKey = async (connectionId, database = 0, keyData) => {
     try {
-      const response = await axios.post(`/api/connections/${connectionId}/${database}/keys`, keyData)
+      const response = await request.post(`/connections/${connectionId}/${database}/keys`, keyData)
       if (response.data.success) {
         console.log('Key创建成功:', keyData.name)
         return true
@@ -783,7 +779,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 清除Key的TTL
   const clearKeyTTL = async (connectionId, database = 0, keyName) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/ttl`)
+      const response = await request.delete(`/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/ttl`)
       if (response.data.success) {
         console.log('TTL清除成功:', keyName)
         return true
@@ -800,7 +796,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 设置Key的TTL
   const setKeyTTL = async (connectionId, database = 0, keyName, ttl) => {
     try {
-      const response = await axios.put(`/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/ttl`, { ttl })
+      const response = await request.put(`/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/ttl`, { ttl })
       if (response.data.success) {
         console.log('TTL设置成功:', keyName, 'TTL:', ttl)
         return true
@@ -822,7 +818,7 @@ export const useConnectionStore = defineStore('connection', () => {
         data: { type: keyType, value: value }
       })
       
-      const response = await axios.put(`/api/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/value`, {
+      const response = await request.put(`/connections/${connectionId}/${database}/keys/${encodeURIComponent(keyName)}/value`, {
         type: keyType,
         value: value
       })
@@ -846,9 +842,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 批量删除键
   const batchDeleteKeys = async (connectionId, database = 0, keys) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/${database}/keys/batch`, {
-        data: { keys }
-      })
+      const response = await request.delete(`/connections/${connectionId}/${database}/keys/batch`, { keys })
       if (response.data.success) {
         console.log('批量删除成功:', keys.length, '个键')
         return true
@@ -865,9 +859,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除Hash字段
   const deleteHashField = async (connectionId, database = 0, keyName, field) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, {
-        data: { field }
-      })
+      const response = await request.delete(`/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, { field })
       if (response.data.success) {
         return true
       }
@@ -896,9 +888,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 批量删除Hash字段
   const batchDeleteHashFields = async (connectionId, database = 0, keyName, fields) => {
     try {
-      const response = await axios.delete(`/api/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/fields`, {
-        data: { fields }
-      })
+      const response = await request.delete(`/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/fields`, { fields })
       if (response.data.success) {
         return true
       }
@@ -927,7 +917,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 更新Hash字段
   const updateHashField = async (connectionId, database = 0, keyName, oldField, newField, value) => {
     try {
-      const response = await axios.put(`/api/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, {
+      const response = await request.put(`/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, {
         oldField,
         newField,
         value
@@ -960,7 +950,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 更新String值
   const updateStringValue = async (connectionId, database = 0, keyName, value) => {
     try {
-      const response = await axios.put(`/api/connections/${connectionId}/${database}/string/${encodeURIComponent(keyName)}`, {
+      const response = await request.put(`/connections/${connectionId}/${database}/string/${encodeURIComponent(keyName)}`, {
         value
       })
       if (response.data.success) {
@@ -991,7 +981,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 获取连接信息
   const getConnectionInfo = async (connectionId) => {
     try {
-      const response = await axios.get(`/api/connections/${connectionId}/info`)
+      const response = await request.get(`/connections/${connectionId}/info`)
       if (response.data.success) {
         return response.data.data
       }
@@ -1019,7 +1009,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // Ping连接
   const pingConnection = async (connectionId) => {
     try {
-      const response = await axios.post(`/api/connections/${connectionId}/ping`)
+      const response = await request.post(`/connections/${connectionId}/ping`)
       if (response.data.success) {
         return response.data.data
       }
@@ -1032,7 +1022,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 用户断开连接（不关闭Redis连接，除非没有其他用户）
   const closeConnection = async (connectionId) => {
     try {
-      const response = await axios.post(`/api/connections/${connectionId}/disconnect`)
+      const response = await request.post(`/connections/${connectionId}/disconnect`)
       if (response.data.success) {
         console.log('用户已断开连接:', connectionId)
         
@@ -1067,7 +1057,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 分享连接
   const shareConnection = async (connectionId) => {
     try {
-      const response = await axios.post(`/api/connections/${connectionId}/share`)
+      const response = await request.post(`/connections/${connectionId}/share`)
       return response.data
     } catch (error) {
       console.error('分享连接失败:', error)
@@ -1078,7 +1068,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 加入分享的连接
   const joinSharedConnection = async (joinCode) => {
     try {
-      const response = await axios.post('/api/connections/join', { joinCode })
+      const response = await request.post('/connections/join', { joinCode })
       return response.data
     } catch (error) {
       console.error('加入分享连接失败:', error)

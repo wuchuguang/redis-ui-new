@@ -94,7 +94,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh, Delete } from '@element-plus/icons-vue'
-import axios from 'axios'
+import request from '../utils/http.js'
 
 const props = defineProps({
   connectionId: {
@@ -116,13 +116,12 @@ const fetchHistory = async () => {
   
   loading.value = true
   try {
-    const response = await axios.get(`/api/operations/${props.connectionId}/history`)
+    const response = await request.get(`/operations/${props.connectionId}/history`)
     if (response.data.success) {
       history.value = response.data.data
     }
   } catch (error) {
     console.error('获取操作历史失败:', error)
-    ElMessage.error('获取操作历史失败')
   } finally {
     loading.value = false
   }
@@ -146,15 +145,13 @@ const clearHistory = async () => {
       }
     )
     
-    const response = await axios.delete(`/api/operations/${props.connectionId}/history`)
+    const response = await request.delete(`/operations/${props.connectionId}/history`)
     if (response.data.success) {
-      ElMessage.success('操作历史已清空')
       history.value = []
     }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('清空操作历史失败:', error)
-      ElMessage.error('清空操作历史失败')
     }
   }
 }

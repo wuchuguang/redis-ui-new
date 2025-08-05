@@ -404,7 +404,7 @@ import {
   Loading, Document, DocumentCopy, CircleCheck, CircleClose, More,
   RefreshLeft, Delete, Clock, Timer
 } from '@element-plus/icons-vue'
-import axios from 'axios'
+import request from '../../utils/http.js'
 
 const props = defineProps({
   connection: {
@@ -461,7 +461,7 @@ const canStartBackup = computed(() => {
 // 开始备份
 const handleStartBackup = async () => {
   try {
-    const response = await axios.post('/api/tools/backup/start', {
+    const response = await request.post('/tools/backup/start', {
       connectionId: props.connection.id,
       ...backupConfig.value
     })
@@ -482,12 +482,9 @@ const handleStartBackup = async () => {
       
       // 开始轮询进度
       setTimeout(pollBackupProgress, 1000) // 延迟1秒开始轮询
-      
-      ElMessage.success('备份任务已启动')
     }
   } catch (error) {
     console.error('启动备份失败:', error)
-    ElMessage.error('启动备份失败')
   }
 }
 
@@ -500,19 +497,17 @@ const handleStopBackup = async () => {
       type: 'warning'
     })
 
-    const response = await axios.post('/api/tools/backup/stop', {
+    const response = await request.post('/tools/backup/stop', {
       connectionId: props.connection.id,
       backupId: currentBackup.value.id
     })
 
     if (response.data.success) {
       currentBackup.value.processing = false
-      ElMessage.success('备份任务已停止')
     }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('停止备份失败:', error)
-      ElMessage.error('停止备份失败')
     }
   }
 }
@@ -522,7 +517,7 @@ const pollBackupProgress = async () => {
   if (!currentBackup.value.processing) return
 
   try {
-    const response = await axios.get(`/api/tools/backup/progress/${currentBackup.value.id}`)
+    const response = await request.get(`/tools/backup/progress/${currentBackup.value.id}`)
     
     if (response.data.success) {
       const progress = response.data.data
@@ -539,13 +534,6 @@ const pollBackupProgress = async () => {
       if (progress.status === 'completed' || progress.status === 'failed') {
         currentBackup.value.processing = false
         await loadBackupHistory()
-        
-        // 显示完成消息
-        if (progress.status === 'completed') {
-          const successMsg = `备份完成！成功备份 ${progress.backupKeys || 0} 个键`
-          const failedMsg = progress.failedKeys > 0 ? `，失败 ${progress.failedKeys} 个键` : ''
-          ElMessage.success(successMsg + failedMsg)
-        }
         
         emit('backup-complete', {
           type: currentBackup.value.type,
@@ -566,7 +554,6 @@ const pollBackupProgress = async () => {
     if (error.response && error.response.status === 500 && 
         error.response.data.message && error.response.data.message.includes('备份记录不存在')) {
       currentBackup.value.processing = false
-      ElMessage.error('备份任务已中断')
       return
     }
     
@@ -585,7 +572,7 @@ const handleRefreshCurrent = async () => {
 // 加载备份历史
 const loadBackupHistory = async () => {
   try {
-    const response = await axios.get(`/api/tools/backup/history?connectionId=${props.connection.id}`)
+    const response = await request.get(`/tools/backup/history?connectionId=${props.connection.id}`)
     if (response.data.success) {
       backupHistory.value = response.data.data
     }
@@ -602,7 +589,7 @@ const handleRefreshHistory = async () => {
 // 下载备份
 const handleDownload = async (backup) => {
   try {
-    const response = await axios.get(`/api/tools/backup/download/${backup.id}`, {
+    const response = await request.get(`/tools/backup/download/${backup.id}`, {}, {
       responseType: 'blob'
     })
     
@@ -613,10 +600,9 @@ const handleDownload = async (backup) => {
     link.click()
     window.URL.revokeObjectURL(url)
     
-    ElMessage.success('备份文件下载成功')
+
   } catch (error) {
     console.error('下载备份失败:', error)
-    ElMessage.error('下载备份失败')
   }
 }
 
@@ -636,7 +622,7 @@ const handleRestore = (backup) => {
 // 确认恢复
 const handleConfirmRestore = async () => {
   try {
-    const response = await axios.post('/api/tools/backup/restore', {
+    const response = await request.post('/tools/backup/restore', {
       connectionId: props.connection.id,
       backupId: restoreDialog.value.backupId,
       ...restoreDialog.value.config
@@ -644,11 +630,9 @@ const handleConfirmRestore = async () => {
 
     if (response.data.success) {
       restoreDialog.value.visible = false
-      ElMessage.success('备份恢复任务已启动')
     }
   } catch (error) {
     console.error('恢复备份失败:', error)
-    ElMessage.error('恢复备份失败')
   }
 }
 
@@ -665,16 +649,14 @@ const handleDelete = async (backup) => {
       }
     )
 
-    const response = await axios.delete(`/api/tools/backup/${backup.id}`)
+    const response = await request.delete(`/tools/backup/${backup.id}`)
     
     if (response.data.success) {
       await loadBackupHistory()
-      ElMessage.success('备份删除成功')
     }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除备份失败:', error)
-      ElMessage.error('删除备份失败')
     }
   }
 }

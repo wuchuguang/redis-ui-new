@@ -14,6 +14,7 @@ const operationRoutes = require('./routes/operations');
 const batchRoutes = require('./routes/tools/batch');
 const converterRoutes = require('./routes/tools/converter');
 const backupRoutes = require('./routes/tools/backup');
+const conversionRulesRoutes = require('./routes/conversionRules');
 
 const app = express();
 const PORT = process.env.PORT || DEFAULT_CONFIG.PORT;
@@ -34,6 +35,7 @@ app.use('/api/operations', operationRoutes);
 app.use('/api/tools/batch', batchRoutes);
 app.use('/api/tools/converter', converterRoutes);
 app.use('/api/tools/backup', backupRoutes);
+app.use('/api/conversion-rules', conversionRulesRoutes);
 
 // 处理前端路由
 app.get('*', (req, res) => {

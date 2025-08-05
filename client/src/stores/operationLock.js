@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import axios from 'axios'
+import request from '../utils/http.js'
 import { ElMessage } from 'element-plus'
 
 export const useOperationLockStore = defineStore('operationLock', () => {
@@ -39,7 +39,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   // 获取所有锁
   const fetchLocks = async () => {
     try {
-      const response = await axios.get('/api/locks')
+      const response = await request.get('/locks')
       if (response.data.success) {
         lockedOperations.value = response.data.data
       }
@@ -51,7 +51,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   // 获取我的锁
   const fetchMyLocks = async () => {
     try {
-      const response = await axios.get('/api/locks/my')
+      const response = await request.get('/locks/my')
       if (response.data.success) {
         myLocks.value = response.data.data
       }
@@ -81,7 +81,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   const acquireLock = async (action, target, timeout = 30000) => {
     loading.value = true
     try {
-      const response = await axios.post('/api/locks', {
+      const response = await request.post('/locks', {
         action,
         target,
         timeout
@@ -111,7 +111,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   const forceAcquireLock = async (action, target, timeout = 30000) => {
     loading.value = true
     try {
-      const response = await axios.post('/api/locks/force', {
+      const response = await request.post('/locks/force', {
         action,
         target,
         timeout
@@ -140,7 +140,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   // 释放操作锁
   const releaseLock = async (lockId) => {
     try {
-      const response = await axios.delete(`/api/locks/${lockId}`)
+      const response = await request.delete(`/locks/${lockId}`)
       if (response.data.success) {
         // 从我的锁列表中移除
         const index = myLocks.value.findIndex(lock => lock.id === lockId)
@@ -164,7 +164,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   // 释放所有我的锁
   const releaseAllMyLocks = async () => {
     try {
-      const response = await axios.delete('/api/locks/my/all')
+      const response = await request.delete('/locks/my/all')
       if (response.data.success) {
         myLocks.value = []
         await fetchLocks()
@@ -183,7 +183,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   // 延长锁时间
   const extendLock = async (lockId, timeout) => {
     try {
-      const response = await axios.put(`/api/locks/${lockId}/extend`, { timeout })
+      const response = await request.put(`/locks/${lockId}/extend`, { timeout })
       if (response.data.success) {
         // 更新我的锁列表
         const lock = myLocks.value.find(l => l.id === lockId)
@@ -207,7 +207,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   // 清理过期锁
   const cleanupExpiredLocks = async () => {
     try {
-      const response = await axios.post('/api/locks/cleanup')
+      const response = await request.post('/locks/cleanup')
       if (response.data.success) {
         await fetchLocks()
         return true
@@ -222,7 +222,7 @@ export const useOperationLockStore = defineStore('operationLock', () => {
   // 获取锁统计信息
   const getLockStats = async () => {
     try {
-      const response = await axios.get('/api/locks/stats')
+      const response = await request.get('/locks/stats')
       if (response.data.success) {
         return response.data.data
       }

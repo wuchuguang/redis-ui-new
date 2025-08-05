@@ -1,36 +1,231 @@
 // 转换规则引擎
+import request from './http.js'
+
 export class ConversionEngine {
   constructor() {
     this.rules = []
+    this.currentConnectionId = null
     this.loadRules()
   }
 
-  // 从本地存储加载规则
-  loadRules() {
+  // 设置当前连接ID
+  setConnectionId(connectionId) {
+    this.currentConnectionId = connectionId
+    this.loadRules()
+  }
+
+  // 从服务器加载规则
+  async loadRules() {
+    if (!this.currentConnectionId) {
+      // 如果没有连接ID，从本地存储加载
+      this.loadRulesFromLocal()
+      return
+    }
+
+    try {
+      const response = await request.get(`/conversion-rules/${this.currentConnectionId}`)
+      
+      if (response.data.success) {
+        this.rules = response.data.data
+      } else {
+        console.error('从服务器加载转换规则失败:', response.data.message)
+        this.loadRulesFromLocal()
+      }
+    } catch (error) {
+      console.error('加载转换规则失败:', error)
+      this.loadRulesFromLocal()
+    }
+  }
+
+  // 从本地存储加载规则（备用方案）
+  loadRulesFromLocal() {
     try {
       const savedRules = localStorage.getItem('conversionRules')
       if (savedRules) {
         this.rules = JSON.parse(savedRules)
       }
     } catch (error) {
-      console.error('加载转换规则失败:', error)
+      console.error('从本地存储加载转换规则失败:', error)
       this.rules = []
     }
   }
 
-  // 保存规则到本地存储
-  saveRules() {
+  // 保存规则到服务器
+  async saveRules() {
+    if (!this.currentConnectionId) {
+      // 如果没有连接ID，保存到本地存储
+      this.saveRulesToLocal()
+      return
+    }
+
+    try {
+      const response = await request.post(`/conversion-rules/${this.currentConnectionId}`, {
+        rules: this.rules
+      })
+      
+      if (response.data.success) {
+        console.log('转换规则保存成功')
+      } else {
+        console.error('保存转换规则失败:', response.data.message)
+        this.saveRulesToLocal()
+      }
+    } catch (error) {
+      console.error('保存转换规则失败:', error)
+      this.saveRulesToLocal()
+    }
+  }
+
+  // 保存规则到本地存储（备用方案）
+  saveRulesToLocal() {
     try {
       localStorage.setItem('conversionRules', JSON.stringify(this.rules))
     } catch (error) {
-      console.error('保存转换规则失败:', error)
+      console.error('保存转换规则到本地存储失败:', error)
     }
   }
 
   // 更新规则
-  updateRules(rules) {
+  async updateRules(rules) {
     this.rules = rules
-    this.saveRules()
+    await this.saveRules()
+  }
+
+  // 添加单条规则
+  async addRule(rule) {
+    if (!this.currentConnectionId) {
+      // 如果没有连接ID，添加到本地
+      rule.id = Date.now().toString()
+      this.rules.push(rule)
+      this.saveRulesToLocal()
+      return rule
+    }
+
+    try {
+      const response = await request.post(`/conversion-rules/${this.currentConnectionId}/rule`, rule)
+      
+      if (response.data.success) {
+        // 重新加载规则
+        await this.loadRules()
+        return response.data.data
+      } else {
+        throw new Error(response.data.message)
+      }
+    } catch (error) {
+      console.error('添加规则失败:', error)
+      // 回退到本地存储
+      rule.id = Date.now().toString()
+      this.rules.push(rule)
+      this.saveRulesToLocal()
+      return rule
+    }
+  }
+
+  // 更新单条规则
+  async updateRule(ruleId, updatedRule) {
+    if (!this.currentConnectionId) {
+      // 如果没有连接ID，更新本地
+      const index = this.rules.findIndex(r => r.id === ruleId)
+      if (index !== -1) {
+        this.rules[index] = { ...this.rules[index], ...updatedRule }
+        this.saveRulesToLocal()
+      }
+      return this.rules[index]
+    }
+
+    try {
+      const response = await request.put(`/conversion-rules/${this.currentConnectionId}/rule/${ruleId}`, updatedRule)
+      
+      if (response.data.success) {
+        // 重新加载规则
+        await this.loadRules()
+        return response.data.data
+      } else {
+        throw new Error(response.data.message)
+      }
+    } catch (error) {
+      console.error('更新规则失败:', error)
+      // 回退到本地存储
+      const index = this.rules.findIndex(r => r.id === ruleId)
+      if (index !== -1) {
+        this.rules[index] = { ...this.rules[index], ...updatedRule }
+        this.saveRulesToLocal()
+      }
+      return this.rules[index]
+    }
+  }
+
+  // 删除单条规则
+  async deleteRule(ruleId) {
+    if (!this.currentConnectionId) {
+      // 如果没有连接ID，删除本地
+      const index = this.rules.findIndex(r => r.id === ruleId)
+      if (index !== -1) {
+        const deletedRule = this.rules[index]
+        this.rules.splice(index, 1)
+        this.saveRulesToLocal()
+        return deletedRule
+      }
+      return null
+    }
+
+    try {
+      const response = await request.delete(`/conversion-rules/${this.currentConnectionId}/rule/${ruleId}`)
+      
+      if (response.data.success) {
+        // 重新加载规则
+        await this.loadRules()
+        return response.data.data
+      } else {
+        throw new Error(response.data.message)
+      }
+    } catch (error) {
+      console.error('删除规则失败:', error)
+      // 回退到本地存储
+      const index = this.rules.findIndex(r => r.id === ruleId)
+      if (index !== -1) {
+        const deletedRule = this.rules[index]
+        this.rules.splice(index, 1)
+        this.saveRulesToLocal()
+        return deletedRule
+      }
+      return null
+    }
+  }
+
+  // 切换规则启用状态
+  async toggleRule(ruleId) {
+    if (!this.currentConnectionId) {
+      // 如果没有连接ID，切换本地
+      const rule = this.rules.find(r => r.id === ruleId)
+      if (rule) {
+        rule.enabled = !rule.enabled
+        this.saveRulesToLocal()
+        return rule
+      }
+      return null
+    }
+
+    try {
+      const response = await request.patch(`/conversion-rules/${this.currentConnectionId}/rule/${ruleId}/toggle`)
+      
+      if (response.data.success) {
+        // 重新加载规则
+        await this.loadRules()
+        return response.data.data
+      } else {
+        throw new Error(response.data.message)
+      }
+    } catch (error) {
+      console.error('切换规则状态失败:', error)
+      // 回退到本地存储
+      const rule = this.rules.find(r => r.id === ruleId)
+      if (rule) {
+        rule.enabled = !rule.enabled
+        this.saveRulesToLocal()
+        return rule
+      }
+      return null
+    }
   }
 
   // 将通配符模式转换为正则表达式

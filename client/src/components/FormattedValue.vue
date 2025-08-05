@@ -69,6 +69,10 @@ const props = defineProps({
   searchPattern: {
     type: String,
     default: ''
+  },
+  connectionId: {
+    type: String,
+    default: ''
   }
 })
 
@@ -359,6 +363,13 @@ watch(() => props.value, () => {
 // 监听keyName、dataType、fieldName变化，应用转换规则
 watch([() => props.keyName, () => props.dataType, () => props.fieldName, () => props.value], () => {
   applyConversionRules()
+}, { immediate: true })
+
+// 监听连接变化，更新转换引擎的连接ID
+watch(() => props.connectionId, (newConnectionId) => {
+  if (newConnectionId) {
+    conversionEngine.setConnectionId(newConnectionId)
+  }
 }, { immediate: true })
 </script>
 
