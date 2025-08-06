@@ -71,6 +71,7 @@
           :last-connection-name="getLastConnectionName()"
           @refresh="refreshData"
           @quick-connect-last="quickConnectLastConnection"
+          @restore-last-connection="tryRestoreLastConnection"
           @open-connection-manager="openConnectionManagerDialog"
         />
         <KeyValueDisplay 
@@ -138,8 +139,8 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Setting, Clock, Close, Refresh, Operation } from '@element-plus/icons-vue'
 import { useConnectionStore } from './stores/connection'
 import { useUserStore } from './stores/user'
@@ -153,7 +154,6 @@ import ConversionRulesManager from './components/ConversionRulesManager.vue'
 import DataOperationsTool from './components/DataOperationsTool.vue'
 import OperationHistory from './components/OperationHistory.vue'
 import UserManager from './components/UserManager.vue'
-import OperationLock from './components/OperationLock.vue'
 
 const connectionStore = useConnectionStore()
 const userStore = useUserStore()
@@ -449,6 +449,90 @@ const restoreCurrentState = () => {
   return null
 }
 
+// 尝试恢复上一次连接
+const tryRestoreLastConnection = async () => {
+  try {
+    const savedState = localStorage.getItem('redisManagerState')
+    if (!savedState) {
+      console.log('没有找到保存的连接状态')
+      return false
+    }
+    
+    const state = JSON.parse(savedState)
+    if (!state.currentConnectionId) {
+      console.log('保存的状态中没有连接ID')
+      return false
+    }
+    
+    console.log('发现上次连接记录，连接ID:', state.currentConnectionId)
+    
+    // 获取用户的所有连接列表
+    const allConnections = connectionStore.getAllConnections
+    console.log('用户连接列表:', allConnections)
+    
+    // 查找保存的连接是否在用户的连接列表中
+    const savedConnection = allConnections.find(conn => conn.id === state.currentConnectionId)
+    
+    if (!savedConnection) {
+      console.log('保存的连接不在用户连接列表中，跳过恢复')
+      return false
+    }
+    
+    // 调试：输出连接对象的完整结构
+    console.log('找到匹配的连接对象:', savedConnection)
+    console.log('连接对象属性:', {
+      id: savedConnection.id,
+      name: savedConnection.name,
+      'redis.name': savedConnection.redis?.name,
+      host: savedConnection.host,
+      port: savedConnection.port
+    })
+    
+    // 获取连接名称，优先使用 redis.name
+    const connectionName = savedConnection.redis?.name || savedConnection.name || savedConnection.host || '未知连接'
+    console.log('找到匹配的连接:', connectionName)
+    
+    // 询问用户是否要恢复上次连接
+    try {
+      await ElMessageBox.confirm(
+        `是否要恢复上次的连接 "${connectionName}"？`,
+        '恢复上次连接',
+        {
+          confirmButtonText: '恢复',
+          cancelButtonText: '稍后',
+          type: 'info'
+        }
+      )
+      
+      // 用户确认恢复，尝试连接
+      console.log('用户确认恢复连接，开始连接...')
+      const success = await connectionStore.connectToRedis(savedConnection)
+      
+      if (success) {
+        // 连接成功，设置为当前连接
+        handleConnectionSelected(savedConnection)
+        
+        // 恢复选中的键（如果存在）
+        if (state.selectedKey) {
+          selectedKey.value = state.selectedKey
+          console.log('恢复选中的键:', state.selectedKey.name)
+        }
+        
+        return true
+      } else {
+        return false
+      }
+    } catch (error) {
+      // 用户取消操作
+      console.log('用户取消恢复连接')
+      return false
+    }
+  } catch (error) {
+    console.error('恢复上次连接失败:', error)
+    return false
+  }
+}
+
 // 获取最近使用的连接
 const getLastUsedConnection = () => {
   return connectionStore.getLastUsedConnection()
@@ -457,7 +541,10 @@ const getLastUsedConnection = () => {
 // 获取最近使用的连接名称
 const getLastConnectionName = () => {
   const lastConnection = getLastUsedConnection()
-  return lastConnection ? lastConnection.name : ''
+  if (!lastConnection) return ''
+  
+  // 优先使用 redis.name
+  return lastConnection.redis?.name || lastConnection.name || lastConnection.host || '未知连接'
 }
 
 // 快速连接最近使用的连接
@@ -568,14 +655,8 @@ onMounted(async () => {
   // 初始化连接列表，但不自动连接
   await connectionStore.initializeConnections()
   
-  // 尝试恢复最后一次连接的状态
-  const savedState = restoreCurrentState()
-  if (savedState && savedState.currentConnectionId) {
-    console.log('发现上次连接记录，等待用户选择是否快速连接')
-  }
-  
-  // 不自动选择连接，让用户手动选择
-  console.log('页面初始化完成，等待用户手动选择连接')
+  // 尝试恢复上一次连接
+  await tryRestoreLastConnection()
   
   // 启动防滚动抖动
   preventScrollBounce()

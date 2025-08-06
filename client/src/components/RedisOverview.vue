@@ -33,6 +33,10 @@
               <el-icon><Connection /></el-icon>
               {{ props.lastConnectionName ? `快速连接 ${props.lastConnectionName}` : '快速连接最近使用' }}
             </el-button>
+            <el-button type="success" @click="restoreLastConnection" :loading="restoreLoading">
+              <el-icon><RefreshLeft /></el-icon>
+              恢复上次连接
+            </el-button>
             <el-button @click="openConnectionManager">
               <el-icon><Setting /></el-icon>
               连接管理
@@ -187,7 +191,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Search, Refresh, Connection } from '@element-plus/icons-vue'
+import { Search, Refresh, Connection, RefreshLeft } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 
 // Props
@@ -207,7 +211,7 @@ const props = defineProps({
 })
 
 // Emits
-const emit = defineEmits(['refresh', 'quick-connect-last', 'open-connection-manager'])
+const emit = defineEmits(['refresh', 'quick-connect-last', 'open-connection-manager', 'restore-last-connection'])
 
 const connectionStore = useConnectionStore()
 
@@ -217,6 +221,7 @@ const loading = ref(false)
 const autoRefresh = ref(true)
 const autoRefreshTimer = ref(null)
 const quickConnectLoading = ref(false)
+const restoreLoading = ref(false)
 
 // 键值统计数据
 const keysStats = ref([])
@@ -301,6 +306,19 @@ const quickConnectLast = async () => {
     console.error('快速连接失败:', error)
   } finally {
     quickConnectLoading.value = false
+  }
+}
+
+// 恢复上次连接
+const restoreLastConnection = async () => {
+  restoreLoading.value = true
+  try {
+    // 触发父组件的恢复上次连接方法
+    emit('restore-last-connection')
+  } catch (error) {
+    console.error('恢复上次连接失败:', error)
+  } finally {
+    restoreLoading.value = false
   }
 }
 
