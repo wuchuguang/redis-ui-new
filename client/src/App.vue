@@ -449,35 +449,22 @@ const restoreCurrentState = () => {
   return null
 }
 
-// 获取最后一次连接的连接信息
-const getLastConnection = () => {
-  try {
-    const savedState = localStorage.getItem('redisManagerState')
-    if (savedState) {
-      const state = JSON.parse(savedState)
-      if (state.currentConnectionId) {
-        // 从连接store中查找对应的连接
-        const allConnections = connectionStore.getAllConnections
-        return allConnections.find(conn => conn.id === state.currentConnectionId)
-      }
-    }
-  } catch (error) {
-    console.error('获取最后一次连接失败:', error)
-  }
-  return null
+// 获取最近使用的连接
+const getLastUsedConnection = () => {
+  return connectionStore.getLastUsedConnection()
 }
 
-// 获取最后一次连接的名称
+// 获取最近使用的连接名称
 const getLastConnectionName = () => {
-  const lastConnection = getLastConnection()
+  const lastConnection = getLastUsedConnection()
   return lastConnection ? lastConnection.name : ''
 }
 
-// 快速连接最后一次连接
+// 快速连接最近使用的连接
 const quickConnectLastConnection = async () => {
-  const lastConnection = getLastConnection()
+  const lastConnection = getLastUsedConnection()
   if (!lastConnection) {
-    ElMessage.warning('没有找到上次连接的记录')
+    ElMessage.warning('没有找到最近使用的连接记录')
     return
   }
   

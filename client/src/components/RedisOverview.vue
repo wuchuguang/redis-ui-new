@@ -31,7 +31,7 @@
           <div class="quick-connect-actions">
             <el-button type="primary" @click="quickConnectLast" :loading="quickConnectLoading">
               <el-icon><Connection /></el-icon>
-              {{ props.lastConnectionName ? `快速连接 ${props.lastConnectionName}` : '快速连接最后一次连接' }}
+              {{ props.lastConnectionName ? `快速连接 ${props.lastConnectionName}` : '快速连接最近使用' }}
             </el-button>
             <el-button @click="openConnectionManager">
               <el-icon><Setting /></el-icon>

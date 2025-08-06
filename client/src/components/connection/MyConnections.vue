@@ -10,6 +10,15 @@
         <el-icon><Share /></el-icon>
         加入分享
       </el-button>
+      <el-button 
+        type="warning" 
+        @click="handleQuickConnect"
+        :loading="quickConnectLoading"
+        :disabled="!hasLastUsedConnection"
+      >
+        <el-icon><Connection /></el-icon>
+        快速连接最近使用
+      </el-button>
       <el-button type="primary" @click="$emit('refresh')">
         <el-icon><Refresh /></el-icon>
         刷新
@@ -127,9 +136,9 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Share, Refresh, CircleCheck, CircleClose, Setting } from '@element-plus/icons-vue'
+import { Plus, Share, Refresh, CircleCheck, CircleClose, Setting, Connection } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../../stores/connection'
 import { operationLogger } from '../../utils/operationLogger'
 
@@ -153,6 +162,7 @@ const connectionStore = useConnectionStore()
 // 响应式数据
 const showJoinDialog = ref(false)
 const joining = ref(false)
+const quickConnectLoading = ref(false)
 
 const joinForm = reactive({
   joinCode: ''
@@ -165,7 +175,38 @@ const joinRules = {
   ]
 }
 
+// 检查是否有最近使用的连接
+const hasLastUsedConnection = computed(() => {
+  return connectionStore.getLastUsedConnection() !== null
+})
+
 // 方法
+const handleQuickConnect = async () => {
+  const lastUsedConnection = connectionStore.getLastUsedConnection()
+  if (!lastUsedConnection) {
+    ElMessage.warning('没有找到最近使用的连接记录')
+    return
+  }
+  
+  quickConnectLoading.value = true
+  try {
+    console.log('开始快速连接:', lastUsedConnection.redis.name)
+    
+    const success = await connectionStore.connectToRedis(lastUsedConnection)
+    if (success) {
+      emit('connect', lastUsedConnection)
+      ElMessage.success(`已快速连接到 ${lastUsedConnection.redis.name}`)
+    } else {
+      ElMessage.error('快速连接失败，请检查连接配置')
+    }
+  } catch (error) {
+    console.error('快速连接失败:', error)
+    ElMessage.error('快速连接失败')
+  } finally {
+    quickConnectLoading.value = false
+  }
+}
+
 const showNewConnection = () => {
   // 触发父组件显示新建连接对话框
   emit('new-connection')

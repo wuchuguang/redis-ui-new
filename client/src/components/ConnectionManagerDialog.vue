@@ -5,6 +5,21 @@
     width="1000px"
     :close-on-click-modal="false"
   >
+    <template #header>
+      <div class="dialog-header">
+        <span>连接管理</span>
+        <el-button 
+          type="primary" 
+          size="small" 
+          @click="handleQuickConnect"
+          :loading="quickConnectLoading"
+          :disabled="!hasLastUsedConnection"
+        >
+          <el-icon><Connection /></el-icon>
+          快速连接最近使用
+        </el-button>
+      </div>
+    </template>
     <div class="connection-manager">
       <!-- Tab导航 -->
       <el-tabs v-model="activeTab" class="connection-tabs">
@@ -74,6 +89,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { Connection } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 import { useUserStore } from '../stores/user'
 import { operationLogger } from '../utils/operationLogger'
@@ -107,6 +123,7 @@ let isConnecting = false
 const activeTab = ref('my')
 const loading = ref(false)
 const connections = ref([])
+const quickConnectLoading = ref(false)
 
 // 对话框状态
 const showNewConnectionDialog = ref(false)
@@ -138,7 +155,39 @@ const sharedConnections = computed(() => {
   return connections.value.filter(conn => conn.owner === userStore.currentUser?.username && conn.participants?.length > 0)
 })
 
+// 检查是否有最近使用的连接
+const hasLastUsedConnection = computed(() => {
+  return connectionStore.getLastUsedConnection() !== null
+})
+
 // 方法
+const handleQuickConnect = async () => {
+  const lastUsedConnection = connectionStore.getLastUsedConnection()
+  if (!lastUsedConnection) {
+    ElMessage.warning('没有找到最近使用的连接记录')
+    return
+  }
+  
+  quickConnectLoading.value = true
+  try {
+    console.log('开始快速连接:', lastUsedConnection.redis.name)
+    
+    const success = await connectionStore.connectToRedis(lastUsedConnection)
+    if (success) {
+      emit('connection-selected', lastUsedConnection)
+      dialogVisible.value = false
+      ElMessage.success(`已快速连接到 ${lastUsedConnection.redis.name}`)
+    } else {
+      ElMessage.error('快速连接失败，请检查连接配置')
+    }
+  } catch (error) {
+    console.error('快速连接失败:', error)
+    ElMessage.error('快速连接失败')
+  } finally {
+    quickConnectLoading.value = false
+  }
+}
+
 const refreshConnections = async () => {
   loading.value = true
   try {
@@ -257,6 +306,13 @@ watch(dialogVisible, (visible) => {
 </script>
 
 <style scoped>
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
 .connection-manager {
   display: flex;
   flex-direction: column;

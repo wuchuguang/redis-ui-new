@@ -27,6 +27,68 @@ export const useConnectionStore = defineStore('connection', () => {
   // 检查是否有临时连接
   const hasTempConnections = computed(() => tempConnections.value.length > 0)
 
+  // 获取最近使用的连接
+  const getLastUsedConnection = () => {
+    try {
+      const connectionHistory = JSON.parse(localStorage.getItem('connectionHistory') || '[]')
+      if (connectionHistory.length === 0) {
+        return null
+      }
+      
+      // 按最后使用时间排序，获取最近使用的连接
+      const sortedHistory = connectionHistory.sort((a, b) => b.lastUsed - a.lastUsed)
+      const lastUsed = sortedHistory[0]
+      
+      // 从所有连接中查找对应的连接
+      const allConnections = getAllConnections.value
+      return allConnections.find(conn => conn.id === lastUsed.connectionId)
+    } catch (error) {
+      console.error('获取最近使用的连接失败:', error)
+      return null
+    }
+  }
+
+  // 记录连接使用时间
+  const recordConnectionUsage = (connectionId) => {
+    try {
+      const connectionHistory = JSON.parse(localStorage.getItem('connectionHistory') || '[]')
+      const now = Date.now()
+      
+      // 查找是否已存在该连接的记录
+      const existingIndex = connectionHistory.findIndex(item => item.connectionId === connectionId)
+      
+      if (existingIndex !== -1) {
+        // 更新现有记录
+        connectionHistory[existingIndex].lastUsed = now
+      } else {
+        // 添加新记录
+        connectionHistory.push({
+          connectionId,
+          lastUsed: now
+        })
+      }
+      
+      // 只保留最近50个连接记录
+      if (connectionHistory.length > 50) {
+        connectionHistory.sort((a, b) => b.lastUsed - a.lastUsed)
+        connectionHistory.splice(50)
+      }
+      
+      localStorage.setItem('connectionHistory', JSON.stringify(connectionHistory))
+    } catch (error) {
+      console.error('记录连接使用时间失败:', error)
+    }
+  }
+
+  // 清除连接历史记录
+  const clearConnectionHistory = () => {
+    try {
+      localStorage.removeItem('connectionHistory')
+    } catch (error) {
+      console.error('清除连接历史记录失败:', error)
+    }
+  }
+
   // 获取所有连接
   const fetchConnections = async () => {
     loading.value = true
@@ -1082,6 +1144,8 @@ export const useConnectionStore = defineStore('connection', () => {
     // 同时更新localStorage
     if (connection) {
       localStorage.setItem('currentConnection', JSON.stringify(connection))
+      // 记录连接使用时间
+      recordConnectionUsage(connection.id)
     } else {
       localStorage.removeItem('currentConnection')
     }
@@ -1204,6 +1268,9 @@ export const useConnectionStore = defineStore('connection', () => {
     getCurrentConnection,
     autoSelectConnection,
     initializeConnections,
-    autoReconnect
+    autoReconnect,
+    getLastUsedConnection,
+    recordConnectionUsage,
+    clearConnectionHistory
   }
 }) 

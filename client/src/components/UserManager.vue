@@ -315,9 +315,9 @@ const loadSavedLoginInfo = () => {
       if (parsed.username) {
         loginForm.username = parsed.username
       }
-      // 设置记住密码状态和密码
+      // 设置记住密码状态和解密后的密码
       if (parsed.rememberPassword && parsed.password) {
-        loginForm.password = parsed.password
+        loginForm.password = decryptPassword(parsed.password)
         loginForm.rememberPassword = true
       }
       // 设置记住登录状态
@@ -327,6 +327,38 @@ const loadSavedLoginInfo = () => {
     }
   } catch (error) {
     console.error('加载保存的登录信息失败:', error)
+  }
+}
+
+// 简单的加密函数
+const encryptPassword = (password) => {
+  try {
+    // 使用简单的 Base64 编码 + 简单的位移加密
+    const encoded = btoa(password)
+    const shifted = encoded.split('').map(char => {
+      const code = char.charCodeAt(0)
+      return String.fromCharCode(code + 3) // 简单的位移加密
+    }).join('')
+    return btoa(shifted) // 再次 Base64 编码
+  } catch (error) {
+    console.error('密码加密失败:', error)
+    return password // 如果加密失败，返回原密码
+  }
+}
+
+// 简单的解密函数
+const decryptPassword = (encryptedPassword) => {
+  try {
+    // 解密过程：先 Base64 解码，再位移解密，最后 Base64 解码
+    const decoded = atob(encryptedPassword)
+    const unshifted = decoded.split('').map(char => {
+      const code = char.charCodeAt(0)
+      return String.fromCharCode(code - 3) // 位移解密
+    }).join('')
+    return atob(unshifted) // Base64 解码
+  } catch (error) {
+    console.error('密码解密失败:', error)
+    return encryptedPassword // 如果解密失败，返回原值
   }
 }
 
@@ -340,9 +372,9 @@ const saveLoginInfo = () => {
       savedInfo.username = loginForm.username
     }
     
-    // 如果记住密码，保存密码
+    // 如果记住密码，保存加密后的密码
     if (loginForm.rememberPassword && loginForm.password) {
-      savedInfo.password = loginForm.password
+      savedInfo.password = encryptPassword(loginForm.password)
       savedInfo.rememberPassword = true
     }
     
