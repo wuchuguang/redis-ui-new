@@ -8,7 +8,7 @@ const buildConfig = {
   bundle: true,
   platform: 'node',
   target: 'node16',
-  outdir: 'build',
+  outfile: 'build/index.js',
   minify: true,
   minifyIdentifiers: true,
   minifySyntax: true,

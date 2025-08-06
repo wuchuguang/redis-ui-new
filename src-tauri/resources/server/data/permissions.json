@@ -1,0 +1,36 @@
+{
+  "e6e6c691-1e5e-4942-ab05-615a94441f70": {
+    "connectionId": "e6e6c691-1e5e-4942-ab05-615a94441f70",
+    "owner": "admin1234",
+    "participants": [],
+    "rules": {
+      "admin1234": {
+        "connection_view": true,
+        "connection_edit": true,
+        "connection_delete": true,
+        "connection_share": true,
+        "data_read": true,
+        "data_write": true,
+        "data_delete": true,
+        "data_rename": true,
+        "key_view": true,
+        "key_read": true,
+        "key_write": true,
+        "key_delete": true,
+        "key_rename": true,
+        "hash_view": true,
+        "hash_read": true,
+        "hash_write": true,
+        "hash_delete": true,
+        "db_select": true,
+        "db_info": true,
+        "db_flush": true,
+        "system_info": true,
+        "system_config": true,
+        "system_monitor": true
+      }
+    },
+    "createdAt": "2025-08-05T09:35:57.784Z",
+    "updatedAt": "2025-08-05T09:35:57.784Z"
+  }
+}

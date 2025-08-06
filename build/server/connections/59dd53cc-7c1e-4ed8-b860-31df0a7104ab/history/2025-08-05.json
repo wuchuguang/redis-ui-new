@@ -1,0 +1,43 @@
+[
+  {
+    "id": "e58e9999-4f06-4450-9e4f-c9a2643a0f7e",
+    "timestamp": "2025-08-05T06:29:27.388Z",
+    "type": "connection_updated",
+    "operator": "admin123",
+    "details": {
+      "connectionName": "本地",
+      "action": "更新Redis连接"
+    }
+  },
+  {
+    "id": "5fec416a-4425-4d17-9322-5e4bf7197fce",
+    "timestamp": "2025-08-05T06:28:17.176Z",
+    "type": "connection_updated",
+    "operator": "admin123",
+    "details": {
+      "connectionName": "本地",
+      "action": "更新Redis连接"
+    }
+  },
+  {
+    "id": "6f1050ca-fc93-42c0-aeab-1a5a5972e667",
+    "timestamp": "2025-08-05T06:28:12.557Z",
+    "type": "connection_updated",
+    "operator": "admin123",
+    "details": {
+      "connectionName": "本地",
+      "action": "更新Redis连接"
+    }
+  },
+  {
+    "id": "8b1b28e8-3d4c-4aef-b678-e56704368b0a",
+    "timestamp": "2025-08-05T01:33:38.169Z",
+    "type": "hash_field_deleted",
+    "operator": "admin123",
+    "details": {
+      "keyName": "sdfafa",
+      "field": "fafaff",
+      "action": "删除Hash字段"
+    }
+  }
+]

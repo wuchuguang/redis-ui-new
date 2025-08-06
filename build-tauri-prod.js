@@ -26,52 +26,63 @@ function checkFiles() {
   console.log('✅ 所有必要文件检查通过')
 }
 
-// 构建前端
-function buildFrontend() {
-  console.log('🔨 构建前端应用...')
+// 构建前端和后端
+function buildAll() {
+  console.log('🔨 构建前端和后端...')
   
   try {
-    execSync('cd client && npm run build', { stdio: 'inherit' })
+    // 构建前端
+    execSync('npm run build:web', { stdio: 'inherit' })
     console.log('✅ 前端构建完成')
+    
+    // 构建后端
+    execSync('npm run build:server', { stdio: 'inherit' })
+    console.log('✅ 后端构建完成')
   } catch (error) {
-    console.error('❌ 前端构建失败:', error.message)
+    console.error('❌ 构建失败:', error.message)
     process.exit(1)
   }
 }
 
-// 检查客户端构建结果
-function checkClientBuild() {
-  console.log('📁 检查客户端构建结果...')
+// 检查构建结果
+function checkBuildResult() {
+  console.log('📁 检查构建结果...')
   
-  const distPath = path.join(__dirname, 'client/build/web')
-  if (!fs.existsSync(distPath)) {
-    console.error('❌ 客户端构建目录不存在')
+  const buildPath = path.join(__dirname, 'build')
+  if (!fs.existsSync(buildPath)) {
+    console.error('❌ build 目录不存在')
     process.exit(1)
   }
   
-  const indexHtml = path.join(distPath, 'index.html')
-  if (!fs.existsSync(indexHtml)) {
-    console.error('❌ 客户端构建文件不完整')
+  const indexJs = path.join(buildPath, 'index.js')
+  if (!fs.existsSync(indexJs)) {
+    console.error('❌ build/index.js 不存在')
     process.exit(1)
   }
   
-  console.log('✅ 客户端构建结果检查通过')
+  const webPath = path.join(buildPath, 'web')
+  if (!fs.existsSync(webPath)) {
+    console.error('❌ build/web 目录不存在')
+    process.exit(1)
+  }
+  
+  console.log('✅ 构建结果检查通过')
 }
 
-// 创建服务器文件包
-function createServerBundle() {
-  console.log('📦 创建服务器文件包...')
+// 复制 build 文件到 Tauri 资源目录
+function copyBuildToTauri() {
+  console.log('📦 复制 build 文件到 Tauri 资源目录...')
   
-  const serverBundleDir = path.join(__dirname, 'src-tauri/server-bundle')
+  const buildDir = path.join(__dirname, 'build')
+  const tauriResourcesDir = path.join(__dirname, 'src-tauri/resources')
   
   // 清理并创建目录
-  if (fs.existsSync(serverBundleDir)) {
-    fs.rmSync(serverBundleDir, { recursive: true, force: true })
+  if (fs.existsSync(tauriResourcesDir)) {
+    fs.rmSync(tauriResourcesDir, { recursive: true, force: true })
   }
-  fs.mkdirSync(serverBundleDir, { recursive: true })
+  fs.mkdirSync(tauriResourcesDir, { recursive: true })
   
-  // 复制服务器文件
-  const serverDir = path.join(__dirname, 'server')
+  // 复制 build 目录内容
   const copyRecursive = (src, dest) => {
     if (fs.statSync(src).isDirectory()) {
       if (!fs.existsSync(dest)) {
@@ -85,12 +96,8 @@ function createServerBundle() {
     }
   }
   
-  copyRecursive(serverDir, path.join(serverBundleDir, 'server'))
-  
-  // 复制 package.json
-  fs.copyFileSync(path.join(__dirname, 'package.json'), path.join(serverBundleDir, 'package.json'))
-  
-  console.log('✅ 服务器文件包创建完成')
+  copyRecursive(buildDir, tauriResourcesDir)
+  console.log('✅ build 文件复制完成')
 }
 
 // 构建 Tauri 应用
@@ -104,16 +111,20 @@ function buildTauriApp() {
     
     switch (platform) {
       case 'win':
-        command = 'tauri build --target x86_64-pc-windows-msvc'
+        console.log('⚠️ Windows 构建需要交叉编译工具链')
+        console.log('💡 建议在 Windows 系统上构建 Windows 版本')
+        command = 'tauri build'
         break
       case 'mac':
-        command = 'tauri build --target x86_64-apple-darwin'
+        command = 'tauri build --target aarch64-apple-darwin'
         break
       case 'linux':
-        command = 'tauri build --target x86_64-unknown-linux-gnu'
+        console.log('⚠️ Linux 构建需要交叉编译工具链')
+        console.log('💡 建议在 Linux 系统上构建 Linux 版本')
+        command = 'tauri build'
         break
       default:
-        console.log('🔨 构建所有平台...')
+        console.log('🔨 构建当前平台...')
     }
     
     console.log(`执行命令: ${command}`)
@@ -125,9 +136,9 @@ function buildTauriApp() {
   }
 }
 
-// 复制服务器文件到应用包
-function copyServerToApp() {
-  console.log('📋 复制服务器文件到应用包...')
+// 复制 build 文件到应用包
+function copyBuildToApp() {
+  console.log('📋 复制 build 文件到应用包...')
   
   const platform = process.argv[2] || 'mac'
   let appPath = ''
@@ -147,7 +158,7 @@ function copyServerToApp() {
   }
   
   if (fs.existsSync(appPath)) {
-    const serverBundleDir = path.join(__dirname, 'src-tauri/server-bundle')
+    const buildDir = path.join(__dirname, 'build')
     const copyRecursive = (src, dest) => {
       if (fs.statSync(src).isDirectory()) {
         if (!fs.existsSync(dest)) {
@@ -161,10 +172,10 @@ function copyServerToApp() {
       }
     }
     
-    copyRecursive(serverBundleDir, appPath)
-    console.log('✅ 服务器文件复制完成')
+    copyRecursive(buildDir, appPath)
+    console.log('✅ build 文件复制完成')
   } else {
-    console.warn('⚠️ 应用包路径不存在，跳过服务器文件复制')
+    console.warn('⚠️ 应用包路径不存在，跳过文件复制')
   }
 }
 
@@ -195,11 +206,11 @@ function showBuildResult() {
 async function main() {
   try {
     checkFiles()
-    buildFrontend()
-    checkClientBuild()
-    createServerBundle()
+    buildAll()
+    checkBuildResult()
+    copyBuildToTauri()
     buildTauriApp()
-    copyServerToApp()
+    copyBuildToApp()
     showBuildResult()
   } catch (error) {
     console.error('❌ 构建过程中发生错误:', error.message)

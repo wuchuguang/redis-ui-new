@@ -1,0 +1,12 @@
+[
+  {
+    "id": "b5cd67a4-47e4-489f-9dd7-cccef2046565",
+    "timestamp": "2025-08-05T09:35:57.785Z",
+    "type": "connection_created",
+    "operator": "admin1234",
+    "details": {
+      "connectionName": "localhost",
+      "action": "创建Redis连接"
+    }
+  }
+]

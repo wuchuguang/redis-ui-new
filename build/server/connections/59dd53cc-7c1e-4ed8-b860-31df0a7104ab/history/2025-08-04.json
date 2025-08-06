@@ -1,0 +1,22 @@
+[
+  {
+    "id": "42e4e4cf-e2f7-4390-8e69-5ca53287d7ea",
+    "timestamp": "2025-08-04T11:48:12.816Z",
+    "type": "string_value_edited",
+    "operator": "admin123",
+    "details": {
+      "keyName": "aaaa",
+      "action": "编辑String值"
+    }
+  },
+  {
+    "id": "e89e182a-61bd-426f-b4c1-ca0141e3ed2f",
+    "timestamp": "2025-08-04T11:44:30.102Z",
+    "type": "string_value_edited",
+    "operator": "admin123",
+    "details": {
+      "keyName": "aaaa",
+      "action": "编辑String值"
+    }
+  }
+]

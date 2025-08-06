@@ -1,0 +1,12 @@
+[
+  {
+    "id": "a0d80b55-1e99-4e0a-9af5-a4c44a737007",
+    "timestamp": "2025-08-04T12:42:51.143Z",
+    "type": "connection_created",
+    "operator": "admin123",
+    "details": {
+      "connectionName": "141",
+      "action": "创建Redis连接"
+    }
+  }
+]

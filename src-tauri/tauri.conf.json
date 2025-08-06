@@ -4,10 +4,10 @@
   "productName": "Redis管理工具",
   "version": "1.0.0",
   "build": {
-    "frontendDist": "../client/build/web",
-    "devUrl": "http://localhost:5173",
+    "frontendDist": "../build",
+    "devUrl": "http://localhost:5173/web/",
     "beforeDevCommand": "npm run dev",
-    "beforeBuildCommand": "npm run build"
+    "beforeBuildCommand": "npm run build:server"
   },
   "app": {
     "windows": [
@@ -26,7 +26,10 @@
     }
   },
   "bundle": {
-    "active": true
+    "active": true,
+    "icon": [
+      "icons/icon.png"
+    ]
   },
   "plugins": {
     "shell": {

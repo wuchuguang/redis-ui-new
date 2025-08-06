@@ -14,31 +14,23 @@ fn start_node_server() {
         
         println!("🚀 启动 Node.js 后端服务器...");
         
-        // 在开发模式下，服务器应该已经由 npm run dev 启动
-        if cfg!(debug_assertions) {
-            println!("🔧 开发模式：服务器应该已经启动");
-            return;
-        }
-        
-        // 生产模式：尝试启动服务器
-        println!("📦 生产模式：尝试启动服务器");
-        
         // 获取应用资源目录
         let resource_dir = if cfg!(debug_assertions) {
+            // 开发模式：使用当前目录
             ".".to_string()
         } else {
             // 生产模式：使用应用资源目录
             let exe_path = std::env::current_exe().unwrap();
             let exe_dir = exe_path.parent().unwrap();
             let app_dir = exe_dir.parent().unwrap().parent().unwrap().parent().unwrap();
-            format!("{}/Resources", app_dir.display())
+            format!("{}/Contents/Resources", app_dir.display())
         };
         
         println!("📁 服务器目录: {}", resource_dir);
         
         // 启动 Node.js 服务器
         let output = Command::new("node")
-            .arg("server/index.js")
+            .arg("index.js")
             .current_dir(&resource_dir)
             .output();
             
