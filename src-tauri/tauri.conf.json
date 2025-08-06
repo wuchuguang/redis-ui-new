@@ -1,0 +1,39 @@
+{
+  "$schema": "https://beta.tauri.app/schema.json",
+  "identifier": "com.redis.web",
+  "productName": "Redis管理工具",
+  "version": "1.0.0",
+  "build": {
+    "frontendDist": "../client/build/web",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "fullscreen": false,
+        "resizable": true,
+        "title": "Redis管理工具",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 1200,
+        "minHeight": 800
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true
+  },
+  "plugins": {
+    "shell": {
+      "open": true
+    },
+    "http": {
+      "scope": ["http://localhost:*", "https://*"]
+    }
+  }
+} 

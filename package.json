@@ -11,6 +11,16 @@
     "build:server": "node build-server.js",
     "build:tgz": "node build-tgz.js",
     "build:web": "cd client && npm run build:web",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:win": "node build-tauri.js win",
+    "tauri:build:mac": "node build-tauri.js mac",
+    "tauri:build:linux": "node build-tauri.js linux",
+    "build:electron": "node build-electron.js",
+    "build:electron:win": "node build-electron.js win",
+    "build:electron:mac": "node build-electron.js mac",
+    "build:electron:linux": "node build-electron.js linux",
     "install-all": "npm install && cd client && npm install",
     "docs": "apidoc -i server/ -o docs/",
     "docs:serve": "apidoc -i server/ -o docs/ && http-server docs/ -p 8080"
@@ -36,6 +46,38 @@
     "apidoc": "^1.2.0",
     "concurrently": "^8.2.2",
     "esbuild": "^0.19.12",
-    "nodemon": "^3.0.1"
+    "nodemon": "^3.0.1",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "main": "electron/main.js",
+  "build": {
+    "appId": "com.redis.web",
+    "productName": "Redis管理工具",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "files": [
+      "electron/**/*",
+      "server/**/*",
+      "client/dist/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "electron/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Redis管理工具"
+    }
   }
 }
