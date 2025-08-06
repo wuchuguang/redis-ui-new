@@ -500,7 +500,7 @@ const tryRestoreLastConnection = async () => {
         {
           confirmButtonText: '恢复',
           cancelButtonText: '稍后',
-          type: 'info'
+          type: 'primary'
         }
       )
       
@@ -921,6 +921,118 @@ html, body {
   background-color: var(--el-fill-color) !important;
 }
 
+/* 深色主题下的按钮样式覆盖 */
+.el-button--info {
+  background-color: #606266 !important;
+  border-color: #606266 !important;
+  color: #ffffff !important;
+}
+
+.el-button--info:hover {
+  background-color: #737373 !important;
+  border-color: #737373 !important;
+  color: #ffffff !important;
+}
+
+.el-button--info:active {
+  background-color: #525252 !important;
+  border-color: #525252 !important;
+  color: #ffffff !important;
+}
+
+.el-button--info.is-disabled {
+  background-color: #404040 !important;
+  border-color: #404040 !important;
+  color: #909399 !important;
+}
+
+/* 确保所有按钮类型在深色主题下都有良好的对比度 */
+.el-button--default {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.el-button--default:hover {
+  background-color: #404040 !important;
+  border-color: #606266 !important;
+  color: #ffffff !important;
+}
+
+.el-button--default:active {
+  background-color: #1e1e1e !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.el-button--default.is-disabled {
+  background-color: #1e1e1e !important;
+  border-color: #404040 !important;
+  color: #909399 !important;
+}
+
+/* 其他按钮类型的深色主题覆盖 */
+.el-button--warning {
+  background-color: #e6a23c !important;
+  border-color: #e6a23c !important;
+  color: #ffffff !important;
+}
+
+.el-button--warning:hover {
+  background-color: #ebb563 !important;
+  border-color: #ebb563 !important;
+  color: #ffffff !important;
+}
+
+.el-button--warning:active {
+  background-color: #cf9236 !important;
+  border-color: #cf9236 !important;
+  color: #ffffff !important;
+}
+
+.el-button--danger {
+  background-color: #f56c6c !important;
+  border-color: #f56c6c !important;
+  color: #ffffff !important;
+}
+
+.el-button--danger:hover {
+  background-color: #f78989 !important;
+  border-color: #f78989 !important;
+  color: #ffffff !important;
+}
+
+.el-button--danger:active {
+  background-color: #dd6161 !important;
+  border-color: #dd6161 !important;
+  color: #ffffff !important;
+}
+
+/* 确保成功和主要按钮类型也有良好的对比度 */
+.el-button--success {
+  background-color: #67c23a !important;
+  border-color: #67c23a !important;
+  color: #ffffff !important;
+}
+
+.el-button--success:hover {
+  background-color: #85ce61 !important;
+  border-color: #85ce61 !important;
+  color: #ffffff !important;
+}
+
+.el-button--primary {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+.el-button--primary:hover {
+  background-color: #66b1ff !important;
+  border-color: #66b1ff !important;
+  color: #ffffff !important;
+}
+
 /* 移除强制覆盖，使用Element Plus默认深色主题 */
 
 /* 强制覆盖所有输入框样式 - 最高优先级 */
@@ -1108,6 +1220,18 @@ input[type="url"] {
   color: #ffffff !important;
 }
 
+.el-tag--info {
+  background-color: #606266 !important;
+  border-color: #606266 !important;
+  color: #ffffff !important;
+}
+
+.el-tag--warning {
+  background-color: var(--el-color-warning) !important;
+  border-color: var(--el-color-warning) !important;
+  color: #ffffff !important;
+}
+
 .el-dialog {
   background-color: var(--el-bg-color-overlay) !important;
   border-color: var(--el-border-color) !important;
@@ -1128,6 +1252,79 @@ input[type="url"] {
 
 .el-dialog__footer {
   border-top-color: var(--el-border-color) !important;
+}
+
+/* 对话框按钮的深色主题覆盖 */
+.el-dialog .el-button {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button:hover {
+  background-color: #404040 !important;
+  border-color: #606266 !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--primary {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--primary:hover {
+  background-color: #66b1ff !important;
+  border-color: #66b1ff !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--success {
+  background-color: #67c23a !important;
+  border-color: #67c23a !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--success:hover {
+  background-color: #85ce61 !important;
+  border-color: #85ce61 !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--warning {
+  background-color: #e6a23c !important;
+  border-color: #e6a23c !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--warning:hover {
+  background-color: #ebb563 !important;
+  border-color: #ebb563 !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--danger {
+  background-color: #f56c6c !important;
+  border-color: #f56c6c !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--danger:hover {
+  background-color: #f78989 !important;
+  border-color: #f78989 !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--info {
+  background-color: #606266 !important;
+  border-color: #606266 !important;
+  color: #ffffff !important;
+}
+
+.el-dialog .el-button--info:hover {
+  background-color: #737373 !important;
+  border-color: #737373 !important;
+  color: #ffffff !important;
 }
 
 .el-form-item__label {
@@ -1164,6 +1361,79 @@ input[type="url"] {
 
 .el-message-box__footer {
   border-top-color: var(--el-border-color) !important;
+}
+
+/* 消息框按钮的深色主题覆盖 */
+.el-message-box .el-button {
+  background-color: #2d2d2d !important;
+  border-color: #404040 !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button:hover {
+  background-color: #404040 !important;
+  border-color: #606266 !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--primary {
+  background-color: #409eff !important;
+  border-color: #409eff !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--primary:hover {
+  background-color: #66b1ff !important;
+  border-color: #66b1ff !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--success {
+  background-color: #67c23a !important;
+  border-color: #67c23a !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--success:hover {
+  background-color: #85ce61 !important;
+  border-color: #85ce61 !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--warning {
+  background-color: #e6a23c !important;
+  border-color: #e6a23c !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--warning:hover {
+  background-color: #ebb563 !important;
+  border-color: #ebb563 !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--danger {
+  background-color: #f56c6c !important;
+  border-color: #f56c6c !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--danger:hover {
+  background-color: #f78989 !important;
+  border-color: #f78989 !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--info {
+  background-color: #606266 !important;
+  border-color: #606266 !important;
+  color: #ffffff !important;
+}
+
+.el-message-box .el-button--info:hover {
+  background-color: #737373 !important;
+  border-color: #737373 !important;
+  color: #ffffff !important;
 }
 
 .el-loading-mask {
