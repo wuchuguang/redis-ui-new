@@ -75,7 +75,7 @@
    ```
 
 4. **访问应用**
-   打开浏览器访问 `http://localhost:3000`
+   打开浏览器访问 `http://localhost:3333`
 
 ### 生产部署
 
@@ -279,7 +279,7 @@ node-redis-web/
 ### 环境变量
 ```bash
 # 服务器端口
-PORT=3000
+PORT=3333
 
 # JWT密钥
 JWT_SECRET=your-secret-key

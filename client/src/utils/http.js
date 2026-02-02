@@ -53,16 +53,24 @@ http.interceptors.response.use(
       
       // 优先使用后端返回的错误消息
       if (data && data.message) {
-        ElMessage.error(data.message)
+        // 未登录时的 401 使用友好提示，避免重复弹出「访问令牌缺失」
+        const isTokenMissing = status === 401 && (data.message === '访问令牌缺失' || data.message === '需要登录')
+        ElMessage.error(isTokenMissing ? '请先登录' : data.message)
+        if (status === 401) {
+          localStorage.removeItem('userToken')
+          sessionStorage.removeItem('userToken')
+        }
       } else {
         // 如果没有具体消息，使用通用错误
         switch (status) {
           case 401:
-            ElMessage.error('认证失败，请重新登录')
-            // 清除token并跳转到登录页
+            ElMessage.error('请先登录')
             localStorage.removeItem('userToken')
             sessionStorage.removeItem('userToken')
-            window.location.href = '/login'
+            const base = typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL ? import.meta.env.BASE_URL : '/'
+            if (window.location.pathname !== base && window.location.pathname !== base.replace(/\/$/, '')) {
+              window.location.href = base
+            }
             break
           case 403:
             ElMessage.error('权限不足')

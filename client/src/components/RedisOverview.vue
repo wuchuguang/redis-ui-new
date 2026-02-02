@@ -198,7 +198,7 @@ import { useConnectionStore } from '../stores/connection'
 const props = defineProps({
   connection: {
     type: Object,
-    required: true
+    default: null
   },
   redisInfo: {
     type: Object,

@@ -39,7 +39,7 @@ const { JWT_SECRET } = require('../utils/constants');
  * @apiParam {String} password 密码（最少6个字符）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/auth/register \
+ *     curl -X POST http://localhost:3333/api/auth/register \
  *       -H "Content-Type: application/json" \
  *       -d '{
  *         "username": "testuser",
@@ -101,7 +101,7 @@ router.post('/register', async (req, res) => {
  * @apiParam {Boolean} [rememberLogin=false] 是否记住登录状态
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/auth/login \
+ *     curl -X POST http://localhost:3333/api/auth/login \
  *       -H "Content-Type: application/json" \
  *       -d '{
  *         "username": "admin",
@@ -152,7 +152,7 @@ router.post('/login', async (req, res) => {
  * @apiHeader {String} Authorization Bearer JWT令牌
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X GET http://localhost:3000/api/auth/profile \
+ *     curl -X GET http://localhost:3333/api/auth/profile \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 获取成功
@@ -203,7 +203,7 @@ router.get('/profile', authenticateToken, (req, res) => {
  * @apiParam {String} [avatar] 新头像URL
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X PUT http://localhost:3000/api/auth/profile \
+ *     curl -X PUT http://localhost:3333/api/auth/profile \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -254,7 +254,7 @@ router.put('/profile', authenticateToken, async (req, res) => {
  * @apiParam {String} newPassword 新密码（最少6个字符）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X PUT http://localhost:3000/api/auth/password \
+ *     curl -X PUT http://localhost:3333/api/auth/password \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -308,7 +308,7 @@ router.put('/password', authenticateToken, async (req, res) => {
  * @apiHeader {String} Authorization Bearer JWT令牌
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/auth/refresh-token \
+ *     curl -X POST http://localhost:3333/api/auth/refresh-token \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 刷新成功

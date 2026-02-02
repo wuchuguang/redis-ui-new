@@ -337,10 +337,8 @@ const testConnection = async () => {
       connectionData = { ...form }
     }
     
-    const success = await connectionStore.testConnection(connectionData)
-    if (success) {
-      ElMessage.success('连接测试成功')
-    }
+    // 成功时由 http 拦截器根据接口返回的 message 统一提示，此处不再重复弹窗
+    await connectionStore.testConnection(connectionData)
   } finally {
     testing.value = false
   }

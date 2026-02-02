@@ -24,7 +24,7 @@ ENCRYPTION_KEY=your-32-character-encryption-key-here
 
 ```env
 # 服务器配置
-PORT=3000
+PORT=3333
 NODE_ENV=production
 
 # JWT配置

@@ -296,10 +296,10 @@ const handleConnectionUpdated = (connection) => {
   }
 }
 
-const handleConnectionCreated = (connection) => {
-  // 连接创建成功消息已在 createConnection 方法中显示
-  // 这里只记录操作日志，不显示额外消息
+const handleConnectionCreated = async (connection) => {
   operationLogger.logConnectionCreated(connection)
+  // 从服务端刷新连接列表，确保新建连接立即显示且与后端一致
+  await connectionStore.fetchConnections()
 }
 
 const handleDatabaseSelect = (database) => {

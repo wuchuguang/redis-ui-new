@@ -121,7 +121,7 @@ pm2 start server/start.js --name redis-manager
 
 ```env
 # 服务器端口
-PORT=3000
+PORT=3333
 
 # JWT密钥（生产环境必须修改）
 JWT_SECRET=your-secret-key-change-in-production

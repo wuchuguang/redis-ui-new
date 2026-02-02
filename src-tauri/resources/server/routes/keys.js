@@ -52,7 +52,7 @@ const validateConnectionPermission = async (username, connectionId) => {
  * @apiParam {Number} [limit=100] 返回数量限制
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X GET "http://localhost:3000/api/connections/123456/0/keys?pattern=user*&limit=50"
+ *     curl -X GET "http://localhost:3333/api/connections/123456/0/keys?pattern=user*&limit=50"
  * 
  * @apiSuccess {Boolean} success=true 获取成功
  * @apiSuccess {Object} data 键列表数据
@@ -109,7 +109,7 @@ router.get('/:id/:db/keys', authenticateToken, async (req, res) => {
  * @apiParam {String} keyName 键名
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X GET "http://localhost:3000/api/connections/123456/0/key/user:123"
+ *     curl -X GET "http://localhost:3333/api/connections/123456/0/key/user:123"
  * 
  * @apiSuccess {Boolean} success=true 获取成功
  * @apiSuccess {Object} data 键值数据
@@ -175,7 +175,7 @@ router.get('/:id/:db/key/*', authenticateToken, async (req, res) => {
  * @apiParam {Array} [members] Set/ZSet类型的成员数组
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST "http://localhost:3000/api/connections/123456/0/keys" \
+ *     curl -X POST "http://localhost:3333/api/connections/123456/0/keys" \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -361,7 +361,7 @@ router.post('/:id/:db/keys', authenticateToken, async (req, res) => {
  * @apiParam {String} keyName 键名
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys/mykey/ttl" \
+ *     curl -X DELETE "http://localhost:3333/api/connections/123456/0/keys/mykey/ttl" \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 清除成功
@@ -418,7 +418,7 @@ router.delete('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
  * @apiParam {Number} ttl TTL值（秒）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X PUT "http://localhost:3000/api/connections/123456/0/keys/mykey/ttl" \
+ *     curl -X PUT "http://localhost:3333/api/connections/123456/0/keys/mykey/ttl" \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -491,7 +491,7 @@ router.put('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
  * @apiParam {*} value 新的值
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X PUT "http://localhost:3000/api/connections/123456/0/keys/mykey/value" \
+ *     curl -X PUT "http://localhost:3333/api/connections/123456/0/keys/mykey/value" \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -563,7 +563,7 @@ router.put('/:id/:db/keys/*/value', authenticateToken, async (req, res) => {
  * @apiParam {Array} keys 要删除的键列表
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys/batch" \
+ *     curl -X DELETE "http://localhost:3333/api/connections/123456/0/keys/batch" \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -638,7 +638,7 @@ router.delete('/:id/:db/keys/batch', authenticateToken, async (req, res) => {
  * @apiParam {String} newKeyName 新键名
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X PUT "http://localhost:3000/api/connections/123456/0/key/oldkey/rename" \
+ *     curl -X PUT "http://localhost:3333/api/connections/123456/0/key/oldkey/rename" \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -853,7 +853,7 @@ router.delete('/:connectionId/:database/hash/:keyName/fields', authenticateToken
  * @apiParam {String} pattern 键模式（支持通配符）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys?pattern=user:123"
+ *     curl -X DELETE "http://localhost:3333/api/connections/123456/0/keys?pattern=user:123"
  * 
  * @apiSuccess {Boolean} success=true 删除成功
  * @apiSuccess {String} message 删除结果消息
@@ -911,7 +911,7 @@ router.delete('/:id/:db/keys', authenticateToken, async (req, res) => {
  * @apiParam {String} prefix 键前缀
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X DELETE "http://localhost:3000/api/connections/123456/0/keys/group/user:"
+ *     curl -X DELETE "http://localhost:3333/api/connections/123456/0/keys/group/user:"
  * 
  * @apiSuccess {Boolean} success=true 删除成功
  * @apiSuccess {String} message 删除结果消息

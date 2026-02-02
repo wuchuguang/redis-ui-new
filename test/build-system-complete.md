@@ -64,9 +64,9 @@ npm start
 ```
 
 ### 访问地址
-- 前端应用: `http://localhost:3000/web`
-- API接口: `http://localhost:3000/api/*`
-- 静态资源: `http://localhost:3000/web/assets/*`
+- 前端应用: `http://localhost:3333/web`
+- API接口: `http://localhost:3333/api/*`
+- 静态资源: `http://localhost:3333/web/assets/*`
 
 ## 技术特点
 

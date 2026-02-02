@@ -111,9 +111,7 @@ function buildTauriApp() {
     
     switch (platform) {
       case 'win':
-        console.log('⚠️ Windows 构建需要交叉编译工具链')
-        console.log('💡 建议在 Windows 系统上构建 Windows 版本')
-        command = 'tauri build'
+        command = 'tauri build --target x86_64-pc-windows-msvc'
         break
       case 'mac':
         command = 'tauri build --target aarch64-apple-darwin'

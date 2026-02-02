@@ -88,6 +88,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { storeToRefs } from 'pinia'
 import { ElMessage } from 'element-plus'
 import { Connection } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
@@ -114,6 +115,7 @@ const emit = defineEmits(['update:modelValue', 'connection-selected', 'connectio
 
 const connectionStore = useConnectionStore()
 const userStore = useUserStore()
+const { connections } = storeToRefs(connectionStore)
 
 // 防抖机制，防止重复调用
 let connectTimeout = null
@@ -122,7 +124,6 @@ let isConnecting = false
 // 响应式数据
 const activeTab = ref('my')
 const loading = ref(false)
-const connections = ref([])
 const quickConnectLoading = ref(false)
 
 // 对话框状态
@@ -189,10 +190,13 @@ const handleQuickConnect = async () => {
 }
 
 const refreshConnections = async () => {
+  if (!userStore.isLoggedIn) {
+    ElMessage.warning('请先登录以刷新连接列表')
+    return
+  }
   loading.value = true
   try {
     await connectionStore.fetchConnections()
-    connections.value = connectionStore.connections
   } catch (error) {
     console.error('刷新连接列表失败:', error)
     ElMessage.error('刷新连接列表失败')

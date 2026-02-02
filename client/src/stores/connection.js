@@ -304,6 +304,9 @@ export const useConnectionStore = defineStore('connection', () => {
       
           } catch (error) {
         console.error('创建连接配置失败:', error)
+        if (error.response) {
+          handleCreateConnectionError(error)
+        }
         return false
       } finally {
       loading.value = false
@@ -323,7 +326,7 @@ export const useConnectionStore = defineStore('connection', () => {
         return false
       }
     } catch (error) {
-      throw error // 重新抛出错误，由上层处理
+      throw error // 重新抛出，由上层 catch 统一展示错误
     }
   }
 
@@ -618,8 +621,9 @@ export const useConnectionStore = defineStore('connection', () => {
     }
   }
 
-  // 刷新连接状态
+  // 刷新连接状态（仅登录用户从后端拉取，未登录时跳过避免 401）
   const refreshConnectionStatus = async () => {
+    if (!userStore.isLoggedIn) return
     try {
       const response = await request.get('/connections')
       if (response.data.success) {

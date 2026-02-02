@@ -75,7 +75,7 @@ const validateConnection = (connection) => {
  * @apiParam {Number} [database=0] 数据库编号（0-15）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections \
+ *     curl -X POST http://localhost:3333/api/connections \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -180,7 +180,7 @@ router.post('/', authenticateToken, async (req, res) => {
  * @apiParam {Number} [database=0] 数据库编号（0-15）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/temp \
+ *     curl -X POST http://localhost:3333/api/connections/temp \
  *       -H "Content-Type: application/json" \
  *       -d '{
  *         "name": "测试连接",
@@ -263,7 +263,7 @@ router.post('/temp', async (req, res) => {
  * @apiParam {Number} [database=0] 数据库编号（0-15）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X PUT http://localhost:3000/api/connections/123456 \
+ *     curl -X PUT http://localhost:3333/api/connections/123456 \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
@@ -351,7 +351,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
  * @apiHeader {String} Authorization Bearer JWT令牌
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X GET http://localhost:3000/api/connections \
+ *     curl -X GET http://localhost:3333/api/connections \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 获取成功
@@ -401,7 +401,7 @@ router.get('/', authenticateToken, async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X DELETE http://localhost:3000/api/connections/123456 \
+ *     curl -X DELETE http://localhost:3333/api/connections/123456 \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 删除成功
@@ -470,7 +470,7 @@ router.delete('/:id', authenticateToken, async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/123456/reconnect \
+ *     curl -X POST http://localhost:3333/api/connections/123456/reconnect \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 重连成功
@@ -534,7 +534,7 @@ router.post('/:id/reconnect', authenticateToken, async (req, res) => {
  * @apiParam {Number} [database=0] 数据库编号（0-15）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/test \
+ *     curl -X POST http://localhost:3333/api/connections/test \
  *       -H "Content-Type: application/json" \
  *       -d '{
  *         "host": "localhost",
@@ -598,7 +598,7 @@ router.post('/test', async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X GET http://localhost:3000/api/connections/123456/info
+ *     curl -X GET http://localhost:3333/api/connections/123456/info
  * 
  * @apiSuccess {Boolean} success=true 获取成功
  * @apiSuccess {Object} data Redis服务器信息
@@ -646,7 +646,7 @@ router.get('/:id/info', async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/123456/ping
+ *     curl -X POST http://localhost:3333/api/connections/123456/ping
  * 
  * @apiSuccess {Boolean} success=true Ping成功
  * @apiSuccess {Object} data Ping结果
@@ -694,7 +694,7 @@ router.post('/:id/ping', async (req, res) => {
  * @apiParam {Number} [database=0] 数据库编号（0-15）
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/establish \
+ *     curl -X POST http://localhost:3333/api/connections/establish \
  *       -H "Content-Type: application/json" \
  *       -d '{
  *         "name": "本地Redis",
@@ -762,7 +762,7 @@ router.post('/establish', async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/123456/connect \
+ *     curl -X POST http://localhost:3333/api/connections/123456/connect \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 连接建立成功
@@ -807,7 +807,7 @@ router.post('/:id/connect', authenticateToken, async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/123456/connect-shared \
+ *     curl -X POST http://localhost:3333/api/connections/123456/connect-shared \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 连接建立成功
@@ -852,7 +852,7 @@ router.post('/:id/connect-shared', authenticateToken, async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/123456/disconnect \
+ *     curl -X POST http://localhost:3333/api/connections/123456/disconnect \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 断开成功
@@ -904,7 +904,7 @@ router.post('/:id/disconnect', authenticateToken, async (req, res) => {
  * @apiParam {String} id 连接ID
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/123456/share \
+ *     curl -X POST http://localhost:3333/api/connections/123456/share \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
  * 
  * @apiSuccess {Boolean} success=true 分享成功
@@ -974,7 +974,7 @@ router.post('/:id/share', authenticateToken, async (req, res) => {
  * @apiParam {String} joinCode 8位分享码
  * 
  * @apiExample {curl} 请求示例:
- *     curl -X POST http://localhost:3000/api/connections/join \
+ *     curl -X POST http://localhost:3333/api/connections/join \
  *       -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
  *       -H "Content-Type: application/json" \
  *       -d '{
