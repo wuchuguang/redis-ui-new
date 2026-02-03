@@ -26,9 +26,11 @@
       </div>
 
       <div class="toolbar-right">
-        <el-button type="text" class="toolbar-btn" @click="refreshData">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
+        <el-tooltip content="刷新当前视图" placement="bottom">
+          <el-button type="text" class="toolbar-btn" @click="handleTopRefresh">
+            <el-icon><Refresh /></el-icon>
+          </el-button>
+        </el-tooltip>
         <el-switch
           v-model="autoRefresh"
           active-text="自动刷新"
@@ -81,6 +83,7 @@
         />
         <KeyValueDisplay
           v-else
+          ref="keyValueDisplayRef"
           :connection="currentConnection"
           :selected-key="selectedKey"
           :database="currentDatabase"
@@ -167,6 +170,7 @@ const showDataOperationsTool = ref(false)
 const showOperationHistory = ref(false)
 const operationHistoryRef = ref(null)
 const connectionExplorerRef = ref(null)
+const keyValueDisplayRef = ref(null)
 const autoRefresh = ref(true)
 const currentConnection = ref(null)
 const redisInfo = ref(null)
@@ -223,6 +227,15 @@ const refreshData = async () => {
       console.error('刷新Redis信息失败:', error)
       redisInfo.value = null
     }
+  }
+}
+
+// 顶部刷新：在服务器信息页刷新 Redis 信息，在键值详情页刷新当前键值
+const handleTopRefresh = () => {
+  if (selectedKey.value && keyValueDisplayRef.value?.refreshValue) {
+    keyValueDisplayRef.value.refreshValue()
+  } else {
+    refreshData()
   }
 }
 
@@ -466,28 +479,6 @@ watch(currentConnection, (newConnection) => {
   }
 })
 
-const preventScrollBounce = () => {
-  document.addEventListener('wheel', (e) => {
-    const target = e.target
-    const scrollableElement = target.closest('.overflow-y-auto, [style*="overflow-y: auto"]')
-    if (scrollableElement) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollableElement
-      if (scrollTop <= 0 && e.deltaY < 0) e.preventDefault()
-      if (scrollTop + clientHeight >= scrollHeight && e.deltaY > 0) e.preventDefault()
-    }
-  }, { passive: false })
-  document.addEventListener('touchmove', (e) => {
-    const target = e.target
-    const scrollableElement = target.closest('.overflow-y-auto, [style*="overflow-y: auto"]')
-    if (scrollableElement) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollableElement
-      if ((scrollTop <= 0 && e.touches[0].clientY > e.touches[0].clientY) ||
-          (scrollTop + clientHeight >= scrollHeight && e.touches[0].clientY < e.touches[0].clientY)) {
-        e.preventDefault()
-      }
-    }
-  }, { passive: false })
-}
 
 let statusInterval = null
 let pingInterval = null
@@ -496,7 +487,6 @@ onMounted(async () => {
   await userStore.initializeUser()
   await connectionStore.initializeConnections()
   await tryRestoreLastConnection()
-  preventScrollBounce()
   if (autoRefresh.value) startAutoRefresh()
   statusInterval = setInterval(async () => {
     try {

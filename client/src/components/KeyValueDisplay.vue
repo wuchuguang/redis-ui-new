@@ -81,15 +81,6 @@
         <el-button 
           type="text" 
           size="small" 
-          @click="refreshValue"
-          :loading="loading"
-          title="刷新"
-        >
-          <el-icon><Refresh /></el-icon>
-        </el-button>
-        <el-button 
-          type="text" 
-          size="small" 
           @click="deleteKey"
           title="删除键"
           class="delete-btn"
@@ -545,7 +536,6 @@ import { ref, reactive, computed, watch, nextTick, onMounted, onUnmounted } from
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   CopyDocument, 
-  Refresh, 
   Delete, 
   Edit, 
   Document,
@@ -1719,12 +1709,15 @@ watch(() => props.database, async () => {
   }
 })
 
-
+defineExpose({
+  refreshValue
+})
 </script>
 
 <style scoped>
 .key-value-display {
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   background-color: var(--el-bg-color);

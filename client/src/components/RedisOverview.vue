@@ -1,23 +1,5 @@
 <template>
-  <div class="redis-overview">
-    <!-- 顶部工具栏 -->
-    <div class="overview-toolbar">
-      <div class="toolbar-left">
-        <h2 class="overview-title">Redis服务器信息</h2>
-      </div>
-      <div class="toolbar-right">
-        <el-button 
-          type="primary" 
-          size="small" 
-          @click="refreshInfo"
-          :loading="loading"
-        >
-          <el-icon><Refresh /></el-icon>
-          刷新
-        </el-button>
-      </div>
-    </div>
-
+  <div class="redis-overview overflow-y-auto">
     <!-- 加载状态 -->
     <div v-if="!props.connection" class="no-data">
       <el-empty description="暂无Redis信息，请先建立连接">
@@ -109,46 +91,36 @@
         </div>
       </div>
 
-      <!-- 键值统计 -->
-    <div class="keys-stats-panel">
-      <div class="db-stats-container">
-        <!-- 左侧：db0-db7 -->
-        <div class="db-stats-left">
-          <el-table
-            :data="leftDbStats"
-            class="theme-table"
-            style="width: 100%"
-          >
-            <el-table-column prop="db" label="DB" width="60" />
-            <el-table-column prop="keys" label="Keys" width="120" />
-            <el-table-column prop="expires" label="Expires" width="120" />
-            <el-table-column label="Avg TTL" min-width="120">
-              <template #default="{ row }">
-                {{ formatAvgTtl(row.avgTtl) }}
-              </template>
-            </el-table-column>
-          </el-table>
-        </div>
-        
-        <!-- 右侧：db8-db15 -->
-        <div class="db-stats-right">
-          <el-table
-            :data="rightDbStats"
-            class="theme-table"
-            style="width: 100%"
-          >
-            <el-table-column prop="db" label="DB" width="60" />
-            <el-table-column prop="keys" label="Keys" width="120" />
-            <el-table-column prop="expires" label="Expires" width="120" />
-            <el-table-column label="Avg TTL" min-width="120">
-              <template #default="{ row }">
-                {{ formatAvgTtl(row.avgTtl) }}
-              </template>
-            </el-table-column>
-          </el-table>
+      <!-- 键值统计：4 列（左一-左四），每列 4 个 DB -->
+      <div class="keys-stats-panel">
+        <div class="db-stats-columns">
+          <div v-for="(colData, colIndex) in dbStatsByColumns" :key="colIndex" class="db-stats-col">
+            <el-table
+              :data="colData"
+              class="theme-table"
+              size="small"
+              style="width: 100%"
+            >
+              <el-table-column prop="db" label="DB" width="56" />
+              <el-table-column prop="keys" label="Keys" width="80">
+                <template #default="{ row }">
+                  <span :class="{ 'db-value-positive': isPositive(row.keys) }">{{ row.keys ?? 0 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column prop="expires" label="Expires" width="80">
+                <template #default="{ row }">
+                  <span :class="{ 'db-value-positive': isPositive(row.expires) }">{{ row.expires ?? 0 }}</span>
+                </template>
+              </el-table-column>
+              <el-table-column label="Avg TTL" min-width="90">
+                <template #default="{ row }">
+                  <span :class="{ 'db-value-positive': isPositive(row.avgTtl) }">{{ formatAvgTtl(row.avgTtl) }}</span>
+                </template>
+              </el-table-column>
+            </el-table>
+          </div>
         </div>
       </div>
-    </div>
 
     <!-- Redis信息全集 -->
     <div class="redis-info-panel">
@@ -182,7 +154,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Search, Refresh, Connection, RefreshLeft } from '@element-plus/icons-vue'
+import { Search, Connection, RefreshLeft } from '@element-plus/icons-vue'
 import { useConnectionStore } from '../stores/connection'
 
 // Props
@@ -234,16 +206,16 @@ const filteredRedisInfo = computed(() => {
   )
 })
 
-// 左侧数据库统计 (db0-db7)
-const leftDbStats = computed(() => {
+// 数据库统计按 4 列展示，每列 4 个 DB
+const dbStatsByColumns = computed(() => {
   if (!props.redisInfo?.dbStats) return []
-  return props.redisInfo.dbStats.slice(0, 8)
-})
-
-// 右侧数据库统计 (db8-db15)
-const rightDbStats = computed(() => {
-  if (!props.redisInfo?.dbStats) return []
-  return props.redisInfo.dbStats.slice(8, 16)
+  const stats = props.redisInfo.dbStats
+  return [
+    stats.slice(0, 4),   // 左一：db0-db3
+    stats.slice(4, 8),   // 左二：db4-db7
+    stats.slice(8, 12),  // 左三：db8-db11
+    stats.slice(12, 16)  // 左四：db12-db15
+  ]
 })
 
 // 方法
@@ -270,6 +242,11 @@ const formatAvgTtl = (ttl) => {
   if (number < 3600000) return `${Math.round(number / 60000)}m`
   if (number < 86400000) return `${Math.round(number / 3600000)}h`
   return `${Math.round(number / 86400000)}d`
+}
+
+const isPositive = (value) => {
+  const num = typeof value === 'number' ? value : parseFloat(value)
+  return Number.isFinite(num) && num > 0
 }
 
 const refreshInfo = async () => {
@@ -400,38 +377,15 @@ onUnmounted(() => {
 <style scoped>
 .redis-overview {
   width: 100%;
-  height: 100%;
+  flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 10px;
   padding: 0;
   overflow-y: auto;
   overflow-x: hidden;
-}
-
-.overview-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 16px 15px;
-  border-bottom: 1px solid var(--el-border-color);
-}
-
-.overview-title {
-  color: var(--el-text-color-primary);
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-}
-
-.toolbar-right {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.auto-refresh-switch {
-  margin-left: 8px;
+  -webkit-overflow-scrolling: touch;
 }
 
 .no-data,
@@ -508,14 +462,14 @@ onUnmounted(() => {
   margin-bottom: 10px;
 }
 
-.db-stats-container {
-  display: flex;
+.db-stats-columns {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
 }
 
-.db-stats-left,
-.db-stats-right {
-  flex: 1;
+.db-stats-col {
+  width: 100%;
 }
 
 .db-section-title {
@@ -553,6 +507,12 @@ onUnmounted(() => {
 :deep(.theme-table .el-table__body td) {
   background-color: var(--el-bg-color) !important;
   color: var(--el-text-color-primary) !important;
+}
+
+/* 键值统计：数值高亮 */
+:deep(.theme-table .db-value-positive) {
+  color: var(--el-color-primary) !important;
+  font-weight: 600;
 }
 
 </style> 
