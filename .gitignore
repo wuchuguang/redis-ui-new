@@ -4,6 +4,7 @@ node_modules/
 client/node_modules/
 
 # Build outputs
+build/
 client/dist/
 client/build/
 

@@ -1078,7 +1078,7 @@ const deleteKey = async () => {
         )
         
         if (result) {
-          ElMessage.success('键删除成功')
+          // 成功提示由 http 响应拦截器展示
           // 记录操作日志
           operationLogger.logKeyDeleted(keyData.value.key, props.connection)
           emit('key-deleted', keyData.value.key)
@@ -1285,9 +1285,8 @@ const handleEditStringSave = async (value) => {
     if (success) {
       // 更新本地数据
       keyData.value.value = value
-      
       showEditStringDialog.value = false
-      ElMessage.success('String值保存成功')
+      // 成功提示由 http 响应拦截器展示
       // 记录操作日志
       operationLogger.logStringValueEdited(keyData.value.key, props.connection)
     } else {

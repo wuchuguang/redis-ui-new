@@ -53,10 +53,10 @@ const getConnectionHistoryDir = (connectionId) => {
   return path.join(CONNECTIONS_DIR, connectionId, 'history');
 };
 
-// 获取操作历史文件路径
+// 获取操作历史文件路径（JSONL 格式，便于追加）
 const getHistoryFilePath = (connectionId, date) => {
   const historyDir = getConnectionHistoryDir(connectionId);
-  return path.join(historyDir, `${date}.json`);
+  return path.join(historyDir, `${date}.jsonl`);
 };
 
 // 创建连接信息
@@ -256,39 +256,24 @@ const getUserConnections = async (username) => {
   }
 };
 
-// 记录操作历史
+// 记录操作历史（JSONL 格式追加，无需读全量）
 const logOperation = async (connectionId, operationData) => {
   try {
     const historyDir = getConnectionHistoryDir(connectionId);
     await fs.mkdir(historyDir, { recursive: true });
-    
+
     const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
     const historyPath = getHistoryFilePath(connectionId, today);
-    
-    let historyData = [];
-    try {
-      const existingData = await fs.readFile(historyPath, 'utf8');
-      historyData = JSON.parse(existingData);
-    } catch (error) {
-      // 文件不存在，使用空数组
-    }
-    
+
     const operation = {
       id: uuidv4(),
       timestamp: new Date().toISOString(),
       ...operationData
     };
-    
-    // 使用unshift将新操作添加到数组开头，这样最新的操作会显示在前面
-    historyData.unshift(operation);
-    
-    // 限制历史记录数量，避免文件过大
-    if (historyData.length > 5000) {
-      historyData = historyData.slice(0, 5000);
-    }
-    
-    await fs.writeFile(historyPath, JSON.stringify(historyData, null, 2));
-    
+
+    const line = JSON.stringify(operation) + '\n';
+    await fs.appendFile(historyPath, line, 'utf8');
+
     console.log(`操作已记录: ${connectionId} - ${operationData.type || operationData.operation}`);
     return operation;
   } catch (error) {
@@ -296,21 +281,74 @@ const logOperation = async (connectionId, operationData) => {
   }
 };
 
-// 获取操作历史
+// 获取操作历史（JSONL 格式，每行一条）
 const getOperationHistory = async (connectionId, date = null) => {
   try {
     if (!date) {
       date = new Date().toISOString().split('T')[0]; // 今天
     }
-    
+
     const historyPath = getHistoryFilePath(connectionId, date);
-    const historyData = JSON.parse(await fs.readFile(historyPath, 'utf8'));
-    return historyData;
-  } catch (error) {
-    if (error.code === 'ENOENT') {
-      return []; // 文件不存在，返回空数组
+    const content = await fs.readFile(historyPath, 'utf8');
+    const lines = content.split('\n').filter((line) => line.trim());
+    const list = [];
+    for (const line of lines) {
+      try {
+        list.push(JSON.parse(line));
+      } catch (parseErr) {
+        // 忽略解析失败的行
+      }
     }
+    // 最新在前
+    list.reverse();
+    return list.slice(0, 5000);
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
     throw new Error(`获取操作历史失败: ${error.message}`);
+  }
+};
+
+// 列出有历史记录的日期（倒序，最新的在前）
+const listHistoryDates = async (connectionId) => {
+  try {
+    const historyDir = getConnectionHistoryDir(connectionId);
+    await fs.mkdir(historyDir, { recursive: true });
+    const files = await fs.readdir(historyDir);
+    const dates = files
+      .filter((f) => f.endsWith('.jsonl'))
+      .map((f) => f.replace('.jsonl', ''))
+      .filter((d) => /^\d{4}-\d{2}-\d{2}$/.test(d))
+      .sort()
+      .reverse();
+    return dates;
+  } catch (error) {
+    if (error.code === 'ENOENT') return [];
+    throw new Error(`列出历史日期失败: ${error.message}`);
+  }
+};
+
+// 清空操作历史：date 为空则清空全部，否则清空指定日期
+const clearOperationHistory = async (connectionId, date = null) => {
+  try {
+    const historyDir = getConnectionHistoryDir(connectionId);
+    if (date) {
+      const filePath = getHistoryFilePath(connectionId, date);
+      await fs.unlink(filePath);
+      console.log(`已清空操作历史: ${connectionId} - ${date}`);
+    } else {
+      const files = await fs.readdir(historyDir);
+      for (const f of files) {
+        if (f.endsWith('.jsonl')) {
+          await fs.unlink(path.join(historyDir, f));
+        }
+      }
+      console.log(`已清空全部操作历史: ${connectionId}`);
+    }
+    return true;
+  } catch (error) {
+    if (error.code === 'ENOENT') return true;
+    console.error('清空操作历史失败:', error);
+    return false;
   }
 };
 
@@ -389,5 +427,7 @@ module.exports = {
   logOperation,
   getOperationHistory,
   getOperationHistoryRange,
+  listHistoryDates,
+  clearOperationHistory,
   getAllConnectionsForAdmin
 }; 

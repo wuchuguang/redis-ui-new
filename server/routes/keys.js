@@ -330,6 +330,9 @@ router.post('/:id/:db/keys', authenticateToken, async (req, res) => {
       items,
       members
     });
+
+    // 记录操作历史
+    await operationHistory.logKeyAdded(id, username, name.trim());
     
     res.json({
       success: true,
@@ -387,6 +390,9 @@ router.delete('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
     }
     
     const result = await redisService.clearKeyTTL(id, db, keyName);
+    
+    // 记录操作历史
+    await operationHistory.logKeyTTLUpdated(id, username, keyName, -1, '清除TTL');
     
     res.json({
       success: true,
@@ -459,6 +465,9 @@ router.put('/:id/:db/keys/*/ttl', authenticateToken, async (req, res) => {
     }
     
     const result = await redisService.setKeyTTL(id, db, keyName, ttl);
+    
+    // 记录操作历史
+    await operationHistory.logKeyTTLUpdated(id, username, keyName, ttl, '设置TTL');
     
     res.json({
       success: true,
@@ -534,6 +543,9 @@ router.put('/:id/:db/keys/*/value', authenticateToken, async (req, res) => {
     
     const result = await redisService.updateKeyValue(id, db, keyName, type, value);
     
+    // 记录操作历史
+    await operationHistory.logKeyValueUpdated(id, username, keyName, type, value);
+    
     res.json({
       success: true,
       message: '键值更新成功'
@@ -606,6 +618,9 @@ router.delete('/:id/:db/keys/batch', authenticateToken, async (req, res) => {
     }
     
     const result = await redisService.batchDeleteKeys(id, db, keys);
+    
+    // 记录操作历史
+    await operationHistory.logKeysBatchDeleted(id, username, keys.length);
     
     res.json({
       success: true,
@@ -715,7 +730,7 @@ router.put('/:connectionId/:database/hash/:keyName/field', authenticateToken, as
     await redisService.updateHashField(connectionId, database, keyName, oldField, newField, value);
     
     // 记录操作历史
-    await operationHistory.logHashFieldEdited(connectionId, username, keyName, newField || oldField);
+    await operationHistory.logHashFieldEdited(connectionId, username, keyName, newField || oldField, value);
     
     res.json({
       success: true,
@@ -749,7 +764,7 @@ router.put('/:connectionId/:database/string/:keyName', authenticateToken, async 
     await redisService.updateStringValue(connectionId, database, keyName, value);
     
     // 记录操作历史
-    await operationHistory.logStringValueEdited(connectionId, username, keyName);
+    await operationHistory.logStringValueEdited(connectionId, username, keyName, value);
     
     res.json({
       success: true,

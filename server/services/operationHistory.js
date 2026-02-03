@@ -171,6 +171,25 @@ const logKeyAdded = async (connectionId, operator, keyName) => {
   })
 }
 
+const buildValueSummary = (value) => {
+  if (value === undefined) {
+    return {}
+  }
+  try {
+    const raw = typeof value === 'string' ? value : JSON.stringify(value)
+    const preview = raw.length > 200 ? `${raw.slice(0, 200)}...` : raw
+    return {
+      valuePreview: preview,
+      valueSize: raw.length
+    }
+  } catch (error) {
+    return {
+      valuePreview: '无法生成值预览',
+      valueSize: 0
+    }
+  }
+}
+
 // Hash字段操作
 const logHashFieldAdded = async (connectionId, operator, keyName, field) => {
   await logOperation(connectionId, {
@@ -184,13 +203,14 @@ const logHashFieldAdded = async (connectionId, operator, keyName, field) => {
   })
 }
 
-const logHashFieldEdited = async (connectionId, operator, keyName, field) => {
+const logHashFieldEdited = async (connectionId, operator, keyName, field, newValue) => {
   await logOperation(connectionId, {
     type: 'hash_field_edited',
     operator,
     details: {
       keyName,
       field,
+      ...buildValueSummary(newValue),
       action: '编辑Hash字段'
     }
   })
@@ -221,13 +241,53 @@ const logHashFieldsBatchDeleted = async (connectionId, operator, keyName, fields
 }
 
 // String值操作
-const logStringValueEdited = async (connectionId, operator, keyName) => {
+const logStringValueEdited = async (connectionId, operator, keyName, newValue) => {
   await logOperation(connectionId, {
     type: 'string_value_edited',
     operator,
     details: {
       keyName,
+      ...buildValueSummary(newValue),
       action: '编辑String值'
+    }
+  })
+}
+
+// 通用键值更新（用于 list/set/zset/hash 等类型）
+const logKeyValueUpdated = async (connectionId, operator, keyName, valueType, newValue) => {
+  await logOperation(connectionId, {
+    type: 'key_value_updated',
+    operator,
+    details: {
+      keyName,
+      valueType,
+      ...buildValueSummary(newValue),
+      action: '更新键值'
+    }
+  })
+}
+
+// 批量删除Key
+const logKeysBatchDeleted = async (connectionId, operator, keysCount) => {
+  await logOperation(connectionId, {
+    type: 'keys_batch_deleted',
+    operator,
+    details: {
+      keysCount,
+      action: '批量删除Key'
+    }
+  })
+}
+
+// TTL操作
+const logKeyTTLUpdated = async (connectionId, operator, keyName, ttl, action) => {
+  await logOperation(connectionId, {
+    type: 'key_ttl_updated',
+    operator,
+    details: {
+      keyName,
+      ttl,
+      action
     }
   })
 }
@@ -268,11 +328,10 @@ const logFieldSearch = async (connectionId, operator, keyName, searchTerm) => {
   })
 }
 
-// 获取连接的操作历史
-const getConnectionHistory = async (connectionId, limit = 100) => {
+// 获取连接的操作历史（支持按日期）
+const getConnectionHistory = async (connectionId, limit = 5000, date = null) => {
   try {
-    // 使用连接服务获取操作历史
-    const history = await connectionService.getOperationHistory(connectionId)
+    const history = await connectionService.getOperationHistory(connectionId, date)
     return history.slice(0, limit)
   } catch (error) {
     console.error('获取操作历史失败:', error)
@@ -280,17 +339,19 @@ const getConnectionHistory = async (connectionId, limit = 100) => {
   }
 }
 
-// 清空连接的操作历史
-const clearConnectionHistory = async (connectionId) => {
+// 列出有历史记录的日期
+const listConnectionHistoryDates = async (connectionId) => {
   try {
-    const historyPath = getHistoryFilePath(connectionId)
-    await fs.unlink(historyPath)
-    console.log(`操作历史已清空: ${connectionId}`)
-    return true
+    return await connectionService.listHistoryDates(connectionId)
   } catch (error) {
-    console.error('清空操作历史失败:', error)
-    return false
+    console.error('列出历史日期失败:', error)
+    return []
   }
+}
+
+// 清空连接的操作历史：date 为空则清空全部
+const clearConnectionHistory = async (connectionId, date = null) => {
+  return await connectionService.clearOperationHistory(connectionId, date)
 }
 
 module.exports = {
@@ -311,9 +372,13 @@ module.exports = {
   logHashFieldDeleted,
   logHashFieldsBatchDeleted,
   logStringValueEdited,
+  logKeyValueUpdated,
+  logKeysBatchDeleted,
+  logKeyTTLUpdated,
   logDatabaseSelected,
   logKeySearch,
   logFieldSearch,
   getConnectionHistory,
+  listConnectionHistoryDates,
   clearConnectionHistory
 } 

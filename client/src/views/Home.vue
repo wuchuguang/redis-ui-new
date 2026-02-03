@@ -123,6 +123,7 @@
       <OperationHistory
         v-if="currentConnection"
         :connection-id="currentConnection.id"
+        :is-owner="currentConnection.owner === userStore.currentUser?.username"
         ref="operationHistoryRef"
       />
       <div v-else class="no-connection-tip">

@@ -158,8 +158,8 @@ router.delete('/:id', authenticateToken, async (req, res) => {
     console.log(`释放操作锁: ${lock.userName} - ${lock.action} ${lock.target}`);
     
     res.json({
-      success: true,
-      message: '操作锁释放成功'
+      success: true
+      // 不返回 message，避免与主操作的成功提示重复
     });
     
   } catch (error) {

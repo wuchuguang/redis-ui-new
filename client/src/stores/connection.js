@@ -794,9 +794,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除键组
   const deleteKeyGroup = async (connectionId, database = 0, prefix) => {
     try {
-      const response = await request.delete(`/connections/${connectionId}/${database}/keys`, {
-        pattern: `${prefix}*`
-      })
+      const pattern = encodeURIComponent(`${prefix}*`)
+      const response = await request.delete(`/connections/${connectionId}/${database}/keys?pattern=${pattern}`)
       
       if (response.data.success) {
         ElMessage.success(`键组 "${prefix}" 删除成功`)
@@ -812,9 +811,8 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除单个键
   const deleteKey = async (connectionId, database = 0, keyName) => {
     try {
-      const response = await request.delete(`/connections/${connectionId}/${database}/keys`, {
-        pattern: keyName
-      })
+      const pattern = encodeURIComponent(keyName)
+      const response = await request.delete(`/connections/${connectionId}/${database}/keys?pattern=${pattern}`)
       
       if (response.data.success) {
         return true
@@ -908,7 +906,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 批量删除键
   const batchDeleteKeys = async (connectionId, database = 0, keys) => {
     try {
-      const response = await request.delete(`/connections/${connectionId}/${database}/keys/batch`, { keys })
+      const response = await request.delete(`/connections/${connectionId}/${database}/keys/batch`, { data: { keys } })
       if (response.data.success) {
         console.log('批量删除成功:', keys.length, '个键')
         return true
@@ -925,7 +923,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 删除Hash字段
   const deleteHashField = async (connectionId, database = 0, keyName, field) => {
     try {
-      const response = await request.delete(`/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, { field })
+      const response = await request.delete(`/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/field`, { data: { field } })
       if (response.data.success) {
         return true
       }
@@ -954,7 +952,7 @@ export const useConnectionStore = defineStore('connection', () => {
   // 批量删除Hash字段
   const batchDeleteHashFields = async (connectionId, database = 0, keyName, fields) => {
     try {
-      const response = await request.delete(`/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/fields`, { fields })
+      const response = await request.delete(`/connections/${connectionId}/${database}/hash/${encodeURIComponent(keyName)}/fields`, { data: { fields } })
       if (response.data.success) {
         return true
       }
