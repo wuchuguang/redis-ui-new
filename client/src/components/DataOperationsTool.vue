@@ -253,8 +253,8 @@ const handleClose = () => {
 
 .tab-navigation {
   display: flex;
-  background: #2d2d2d;
-  border-bottom: 1px solid #404040;
+  background: var(--el-bg-color-overlay);
+  border-bottom: 1px solid var(--el-border-color);
   padding: 0 32px;
   gap: 8px;
 }
@@ -272,8 +272,8 @@ const handleClose = () => {
   color: #a0a0a0;
 
   &:hover {
-    background: #404040;
-    color: #ffffff;
+    background: var(--el-fill-color);
+    color: var(--el-text-color-primary);
   }
 
   &.active {
@@ -304,7 +304,7 @@ const handleClose = () => {
 
 .tab-content {
   padding: 32px;
-  background: #2d2d2d;
+  background: var(--el-bg-color-overlay);
   border-radius: 0 0 16px 16px;
 }
 

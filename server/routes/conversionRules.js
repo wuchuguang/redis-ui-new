@@ -13,7 +13,7 @@ router.get('/:connectionId', async (req, res) => {
     const { connectionId } = req.params;
     const username = req.user.username;
     
-    const rulesPath = path.join(__dirname, '..', 'connections', connectionId, 'rules', `${username}.json`);
+    const rulesPath = path.join(require('../utils/paths').CONNECTIONS_DIR, connectionId, 'rules', `${username}.json`);
     
     try {
       const rulesData = await fs.readFile(rulesPath, 'utf8');
@@ -44,7 +44,7 @@ router.post('/:connectionId/rule', async (req, res) => {
       return res.status(400).json({ success: false, message: '规则数据不完整' });
     }
     
-    const connectionDir = path.join(__dirname, '..', 'connections', connectionId);
+    const connectionDir = path.join(require('../utils/paths').CONNECTIONS_DIR, connectionId);
     const rulesDir = path.join(connectionDir, 'rules');
     const rulesPath = path.join(rulesDir, `${username}.json`);
     
@@ -91,7 +91,7 @@ router.put('/:connectionId/rule/:ruleId', async (req, res) => {
       return res.status(400).json({ success: false, message: '规则数据不完整' });
     }
     
-    const rulesPath = path.join(__dirname, '..', 'connections', connectionId, 'rules', `${username}.json`);
+    const rulesPath = path.join(require('../utils/paths').CONNECTIONS_DIR, connectionId, 'rules', `${username}.json`);
     
     // 读取现有规则
     let rules = [];
@@ -134,7 +134,7 @@ router.delete('/:connectionId/rule/:ruleId', async (req, res) => {
     const { connectionId, ruleId } = req.params;
     const username = req.user.username;
     
-    const rulesPath = path.join(__dirname, '..', 'connections', connectionId, 'rules', `${username}.json`);
+    const rulesPath = path.join(require('../utils/paths').CONNECTIONS_DIR, connectionId, 'rules', `${username}.json`);
     
     // 读取现有规则
     let rules = [];
@@ -173,7 +173,7 @@ router.patch('/:connectionId/rule/:ruleId/toggle', async (req, res) => {
     const { connectionId, ruleId } = req.params;
     const username = req.user.username;
     
-    const rulesPath = path.join(__dirname, '..', 'connections', connectionId, 'rules', `${username}.json`);
+    const rulesPath = path.join(require('../utils/paths').CONNECTIONS_DIR, connectionId, 'rules', `${username}.json`);
     
     // 读取现有规则
     let rules = [];
@@ -215,7 +215,7 @@ router.get('/:connectionId/all', async (req, res) => {
   try {
     const { connectionId } = req.params;
     
-    const rulesDir = path.join(__dirname, '..', 'connections', connectionId, 'rules');
+    const rulesDir = path.join(require('../utils/paths').CONNECTIONS_DIR, connectionId, 'rules');
     
     try {
       const files = await fs.readdir(rulesDir);

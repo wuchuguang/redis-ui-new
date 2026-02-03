@@ -3,9 +3,7 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const crypto = require('crypto');
 const { permissionManager } = require('./permission');
-
-// 连接数据目录
-const CONNECTIONS_DIR = path.join(__dirname, '../connections');
+const { CONNECTIONS_DIR } = require('../utils/paths');
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-encryption-key-32-chars-long!!';
 
 // 加密数据
@@ -341,6 +339,41 @@ const getOperationHistoryRange = async (connectionId, startDate, endDate) => {
   }
 };
 
+// 管理员：获取所有 Redis 连接（用于管理后台）
+const getAllConnectionsForAdmin = async () => {
+  try {
+    await ensureConnectionsDir();
+    const connectionIds = await fs.readdir(CONNECTIONS_DIR);
+    const list = [];
+    for (const connectionId of connectionIds) {
+      const infoPath = getConnectionInfoPath(connectionId);
+      try {
+        const stat = await fs.stat(path.join(CONNECTIONS_DIR, connectionId));
+        if (!stat.isDirectory()) continue;
+        const encryptedData = JSON.parse(await fs.readFile(infoPath, 'utf8'));
+        const conn = decryptData(encryptedData);
+        list.push({
+          id: conn.id,
+          owner: conn.owner,
+          participants: conn.participants || [],
+          name: conn.redis?.name || '',
+          host: conn.redis?.host || '',
+          port: conn.redis?.port || 6379,
+          database: conn.redis?.database ?? 0,
+          hasPassword: !!(conn.redis?.password),
+          createdAt: conn.createdAt,
+          updatedAt: conn.updatedAt
+        });
+      } catch (err) {
+        continue;
+      }
+    }
+    return list;
+  } catch (error) {
+    throw new Error(`获取连接列表失败: ${error.message}`);
+  }
+};
+
 module.exports = {
   createConnectionInfo,
   getConnectionInfo,
@@ -355,5 +388,6 @@ module.exports = {
   getUserConnections,
   logOperation,
   getOperationHistory,
-  getOperationHistoryRange
+  getOperationHistoryRange,
+  getAllConnectionsForAdmin
 }; 

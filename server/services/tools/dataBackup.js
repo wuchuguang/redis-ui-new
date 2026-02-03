@@ -3,11 +3,12 @@ const { promisify } = require('util')
 const fs = require('fs').promises
 const path = require('path')
 const crypto = require('crypto')
+const { CONNECTIONS_DIR } = require('../../utils/paths')
 
 class DataBackupService {
   constructor() {
     this.logger = console
-    this.backupDir = path.join(__dirname, '../../connections')
+    this.backupDir = CONNECTIONS_DIR
     this.ensureBackupDir()
   }
 

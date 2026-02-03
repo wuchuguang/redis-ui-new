@@ -312,8 +312,8 @@ const handleClearResult = () => {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
     overflow: hidden;
-    background: #2d2d2d;
-    border: 1px solid #404040;
+    background: var(--el-bg-color-overlay);
+    border: 1px solid var(--el-border-color);
   }
 
   .config-card:hover,
@@ -328,10 +328,10 @@ const handleClearResult = () => {
     align-items: center;
     gap: 8px;
     font-weight: 600;
-    color: #ffffff;
+    color: var(--el-text-color-primary);
     padding: 16px 24px;
-    background: #2d2d2d;
-    border-bottom: 1px solid #404040;
+    background: var(--el-bg-color-overlay);
+    border-bottom: 1px solid var(--el-border-color);
   }
 
   .header-icon {
@@ -354,8 +354,8 @@ const handleClearResult = () => {
     :deep(.el-input__inner),
     :deep(.el-textarea__inner) {
       background-color: #1a1a1a !important;
-      color: #ffffff !important;
-      border: 2px solid #404040;
+      color: var(--el-text-color-primary) !important;
+      border: 2px solid var(--el-border-color);
       border-radius: 12px;
       transition: all 0.3s ease;
       font-size: 14px;
@@ -363,7 +363,7 @@ const handleClearResult = () => {
       &:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        background-color: #2d2d2d !important;
+        background-color: var(--el-bg-color-overlay) !important;
       }
       
       &:hover {
@@ -373,14 +373,14 @@ const handleClearResult = () => {
 
     :deep(.el-select .el-input__inner) {
       background-color: #1a1a1a !important;
-      color: #ffffff !important;
-      border: 2px solid #404040;
+      color: var(--el-text-color-primary) !important;
+      border: 2px solid var(--el-border-color);
       border-radius: 12px;
       
       &:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        background-color: #2d2d2d !important;
+        background-color: var(--el-bg-color-overlay) !important;
       }
     }
 
@@ -393,7 +393,7 @@ const handleClearResult = () => {
         
         .el-radio__label {
           font-weight: 500;
-          color: #ffffff;
+          color: var(--el-text-color-primary);
         }
         
         .el-radio__input.is-checked .el-radio__label {
@@ -407,7 +407,7 @@ const handleClearResult = () => {
       
       .checkbox-text {
         font-weight: 500;
-        color: #ffffff;
+        color: var(--el-text-color-primary);
         font-size: 14px;
       }
     }
@@ -452,8 +452,8 @@ const handleClearResult = () => {
       gap: 16px;
       padding: 24px;
       border-radius: 16px;
-      background: linear-gradient(135deg, #404040 0%, #2d2d2d 100%);
-      border: 1px solid #404040;
+      background: linear-gradient(135deg, var(--el-border-color) 0%, var(--el-bg-color-overlay) 100%);
+      border: 1px solid var(--el-border-color);
       transition: all 0.3s ease;
       position: relative;
       overflow: hidden;
@@ -494,7 +494,7 @@ const handleClearResult = () => {
         font-weight: 700;
         line-height: 1;
         margin-bottom: 4px;
-        color: #ffffff;
+        color: var(--el-text-color-primary);
       }
 
       .stat-label {
@@ -545,7 +545,7 @@ const handleClearResult = () => {
 
     .empty-icon {
       font-size: 80px;
-      color: #404040;
+      color: var(--el-border-color);
     }
   }
 
@@ -568,24 +568,24 @@ const handleClearResult = () => {
 
     :deep(.el-table__row) {
       transition: all 0.3s ease;
-      background: #2d2d2d;
-      color: #ffffff;
+      background: var(--el-bg-color-overlay);
+      color: var(--el-text-color-primary);
       
       &:hover {
-        background: #404040;
+        background: var(--el-border-color);
         transform: scale(1.01);
       }
     }
     
     :deep(.el-table__cell) {
       padding: 12px;
-      border-bottom: 1px solid #404040;
-      color: #ffffff;
+      border-bottom: 1px solid var(--el-border-color);
+      color: var(--el-text-color-primary);
     }
     
     :deep(.el-table) {
-      background: #2d2d2d;
-      color: #ffffff;
+      background: var(--el-bg-color-overlay);
+      color: var(--el-text-color-primary);
     }
   }
 }

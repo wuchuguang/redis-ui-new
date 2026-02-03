@@ -483,6 +483,15 @@ const refreshKeys = async (showLoading = false) => {
         totalKeys: data.totalKeys,
         selectedDatabase: selectedDatabase.value
       })
+      // 全量列表时同步更新当前库在 select 中的键数，保证下拉显示正确
+      if (pattern === '*' && typeof data.totalKeys === 'number') {
+        const dbId = selectedDatabase.value
+        const next = [...databases.value]
+        if (next[dbId]) {
+          next[dbId] = { id: dbId, keys: data.totalKeys }
+          databases.value = next
+        }
+      }
       // 更新已加载的键数，保持用户已加载的数量
       for (const group of data.groups) {
         const existingCount = loadedKeyCounts.value[group.prefix] || 0
@@ -595,10 +604,10 @@ const refreshDatabases = async (interval) => {
           id: i,
           keys: data ? data.totalKeys : 0
         }
-        if(data && data.totalKeys > 0){
-          nextRefreshTime[i] = Date.now() + interval;// 10秒
-        }else{
-          nextRefreshTime[i] = Date.now() + 600000; // 5分钟
+        if (data && data.totalKeys > 0) {
+          nextRefreshTime[i] = Date.now() + interval // 10秒
+        } else {
+          nextRefreshTime[i] = Date.now() + 30000 // 空库 30 秒后再刷新，避免长期显示 0
         }
       } catch (error) {
         console.error(`获取数据库${i}信息失败:`, error)
@@ -1197,13 +1206,13 @@ defineExpose({
   align-items: center;
   margin-bottom: 10px;
   padding-bottom: 8px;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--el-border-color);
 }
 
 .connection-title {
   font-size: 16px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   margin: 0;
   flex: 1;
 }
@@ -1224,7 +1233,7 @@ defineExpose({
 }
 
 .connection-actions .el-button:hover {
-  background-color: #404040;
+  background-color: var(--el-fill-color);
 }
 
 .database-selector {
@@ -1236,7 +1245,7 @@ defineExpose({
 }
 
 .db-keys-count {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin-left: 5px;
 }
 
@@ -1268,7 +1277,7 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   padding: 0 4px 8px 0;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--el-border-color);
   margin-bottom: 6px;
   flex-shrink: 0;
 }
@@ -1300,7 +1309,7 @@ defineExpose({
 }
 
 .keys-count {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
@@ -1311,7 +1320,7 @@ defineExpose({
 }
 
 .key-group {
-  border: 1px solid #404040;
+  border: 1px solid var(--el-border-color);
   border-radius: 4px;
 }
 
@@ -1320,7 +1329,7 @@ defineExpose({
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background-color: #2d2d2d;
+  background-color: var(--el-bg-color-overlay);
   border-radius: 4px 4px 0 0;
 }
 
@@ -1332,7 +1341,7 @@ defineExpose({
 }
 
 .key-group-info:hover {
-  background-color: #404040;
+  background-color: var(--el-fill-color);
   border-radius: 4px;
   padding: 2px 4px;
   margin: -2px -4px;
@@ -1356,12 +1365,12 @@ defineExpose({
 }
 
 .key-group-actions .el-button:hover {
-  background-color: #404040;
+  background-color: var(--el-fill-color);
 }
 
 .key-group-actions .delete-btn:hover {
-  background-color: #f56c6c;
-  color: #ffffff;
+  background-color: var(--el-color-danger);
+  color: var(--el-text-color-primary);
 }
 
 .expand-icon {
@@ -1375,17 +1384,17 @@ defineExpose({
 
 .key-prefix {
   flex: 1;
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   font-weight: 500;
 }
 
 .key-count {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
 .key-list {
-  background-color: #1e1e1e;
+  background-color: var(--el-bg-color);
   border-radius: 0 0 4px 4px;
   padding: 8px 0;
 }
@@ -1396,17 +1405,17 @@ defineExpose({
   align-items: center;
   margin-bottom: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   padding: 0 12px;
 }
 
 .key-list-footer {
   margin-top: 8px;
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   text-align: center;
   padding: 4px 12px;
-  border-top: 1px solid #404040;
+  border-top: 1px solid var(--el-border-color);
 }
 
 .remaining-keys-text {
@@ -1421,12 +1430,12 @@ defineExpose({
 }
 
 .remaining-keys-text.loading {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   cursor: not-allowed;
 }
 
 .remaining-keys-text.loading:hover {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   text-decoration: none;
 }
 
@@ -1449,7 +1458,7 @@ defineExpose({
   align-items: center;
   padding: 6px 12px;
   cursor: pointer;
-  border-bottom: 1px solid #2d2d2d;
+  border-bottom: 1px solid var(--el-border-color);
 }
 
 .key-item:last-child {
@@ -1457,12 +1466,12 @@ defineExpose({
 }
 
 .key-item:hover {
-  background-color: #2d2d2d;
+  background-color: var(--el-fill-color);
 }
 
 .key-item.active {
-  background-color: #409eff;
-  color: #ffffff;
+  background-color: var(--el-color-primary);
+  color: var(--el-text-color-primary);
 }
 
 .key-icon {
@@ -1488,7 +1497,7 @@ defineExpose({
 
 .no-connection-tip :deep(.el-empty__description),
 .no-keys-tip :deep(.el-empty__description) {
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .list-mode {
@@ -1502,17 +1511,17 @@ defineExpose({
   gap: 12px;
   margin-bottom: 12px;
   padding: 8px 12px;
-  background-color: #2d2d2d;
+  background-color: var(--el-bg-color-overlay);
   border-radius: 4px;
 }
 
 .back-btn {
-  color: #409eff;
+  color: var(--el-color-primary);
 }
 
 .list-mode-title {
   font-weight: 600;
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   font-size: 14px;
 }
 
@@ -1888,7 +1897,7 @@ defineExpose({
 
 :deep(.el-select-dropdown__item.selected) {
   background-color: var(--el-color-primary) !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 数字输入框样式 */
@@ -1910,25 +1919,38 @@ defineExpose({
   background-color: var(--el-fill-color-light) !important;
 }
 
-/* 数据库选择器样式 */
+/* 数据库选择器样式 - 确保选中值在明暗主题下均可见 */
 .database-select {
   width: 100%;
 }
 
+.database-select :deep(.el-input__wrapper),
+.database-select :deep(.el-input__inner) {
+  background-color: var(--el-fill-color-blank, var(--el-input-bg-color, var(--el-fill-color))) !important;
+}
+
+.database-select :deep(.el-input__wrapper),
+.database-select :deep(.el-input__wrapper input),
+.database-select :deep(.el-input__inner),
+.database-select :deep(.el-select__selected-item) {
+  color: var(--el-text-color-primary) !important;
+}
+
 /* 数据库选项样式 - 有数据时高亮和字体放大 */
 :deep(.el-select-dropdown__item.db-with-data) {
-  background-color: #409eff !important;
-  color: #ffffff !important;
+  background-color: var(--el-color-primary) !important;
+  color: var(--el-text-color-primary) !important;
   font-weight: 600;
 }
 
 :deep(.el-select-dropdown__item.db-with-data:hover) {
-  background-color: #66b1ff !important;
+  background-color: var(--el-color-primary) !important;
+  opacity: 0.9;
 }
 
 :deep(.el-select-dropdown__item.db-with-data.selected) {
-  background-color: #409eff !important;
-  color: #ffffff !important;
+  background-color: var(--el-color-primary) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 :deep(.el-select-dropdown__item.db-with-data .db-name) {
@@ -1939,7 +1961,7 @@ defineExpose({
 :deep(.el-select-dropdown__item.db-with-data .db-keys-count.has-data) {
   font-size: 1.2em;
   font-weight: bold;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 无数据的数据库选项保持默认样式 */
@@ -2011,50 +2033,32 @@ defineExpose({
   transform: scale(1.05);
 }
 
-/* 键列表区域滚动条样式 */
+/* 键列表区域滚动条（随主题） */
 .keys-tree {
   scrollbar-width: thin;
-  scrollbar-color: #606266 transparent;
-}
-
-.keys-tree::-webkit-scrollbar {
-  width: 2px;
-}
-
-.keys-tree::-webkit-scrollbar-track {
-  background: transparent;
+  scrollbar-color: var(--app-scrollbar-thumb) transparent;
 }
 
 .keys-tree::-webkit-scrollbar-thumb {
-  background: #606266;
-  border-radius: 1px;
+  background: var(--app-scrollbar-thumb);
 }
 
 .keys-tree::-webkit-scrollbar-thumb:hover {
-  background: #909399;
+  background: var(--app-scrollbar-thumb-hover);
 }
 
 /* 搜索历史下拉菜单滚动条 */
 .search-history-list {
   scrollbar-width: thin;
-  scrollbar-color: #606266 transparent;
-}
-
-.search-history-list::-webkit-scrollbar {
-  width: 2px;
-}
-
-.search-history-list::-webkit-scrollbar-track {
-  background: transparent;
+  scrollbar-color: var(--app-scrollbar-thumb) transparent;
 }
 
 .search-history-list::-webkit-scrollbar-thumb {
-  background: #606266;
-  border-radius: 1px;
+  background: var(--app-scrollbar-thumb);
 }
 
 .search-history-list::-webkit-scrollbar-thumb:hover {
-  background: #909399;
+  background: var(--app-scrollbar-thumb-hover);
 }
 
 .batch-delete-btn {

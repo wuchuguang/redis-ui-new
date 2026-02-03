@@ -1728,7 +1728,7 @@ watch(() => props.database, async () => {
   height: 100%;
   display: flex;
   flex-direction: column;
-  background-color: #1e1e1e;
+  background-color: var(--el-bg-color);
 }
 
 .key-toolbar {
@@ -1736,8 +1736,8 @@ watch(() => props.database, async () => {
   justify-content: space-between;
   align-items: center;
   padding: 12px 16px;
-  border-bottom: 1px solid #404040;
-  background-color: #2d2d2d;
+  border-bottom: 1px solid var(--el-border-color);
+  background-color: var(--el-bg-color-overlay);
 }
 
 .key-info {
@@ -1760,16 +1760,16 @@ watch(() => props.database, async () => {
 }
 
 .key-name-editor :deep(.el-input__inner:read-only:hover) {
-  background-color: #404040;
+  background-color: var(--el-fill-color);
 }
 
 .key-name-editor.editing :deep(.el-input__wrapper) {
-  border-color: #409eff;
-  box-shadow: 0 0 0 1px #409eff;
+  border-color: var(--el-color-primary);
+  box-shadow: 0 0 0 1px var(--el-color-primary);
 }
 
 .key-label {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
@@ -1801,7 +1801,7 @@ watch(() => props.database, async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
 }
 
@@ -1809,7 +1809,7 @@ watch(() => props.database, async () => {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 12px;
   margin-left: 16px;
 }
@@ -1820,21 +1820,22 @@ watch(() => props.database, async () => {
 }
 
 .key-actions .el-button {
-  color: #ffffff;
+  color: var(--el-text-color-primary);
 }
 
 .key-actions .delete-btn:hover {
-  color: #f56c6c;
+  color: var(--el-color-danger);
 }
 
 .back-btn {
-  color: #409eff;
+  color: var(--el-color-primary);
   margin-right: 12px;
 }
 
 .back-btn:hover {
-  color: #66b1ff;
-  background-color: #2d2d2d;
+  color: var(--el-color-primary);
+  opacity: 0.9;
+  background-color: var(--el-fill-color);
 }
 
 .key-content {
@@ -1976,73 +1977,44 @@ watch(() => props.database, async () => {
 
 /* 值单元格样式已移至FormattedValue组件 */
 
-/* 滚动条样式 */
+/* 滚动条随主题 */
 .key-content {
   scrollbar-width: thin;
-  scrollbar-color: #606266 transparent;
-}
-
-.key-content::-webkit-scrollbar {
-  width: 2px;
-}
-
-.key-content::-webkit-scrollbar-track {
-  background: transparent;
+  scrollbar-color: var(--app-scrollbar-thumb) transparent;
 }
 
 .key-content::-webkit-scrollbar-thumb {
-  background: #606266;
-  border-radius: 1px;
+  background: var(--app-scrollbar-thumb);
 }
 
 .key-content::-webkit-scrollbar-thumb:hover {
-  background: #909399;
+  background: var(--app-scrollbar-thumb-hover);
 }
 
 .raw-data {
   scrollbar-width: thin;
-  scrollbar-color: #606266 transparent;
-}
-
-.raw-data::-webkit-scrollbar {
-  width: 2px;
-}
-
-.raw-data::-webkit-scrollbar-track {
-  background: transparent;
+  scrollbar-color: var(--app-scrollbar-thumb) transparent;
 }
 
 .raw-data::-webkit-scrollbar-thumb {
-  background: #606266;
-  border-radius: 1px;
+  background: var(--app-scrollbar-thumb);
 }
 
 .raw-data::-webkit-scrollbar-thumb:hover {
-  background: #909399;
+  background: var(--app-scrollbar-thumb-hover);
 }
 
-/* 表格滚动条 */
 :deep(.el-table__body-wrapper) {
   scrollbar-width: thin;
-  scrollbar-color: #606266 transparent;
-}
-
-:deep(.el-table__body-wrapper::-webkit-scrollbar) {
-  width: 2px;
-  height: 2px;
-}
-
-:deep(.el-table__body-wrapper::-webkit-scrollbar-track) {
-  background: transparent;
+  scrollbar-color: var(--app-scrollbar-thumb) transparent;
 }
 
 :deep(.el-table__body-wrapper::-webkit-scrollbar-thumb) {
-  background: #606266;
-  border-radius: 1px;
+  background: var(--app-scrollbar-thumb);
 }
 
 :deep(.el-table__body-wrapper::-webkit-scrollbar-thumb:hover) {
-  background: #909399;
+  background: var(--app-scrollbar-thumb-hover);
 }
 
 /* 加载更多按钮样式 */
@@ -2052,29 +2024,19 @@ watch(() => props.database, async () => {
   align-items: center;
   gap: 15px;
   padding: 10px 0;
-  border-top: 1px solid #404040;
+  border-top: 1px solid var(--el-border-color);
   margin-top: 10px;
 }
 
 .load-more-section .el-button {
-  color: #409eff;
+  color: var(--el-color-primary);
   font-size: 14px;
 }
 
-.load-more-section .el-button:hover {
-  color: #66b1ff;
-}
-
 .load-more-section .el-button--primary {
-  background-color: #409eff;
-  border-color: #409eff;
-  color: #ffffff;
-}
-
-.load-more-section .el-button--primary:hover {
-  background-color: #66b1ff;
-  border-color: #66b1ff;
-  color: #ffffff;
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: var(--el-text-color-primary);
 }
 
 /* Hash字段删除相关样式 */
@@ -2099,9 +2061,9 @@ watch(() => props.database, async () => {
 }
 
 .edit-field-btn:hover {
-  background-color: #409eff;
-  border-color: #409eff;
-  color: #ffffff;
+  background-color: var(--el-color-primary);
+  border-color: var(--el-color-primary);
+  color: var(--el-text-color-primary);
 }
 
 .delete-field-btn {
@@ -2110,29 +2072,23 @@ watch(() => props.database, async () => {
 }
 
 .delete-field-btn:hover {
-  background-color: #f56c6c;
-  border-color: #f56c6c;
-  color: #ffffff;
+  background-color: var(--el-color-danger);
+  border-color: var(--el-color-danger);
+  color: var(--el-text-color-primary);
 }
 
 /* 锁定按钮样式 */
 .filter-input .el-input__suffix .el-button.locked {
-  color: #409eff;
-  background-color: rgba(64, 158, 255, 0.1);
-}
-
-.filter-input .el-input__suffix .el-button:hover {
-  background-color: rgba(64, 158, 255, 0.2);
+  color: var(--el-color-primary);
 }
 
 .help-btn {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   margin-left: 8px;
 }
 
 .help-btn:hover {
-  color: #409eff;
-  background-color: rgba(64, 158, 255, 0.1);
+  color: var(--el-color-primary);
 }
 
 /* 字段高亮样式 */

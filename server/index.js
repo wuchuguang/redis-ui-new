@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const os = require('os');
 const userService = require('./services/user');
 const redisService = require('./services/redis');
 const { DEFAULT_CONFIG } = require('./utils/constants');
@@ -15,9 +16,12 @@ const batchRoutes = require('./routes/tools/batch');
 const converterRoutes = require('./routes/tools/converter');
 const backupRoutes = require('./routes/tools/backup');
 const conversionRulesRoutes = require('./routes/conversionRules');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || DEFAULT_CONFIG.PORT;
+// HOST: 未设置时监听所有网卡(0.0.0.0)，可设为 127.0.0.1 仅本机、或具体 IP/域名
+const HOST = process.env.HOST || '0.0.0.0';
 
 // 中间件
 app.use(cors());
@@ -33,6 +37,7 @@ app.use('/api/tools/batch', batchRoutes);
 app.use('/api/tools/converter', converterRoutes);
 app.use('/api/tools/backup', backupRoutes);
 app.use('/api/conversion-rules', conversionRulesRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 前端静态文件服务 - /web 路由
 const clientDistPath = path.join(__dirname, './web');
@@ -60,10 +65,27 @@ app.get('*', (req, res) => {
 });
 
 // 启动服务器
-app.listen(PORT, async () => {
+app.listen(PORT, HOST, async () => {
   console.log(`Redis管理工具服务器运行在端口 ${PORT}`);
   console.log(`访问地址: http://localhost:${PORT}`);
-  
+  if (HOST === '0.0.0.0') {
+    const addrs = [];
+    const ifaces = os.networkInterfaces();
+    for (const name of Object.keys(ifaces)) {
+      for (const iface of ifaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal) {
+          addrs.push(`http://${iface.address}:${PORT}`);
+        }
+      }
+    }
+    if (addrs.length) {
+      console.log(`局域网访问: ${addrs.join(', ')}`);
+    }
+  }
+  if (process.env.BASE_URL) {
+    console.log(`对外访问: ${process.env.BASE_URL}`);
+  }
+
   // 加载用户数据
   await userService.loadUsersFromFile();
   

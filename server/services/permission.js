@@ -6,7 +6,7 @@ const { v4: uuidv4 } = require('uuid');
 class PermissionManager {
   constructor() {
     this.permissions = new Map(); // 内存中的权限缓存
-    this.permissionFile = path.join(__dirname, '../data/permissions.json');
+    this.permissionFile = path.join(require('../utils/paths').DATA_DIR, 'permissions.json');
   }
 
   // 权限类型定义

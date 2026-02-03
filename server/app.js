@@ -15,6 +15,7 @@ const batchRoutes = require('./routes/tools/batch');
 const converterRoutes = require('./routes/tools/converter');
 const backupRoutes = require('./routes/tools/backup');
 const conversionRulesRoutes = require('./routes/conversionRules');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || DEFAULT_CONFIG.PORT;
@@ -33,6 +34,7 @@ app.use('/api/tools/batch', batchRoutes);
 app.use('/api/tools/converter', converterRoutes);
 app.use('/api/tools/backup', backupRoutes);
 app.use('/api/conversion-rules', conversionRulesRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 前端静态文件服务 - /web 路由
 const clientDistPath = path.join(__dirname, '../client/build/web');

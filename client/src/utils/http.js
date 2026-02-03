@@ -1,9 +1,16 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
 
-// 创建axios实例
+// 开发环境直接请求后端 server（默认 3333），生产环境用相对路径 /api
+const apiBaseURL =
+  typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE
+    ? import.meta.env.VITE_API_BASE
+    : typeof import.meta !== 'undefined' && import.meta.env?.DEV
+      ? 'http://localhost:3333/api'
+      : '/api'
+
 const http = axios.create({
-  baseURL: '/api',
+  baseURL: apiBaseURL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'

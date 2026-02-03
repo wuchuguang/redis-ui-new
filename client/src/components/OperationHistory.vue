@@ -307,7 +307,7 @@ watch(() => props.connectionId, (newId) => {
 
 .operation-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--el-text-color-secondary);
 }
 
 .operation-details {
@@ -318,7 +318,7 @@ watch(() => props.connectionId, (newId) => {
 
 .operator {
   font-size: 12px;
-  color: #606266;
+  color: var(--el-text-color-placeholder);
   font-weight: 500;
 }
 
@@ -337,7 +337,7 @@ watch(() => props.connectionId, (newId) => {
 
 .detail-item {
   font-size: 12px;
-  color: #606266;
+  color: var(--el-text-color-placeholder);
   background-color: #f5f7fa;
   padding: 2px 6px;
   border-radius: 4px;

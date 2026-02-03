@@ -5,9 +5,7 @@ const fs = require('fs').promises;
 const path = require('path');
 const crypto = require('crypto');
 const { JWT_SECRET, USER_ROLES } = require('../utils/constants');
-
-// 用户数据目录
-const USERS_DIR = path.join(__dirname, '../users');
+const { USERS_DIR } = require('../utils/paths');
 const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'your-encryption-key-32-chars-long!!';
 
 // 内存存储用户数据
@@ -300,6 +298,14 @@ const getUserByUsername = (username) => {
   return user; // 返回完整用户信息，包括密码
 };
 
+// 根据用户 id（uuid）获取用户名，供 admin 路由使用
+const getUsernameById = (userId) => {
+  for (const user of users.values()) {
+    if (user.id === userId) return user.username;
+  }
+  return null;
+};
+
 // 更新用户资料
 const updateUserProfile = async (username, updateData) => {
   const user = users.get(username);
@@ -456,6 +462,7 @@ module.exports = {
   loginUser,
   getUserProfile,
   getUserByUsername,
+  getUsernameById,
   updateUserProfile,
   changePassword,
   getAllUsers,

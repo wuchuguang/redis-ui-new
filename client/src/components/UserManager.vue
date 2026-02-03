@@ -203,6 +203,63 @@
         </div>
       </template>
     </el-dialog>
+
+    <!-- 个人设置对话框 -->
+    <el-dialog
+      v-model="showSettingsDialog"
+      title="个人设置"
+      width="520px"
+      :close-on-click-modal="false"
+    >
+      <el-form
+        ref="settingsFormRef"
+        :model="settingsForm"
+        :rules="settingsRules"
+        label-width="100px"
+      >
+        <el-form-item label="主题模式" prop="theme">
+          <el-radio-group v-model="settingsForm.theme">
+            <el-radio-button label="dark">深色</el-radio-button>
+            <el-radio-button label="light">浅色</el-radio-button>
+          </el-radio-group>
+        </el-form-item>
+
+        <el-divider content-position="left">安全设置</el-divider>
+
+        <el-form-item label="旧密码" prop="oldPassword">
+          <el-input
+            v-model="settingsForm.oldPassword"
+            type="password"
+            show-password
+            placeholder="请输入旧密码"
+          />
+        </el-form-item>
+        <el-form-item label="新密码" prop="newPassword">
+          <el-input
+            v-model="settingsForm.newPassword"
+            type="password"
+            show-password
+            placeholder="请输入新密码（至少6位）"
+          />
+        </el-form-item>
+        <el-form-item label="确认新密码" prop="confirmPassword">
+          <el-input
+            v-model="settingsForm.confirmPassword"
+            type="password"
+            show-password
+            placeholder="请再次输入新密码"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button @click="showSettingsDialog = false">取消</el-button>
+          <el-button type="primary" @click="handleSaveSettings" :loading="settingsLoading">
+            保存
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -212,22 +269,27 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowDown, Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '../stores/user'
 import { useConnectionStore } from '../stores/connection'
+import { useThemeStore } from '../stores/theme'
 
 const userStore = useUserStore()
 const connectionStore = useConnectionStore()
+const themeStore = useThemeStore()
 
 // 响应式数据
 const showLoginDialog = ref(false)
 const showRegisterDialog = ref(false)
 const showProfileDialog = ref(false)
+const showSettingsDialog = ref(false)
 const loginLoading = ref(false)
 const registerLoading = ref(false)
 const profileLoading = ref(false)
+const settingsLoading = ref(false)
 
 // 表单引用
 const loginFormRef = ref()
 const registerFormRef = ref()
 const profileFormRef = ref()
+const settingsFormRef = ref()
 
 // 登录表单
 const loginForm = reactive({
@@ -252,6 +314,14 @@ const profileForm = reactive({
   nickname: '',
   avatar: '',
   role: ''
+})
+
+// 个人设置表单
+const settingsForm = reactive({
+  theme: themeStore.theme,
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
 })
 
 // 表单验证规则
@@ -299,6 +369,76 @@ const profileRules = {
   ],
   nickname: [
     { max: 20, message: '昵称长度不能超过 20 个字符', trigger: 'blur' }
+  ]
+}
+
+const hasPasswordInput = () => {
+  return Boolean(
+    settingsForm.oldPassword ||
+    settingsForm.newPassword ||
+    settingsForm.confirmPassword
+  )
+}
+
+const settingsRules = {
+  theme: [
+    { required: true, message: '请选择主题模式', trigger: 'change' }
+  ],
+  oldPassword: [
+    {
+      validator: (rule, value, callback) => {
+        if (!hasPasswordInput()) {
+          callback()
+          return
+        }
+        if (!value) {
+          callback(new Error('请输入旧密码'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ],
+  newPassword: [
+    {
+      validator: (rule, value, callback) => {
+        if (!hasPasswordInput()) {
+          callback()
+          return
+        }
+        if (!value) {
+          callback(new Error('请输入新密码'))
+          return
+        }
+        if (value.length < 6) {
+          callback(new Error('新密码长度不能少于 6 个字符'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
+  ],
+  confirmPassword: [
+    {
+      validator: (rule, value, callback) => {
+        if (!hasPasswordInput()) {
+          callback()
+          return
+        }
+        if (!value) {
+          callback(new Error('请再次输入新密码'))
+          return
+        }
+        if (value !== settingsForm.newPassword) {
+          callback(new Error('两次输入的新密码不一致'))
+          return
+        }
+        callback()
+      },
+      trigger: 'blur'
+    }
   ]
 }
 
@@ -411,8 +551,7 @@ const handleCommand = (command) => {
       loadProfileData()
       break
     case 'settings':
-      // TODO: 实现设置功能
-      ElMessage.info('设置功能开发中')
+      openSettingsDialog()
       break
     case 'logout':
       handleLogout()
@@ -425,6 +564,14 @@ const handleLoginClick = () => {
   loadSavedLoginInfo()
 }
 
+const openSettingsDialog = () => {
+  settingsForm.theme = themeStore.theme
+  settingsForm.oldPassword = ''
+  settingsForm.newPassword = ''
+  settingsForm.confirmPassword = ''
+  showSettingsDialog.value = true
+}
+
 const handleLogin = async () => {
   try {
     await loginFormRef.value.validate()
@@ -433,8 +580,8 @@ const handleLogin = async () => {
     const success = await userStore.login(loginForm)
     if (success) {
       showLoginDialog.value = false
-      ElMessage.success('登录成功')
-      
+      // 成功提示由 http 响应拦截器统一展示
+
       // 保存登录信息
       saveLoginInfo()
       
@@ -555,12 +702,42 @@ const handleUpdateProfile = async () => {
     const success = await userStore.updateProfile(profileForm)
     if (success) {
       showProfileDialog.value = false
-      ElMessage.success('个人资料更新成功')
+      // 成功提示由 http 响应拦截器统一展示
     }
   } catch (error) {
     console.error('更新个人资料失败:', error)
   } finally {
     profileLoading.value = false
+  }
+}
+
+const handleSaveSettings = async () => {
+  try {
+    await settingsFormRef.value.validate()
+    settingsLoading.value = true
+
+    if (settingsForm.theme !== themeStore.theme) {
+      themeStore.setTheme(settingsForm.theme)
+    }
+
+    if (hasPasswordInput()) {
+      const success = await userStore.changePassword({
+        oldPassword: settingsForm.oldPassword,
+        newPassword: settingsForm.newPassword
+      })
+      if (!success) {
+        return
+      }
+      settingsForm.oldPassword = ''
+      settingsForm.newPassword = ''
+      settingsForm.confirmPassword = ''
+    }
+
+    showSettingsDialog.value = false
+  } catch (error) {
+    ElMessage.error('个人设置保存失败，请检查输入信息')
+  } finally {
+    settingsLoading.value = false
   }
 }
 

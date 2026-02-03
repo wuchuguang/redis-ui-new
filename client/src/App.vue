@@ -1,752 +1,42 @@
 <template>
   <div id="app" class="app-container">
-    <!-- 顶部工具栏 -->
-    <div class="top-toolbar">
+    <!-- 仅 /web/admin 入口显示：独立管理后台顶栏（返回首页 + 主题 + 用户） -->
+    <div v-if="isAdminRoute" class="top-toolbar top-toolbar-global">
       <div class="toolbar-left">
-        <el-button type="primary" class="connection-manager-btn" @click="openConnectionManagerDialog">
-          <el-icon><Setting /></el-icon>
-          连接管理
-        </el-button>
-        <el-button type="success" class="new-connection-btn" @click="openNewConnectionDialog">
-          <el-icon><Plus /></el-icon>
-          新建连接
-        </el-button>
-        <el-button type="text" class="toolbar-btn" @click="openOperationHistory">
-          <el-icon><Clock /></el-icon>
-        </el-button>
+        <router-link to="/" class="nav-link">
+          <el-icon><ArrowLeft /></el-icon>
+          返回首页
+        </router-link>
       </div>
-      
-      <div class="toolbar-center">
-        <div class="connection-tab" v-if="currentConnection">
-          <span>{{ currentConnection.redis.name }}</span>
-          <el-icon class="close-icon" @click="closeConnection">
-            <Close />
-          </el-icon>
-        </div>
-      </div>
-      
       <div class="toolbar-right">
-        <el-button type="text" class="toolbar-btn" @click="refreshData">
-          <el-icon><Refresh /></el-icon>
-        </el-button>
-        <el-switch
-          v-model="autoRefresh"
-          active-text="自动刷新"
-          inactive-text=""
-          class="auto-refresh-switch"
-        />
-        <el-button type="text" class="toolbar-btn" @click="openDataOperationsTool">
-          <el-icon><Operation /></el-icon>
-        </el-button>
-        <el-button type="text" class="toolbar-btn" @click="openConversionRulesManager">
-          <el-icon><Setting /></el-icon>
-        </el-button>
+        <el-tooltip :content="themeStore.isDark ? '切换为浅色' : '切换为深色'" placement="bottom">
+          <el-button type="text" class="toolbar-btn theme-toggle" @click="themeStore.toggleTheme">
+            <el-icon v-if="themeStore.isDark"><Sunny /></el-icon>
+            <el-icon v-else><Moon /></el-icon>
+            <span class="theme-label">{{ themeStore.isDark ? '浅色' : '深色' }}</span>
+          </el-button>
+        </el-tooltip>
         <UserManager />
       </div>
     </div>
 
-    <!-- 主内容区域 -->
-    <div class="main-content">
-      <!-- 左侧边栏 -->
-      <div class="left-sidebar">
-        <ConnectionExplorer 
-          ref="connectionExplorerRef"
-          :connection="currentConnection"
-          @select-database="handleDatabaseSelect"
-          @add-key="handleAddKey"
-          @search-keys="handleSearchKeys"
-          @select-connection="handleSelectConnection"
-          @select-key="handleSelectKey"
-          @open-conversion-rules="handleOpenConversionRules"
-          @open-redis-info="handleOpenRedisInfo"
-        />
-      </div>
-
-      <!-- 右侧主内容区 -->
-      <div class="right-content">
-        <RedisOverview 
-          v-if="!selectedKey"
-          :connection="currentConnection"
-          :redis-info="redisInfo"
-          :last-connection-name="getLastConnectionName()"
-          @refresh="refreshData"
-          @quick-connect-last="quickConnectLastConnection"
-          @restore-last-connection="tryRestoreLastConnection"
-          @open-connection-manager="openConnectionManagerDialog"
-        />
-        <KeyValueDisplay 
-          v-else
-          :connection="currentConnection"
-          :selected-key="selectedKey"
-          :database="currentDatabase"
-          @key-deleted="handleKeyDeleted"
-          @key-updated="handleKeyUpdated"
-          @go-back="handleGoBack"
-        />
-      </div>
-    </div>
-
-    <!-- 新建连接对话框 -->
-    <NewConnectionDialog 
-      v-model="showNewConnectionDialog"
-      @connection-created="handleConnectionCreated"
-    />
-
-    <!-- 连接管理对话框 -->
-    <ConnectionManagerDialog 
-      v-model="showConnectionManagerDialog"
-      @connection-selected="handleConnectionSelected"
-      @connection-deleted="handleConnectionDeleted"
-      @connection-updated="handleConnectionUpdated"
-    />
-
-    <!-- 转换规则管理器 -->
-    <ConversionRulesManager 
-      v-model="showConversionRulesManager"
-      @rules-changed="handleRulesChanged"
-    />
-
-    <!-- 数据操作工具对话框 -->
-    <DataOperationsTool 
-      v-model="showDataOperationsTool"
-      :connection="currentConnection"
-    />
-
-    <!-- 操作历史对话框 -->
-    <el-dialog
-      v-model="showOperationHistory"
-      title="操作历史"
-      width="800px"
-      :close-on-click-modal="false"
-      destroy-on-close
-    >
-      <OperationHistory 
-        v-if="currentConnection"
-        :connection-id="currentConnection.id"
-        ref="operationHistoryRef"
-      />
-      <div v-else class="no-connection-tip">
-        <el-empty description="请先选择一个连接" />
-      </div>
-    </el-dialog>
-
-    <!-- 转换规则管理对话框 -->
-    <ConversionRulesManager
-      v-model="showConversionRulesManager"
-      :connection-id="currentConnection?.id"
-    />
+    <main class="app-main">
+      <router-view />
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Setting, Clock, Close, Refresh, Operation } from '@element-plus/icons-vue'
-import { useConnectionStore } from './stores/connection'
-import { useUserStore } from './stores/user'
-import { operationLogger } from './utils/operationLogger'
-import ConnectionExplorer from './components/ConnectionExplorer.vue'
-import RedisOverview from './components/RedisOverview.vue'
-import NewConnectionDialog from './components/NewConnectionDialog.vue'
-import KeyValueDisplay from './components/KeyValueDisplay.vue'
-import ConnectionManagerDialog from './components/ConnectionManagerDialog.vue'
-import ConversionRulesManager from './components/ConversionRulesManager.vue'
-import DataOperationsTool from './components/DataOperationsTool.vue'
-import OperationHistory from './components/OperationHistory.vue'
+import { computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { Sunny, Moon, ArrowLeft } from '@element-plus/icons-vue'
+import { useThemeStore } from './stores/theme'
 import UserManager from './components/UserManager.vue'
 
-const connectionStore = useConnectionStore()
-const userStore = useUserStore()
+const route = useRoute()
+const themeStore = useThemeStore()
 
-// 响应式数据
-const showNewConnectionDialog = ref(false)
-const showConnectionManagerDialog = ref(false)
-const showConversionRulesManager = ref(false)
-const showDataOperationsTool = ref(false)
-const showOperationHistory = ref(false)
-const operationHistoryRef = ref(null)
-const connectionExplorerRef = ref(null)
-const autoRefresh = ref(true)
-const currentConnection = ref(null)
-const redisInfo = ref(null)
-const selectedKey = ref(null)
-const currentDatabase = ref(0)
-
-// 方法
-const openNewConnectionDialog = () => {
-  showNewConnectionDialog.value = true
-}
-
-const openConnectionManagerDialog = () => {
-  showConnectionManagerDialog.value = true
-}
-
-const openOperationHistory = () => {
-  if (!currentConnection.value) {
-    ElMessage.warning('请先选择一个连接')
-    return
-  }
-  showOperationHistory.value = true
-}
-
-const openDataOperationsTool = () => {
-  if (!currentConnection.value) {
-    ElMessage.warning('请先选择一个连接')
-    return
-  }
-  showDataOperationsTool.value = true
-}
-
-const openConversionRulesManager = () => {
-  if (!currentConnection.value) {
-    ElMessage.warning('请先选择一个连接')
-    return
-  }
-  showConversionRulesManager.value = true
-}
-
-const closeConnection = () => {
-  // 清空所有连接相关数据
-  currentConnection.value = null
-  redisInfo.value = null
-  selectedKey.value = null
-  currentDatabase.value = 0
-  
-  // 清除保存的状态
-  localStorage.removeItem('redisManagerState')
-}
-
-const refreshData = async () => {
-  console.log('refreshData 被调用，当前连接:', currentConnection.value)
-  
-  if (currentConnection.value) {
-    // 检查连接是否已被用户关闭
-    let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
-    if (closedIds.includes(currentConnection.value.id)) {
-      console.log(`连接 ${currentConnection.value.id} 已被用户关闭，跳过刷新`)
-      return
-    }
-    
-    // 尝试获取Redis信息，不管连接状态如何
-    try {
-      console.log(`尝试获取连接 ${currentConnection.value.id} 的Redis信息，连接状态:`, currentConnection.value.status)
-      redisInfo.value = await connectionStore.getConnectionInfo(currentConnection.value.id)
-      console.log('Redis信息获取成功:', redisInfo.value)
-    } catch (error) {
-      console.error('刷新Redis信息失败:', error)
-      // 如果获取失败，清空Redis信息
-      redisInfo.value = null
-    }
-  } else {
-    console.log('没有当前连接，跳过刷新')
-  }
-}
-
-
-const handleConnectionSelected = (connection) => {
-  console.log('handleConnectionSelected 被调用，连接:', connection)
-  
-  // 清空旧连接的所有数据
-  selectedKey.value = null
-  redisInfo.value = null
-  currentDatabase.value = 0
-  
-  // 设置新连接
-  currentConnection.value = connection
-  
-  // 如果连接状态是connected，立即获取Redis信息
-  if (connection.status === 'connected') {
-    console.log('连接状态为connected，立即获取Redis信息')
-    refreshData()
-  } else {
-    console.log('连接状态不是connected，延迟500ms后获取Redis信息')
-    // 延迟调用refreshData，避免在连接刚建立后立即检查连接状态
-    setTimeout(() => {
-      refreshData()
-    }, 500)
-  }
-  
-  // 保存当前状态到localStorage
-  saveCurrentState()
-  
-  // 记录操作日志
-  operationLogger.logConnectionSelected(connection)
-}
-
-const handleConnectionDeleted = (connectionId) => {
-  // 如果删除的是当前连接，清空当前连接
-  if (currentConnection.value && currentConnection.value.id === connectionId) {
-    const connectionName = currentConnection.value.name
-    // 清空所有连接相关数据
-    currentConnection.value = null
-    redisInfo.value = null
-    selectedKey.value = null
-    currentDatabase.value = 0
-    // 清除保存的状态
-    localStorage.removeItem('redisManagerState')
-    // 记录操作日志
-    operationLogger.logConnectionDeleted(connectionId, connectionName)
-  }
-}
-
-const handleConnectionUpdated = (connection) => {
-  // 如果更新的是当前连接，更新当前连接
-  if (currentConnection.value && currentConnection.value.id === connection.id) {
-    currentConnection.value = connection
-  }
-}
-
-const handleConnectionCreated = async (connection) => {
-  operationLogger.logConnectionCreated(connection)
-  // 从服务端刷新连接列表，确保新建连接立即显示且与后端一致
-  await connectionStore.fetchConnections()
-}
-
-const handleDatabaseSelect = (database) => {
-  currentDatabase.value = database
-  selectedKey.value = null // 切换数据库时清空选中的键
-  console.log('选择数据库:', database)
-  // 保存当前状态到localStorage
-  saveCurrentState()
-  // 记录操作日志
-  operationLogger.logDatabaseSelected(database, currentConnection.value)
-}
-
-const handleAddKey = async (keyData) => {
-  console.log('添加新键:', keyData)
-  
-  if (!currentConnection.value) {
-    ElMessage.error('请先选择一个连接')
-    return
-  }
-  
-  try {
-    // 调用后端API创建Key
-    const result = await connectionStore.createKey(
-      currentConnection.value.id,
-      currentDatabase.value,
-      keyData
-    )
-    
-    if (result) {
-      ElMessage.success('Key创建成功')
-      // 刷新键列表
-      if (connectionExplorerRef.value) {
-        await connectionExplorerRef.value.refreshKeys(true)
-      }
-    }
-  } catch (error) {
-    console.error('创建Key失败:', error)
-    ElMessage.error('创建Key失败')
-  }
-}
-
-const handleSearchKeys = (searchTerm) => {
-  console.log('搜索键:', searchTerm)
-}
-
-const handleSelectKey = async (key) => {
-  console.log('选择键:', key)
-  // 使用 nextTick 确保 DOM 更新完成
-  await nextTick()
-  // 确保 key 对象是响应式的
-  selectedKey.value = { ...key }
-  
-  // 保存当前状态到localStorage
-  saveCurrentState()
-  // 记录操作日志
-  operationLogger.logKeySelected(key, currentConnection.value)
-}
-
-const handleGoBack = () => {
-  selectedKey.value = null
-  // 保存当前状态到localStorage
-  saveCurrentState()
-}
-
-const handleKeyDeleted = (keyName) => {
-  selectedKey.value = null
-  // 保存当前状态到localStorage
-  saveCurrentState()
-  // 记录操作日志
-  operationLogger.logKeyDeleted(keyName, currentConnection.value)
-  // 这里可以刷新键列表
-  console.log('键已删除:', keyName)
-}
-
-const handleKeyUpdated = (updateInfo) => {
-  // 更新选中的键名
-  if (selectedKey.value && selectedKey.value.name === updateInfo.oldKey) {
-    // 创建新的对象来触发响应式更新
-    selectedKey.value = {
-      ...selectedKey.value,
-      name: updateInfo.newKey
-    }
-    // 保存当前状态到localStorage
-    saveCurrentState()
-    // 记录操作日志
-    operationLogger.logKeyRenamed(updateInfo.oldKey, updateInfo.newKey, currentConnection.value)
-  }
-  console.log('键已更新:', updateInfo)
-}
-
-const handleSelectConnection = (connection) => {
-  currentConnection.value = connection
-  if (connection) {
-    refreshData()
-  } else {
-    redisInfo.value = null
-  }
-}
-
-const handleOpenConversionRules = () => {
-  showConversionRulesManager.value = true
-}
-
-const handleOpenRedisInfo = () => {
-  console.log('handleOpenRedisInfo 被调用，当前连接:', currentConnection.value)
-  
-  // 切换到Redis服务信息视图（清空选中的键，显示RedisOverview）
-  selectedKey.value = null
-  // 立即刷新Redis信息
-  if (currentConnection.value) {
-    console.log('有当前连接，立即刷新Redis信息')
-    refreshData()
-  } else {
-    console.log('没有当前连接')
-  }
-}
-
-// 保存当前状态到localStorage
-const saveCurrentState = () => {
-  const state = {
-    currentConnectionId: currentConnection.value?.id,
-    currentDatabase: currentDatabase.value,
-    selectedKey: selectedKey.value
-  }
-  localStorage.setItem('redisManagerState', JSON.stringify(state))
-  console.log('保存当前状态:', state)
-}
-
-// 从localStorage恢复状态
-const restoreCurrentState = () => {
-  try {
-    const savedState = localStorage.getItem('redisManagerState')
-    if (savedState) {
-      const state = JSON.parse(savedState)
-      console.log('恢复保存的状态:', state)
-      
-      // 恢复数据库选择
-      if (state.currentDatabase !== undefined) {
-        currentDatabase.value = state.currentDatabase
-      }
-      
-      return state
-    }
-  } catch (error) {
-    console.error('恢复状态失败:', error)
-  }
-  return null
-}
-
-// 尝试恢复上一次连接
-const tryRestoreLastConnection = async () => {
-  try {
-    const savedState = localStorage.getItem('redisManagerState')
-    if (!savedState) {
-      console.log('没有找到保存的连接状态')
-      return false
-    }
-    
-    const state = JSON.parse(savedState)
-    if (!state.currentConnectionId) {
-      console.log('保存的状态中没有连接ID')
-      return false
-    }
-    
-    console.log('发现上次连接记录，连接ID:', state.currentConnectionId)
-    
-    // 获取用户的所有连接列表
-    const allConnections = connectionStore.getAllConnections
-    console.log('用户连接列表:', allConnections)
-    
-    // 查找保存的连接是否在用户的连接列表中
-    const savedConnection = allConnections.find(conn => conn.id === state.currentConnectionId)
-    
-    if (!savedConnection) {
-      console.log('保存的连接不在用户连接列表中，跳过恢复')
-      return false
-    }
-    
-    // 调试：输出连接对象的完整结构
-    console.log('找到匹配的连接对象:', savedConnection)
-    console.log('连接对象属性:', {
-      id: savedConnection.id,
-      name: savedConnection.name,
-      'redis.name': savedConnection.redis?.name,
-      host: savedConnection.host,
-      port: savedConnection.port
-    })
-    
-    // 获取连接名称，优先使用 redis.name
-    const connectionName = savedConnection.redis?.name || savedConnection.name || savedConnection.host || '未知连接'
-    console.log('找到匹配的连接:', connectionName)
-    
-    // 询问用户是否要恢复上次连接
-    try {
-      await ElMessageBox.confirm(
-        `是否要恢复上次的连接 "${connectionName}"？`,
-        '恢复上次连接',
-        {
-          confirmButtonText: '恢复',
-          cancelButtonText: '稍后',
-          type: 'primary'
-        }
-      )
-      
-      // 用户确认恢复，尝试连接
-      console.log('用户确认恢复连接，开始连接...')
-      const success = await connectionStore.connectToRedis(savedConnection)
-      
-      if (success) {
-        // 连接成功，设置为当前连接
-        handleConnectionSelected(savedConnection)
-        
-        // 恢复选中的键（如果存在）
-        if (state.selectedKey) {
-          selectedKey.value = state.selectedKey
-          console.log('恢复选中的键:', state.selectedKey.name)
-        }
-        
-        return true
-      } else {
-        return false
-      }
-    } catch (error) {
-      // 用户取消操作
-      console.log('用户取消恢复连接')
-      return false
-    }
-  } catch (error) {
-    console.error('恢复上次连接失败:', error)
-    return false
-  }
-}
-
-// 获取最近使用的连接
-const getLastUsedConnection = () => {
-  return connectionStore.getLastUsedConnection()
-}
-
-// 获取最近使用的连接名称
-const getLastConnectionName = () => {
-  const lastConnection = getLastUsedConnection()
-  if (!lastConnection) return ''
-  
-  // 优先使用 redis.name
-  return lastConnection.redis?.name || lastConnection.name || lastConnection.host || '未知连接'
-}
-
-// 快速连接最近使用的连接
-const quickConnectLastConnection = async () => {
-  const lastConnection = getLastUsedConnection()
-  if (!lastConnection) {
-    ElMessage.warning('没有找到最近使用的连接记录')
-    return
-  }
-  
-  try {
-    // 尝试连接
-    const success = await connectionStore.connectToRedis(lastConnection)
-    if (success) {
-      // 连接成功，设置为当前连接
-      handleConnectionSelected(lastConnection)
-      ElMessage.success(`已快速连接到 ${lastConnection.name}`)
-    } else {
-      ElMessage.error('连接失败，请检查连接配置')
-    }
-  } catch (error) {
-    console.error('快速连接失败:', error)
-    ElMessage.error('快速连接失败')
-  }
-}
-
-const handleRulesChanged = (rules) => {
-  // 保存规则到本地存储
-  localStorage.setItem('conversionRules', JSON.stringify(rules))
-  console.log('转换规则已更新:', rules)
-  
-  // 通知所有组件规则已更新
-  // 这里可以触发全局事件或更新全局状态
-}
-
-// 自动刷新定时器
-let autoRefreshInterval = null
-
-// 启动自动刷新
-const startAutoRefresh = () => {
-  if (autoRefreshInterval) {
-    clearInterval(autoRefreshInterval)
-  }
-  
-  if (autoRefresh.value && currentConnection.value) {
-    // 检查连接是否已被用户关闭
-    let closedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
-    if (closedIds.includes(currentConnection.value.id)) {
-      console.log(`连接 ${currentConnection.value.id} 已被用户关闭，不启动自动刷新`)
-      return
-    }
-    
-    autoRefreshInterval = setInterval(async () => {
-      if (currentConnection.value && currentConnection.value.status === 'connected') {
-        // 再次检查连接是否已被关闭
-        let currentClosedIds = JSON.parse(localStorage.getItem('closedConnectionIds') || '[]')
-        if (currentClosedIds.includes(currentConnection.value.id)) {
-          console.log(`连接 ${currentConnection.value.id} 已被用户关闭，停止自动刷新`)
-          stopAutoRefresh()
-          return
-        }
-        
-        try {
-          await refreshData()
-          console.log('🔄 自动刷新数据完成')
-        } catch (error) {
-          console.log('自动刷新失败，静默处理:', error.message)
-          // 不显示错误消息，避免干扰用户
-        }
-      }
-    }, 10000) // 每10秒自动刷新一次
-  }
-}
-
-// 停止自动刷新
-const stopAutoRefresh = () => {
-  if (autoRefreshInterval) {
-    clearInterval(autoRefreshInterval)
-    autoRefreshInterval = null
-  }
-}
-
-// 监听自动刷新开关变化
-watch(autoRefresh, (newValue) => {
-  if (newValue) {
-    startAutoRefresh()
-  } else {
-    stopAutoRefresh()
-  }
-})
-
-// 监听当前连接变化
-watch(currentConnection, (newConnection) => {
-  if (autoRefresh.value) {
-    if (newConnection) {
-      startAutoRefresh()
-    } else {
-      stopAutoRefresh()
-    }
-  }
-})
-
-// 生命周期
-onMounted(async () => {
-  // 初始化用户状态
-  await userStore.initializeUser()
-  
-  // 初始化连接列表，但不自动连接
-  await connectionStore.initializeConnections()
-  
-  // 尝试恢复上一次连接
-  await tryRestoreLastConnection()
-  
-  // 启动防滚动抖动
-  preventScrollBounce()
-  
-  // 启动自动刷新
-  if (autoRefresh.value) {
-    startAutoRefresh()
-  }
-  
-  // 定期刷新连接状态（每30秒）
-  const statusInterval = setInterval(async () => {
-    try {
-      await connectionStore.refreshConnectionStatus()
-    } catch (error) {
-      console.log('刷新连接状态失败，静默处理:', error.message)
-      // 不显示错误消息，避免干扰用户
-    }
-  }, 30000)
-  
-  // 定期ping当前连接（每20秒）- 只有当用户选择了连接时才ping
-  const pingInterval = setInterval(async () => {
-    if (currentConnection.value && currentConnection.value.status === 'connected') {
-      try {
-        const result = await connectionStore.pingConnection(currentConnection.value.id)
-        if (!result) {
-          console.log('⚠️ Ping失败，连接可能已断开')
-          // 不自动重连，让用户手动处理
-          console.log('连接已断开，请用户手动重新连接')
-        } else {
-          console.log('✅ Ping成功，连接正常')
-        }
-      } catch (error) {
-        console.log('Ping连接出错，静默处理:', error.message)
-        // 不显示错误消息，避免干扰用户
-      }
-    }
-  }, 20000)
-  
-  // 组件卸载时清理
-  onUnmounted(() => {
-    if (autoRefreshInterval) {
-      clearInterval(autoRefreshInterval)
-    }
-    if (pingInterval) {
-      clearInterval(pingInterval)
-    }
-    if (statusInterval) {
-      clearInterval(statusInterval)
-    }
-  })
-})
-
-// 防止滚动抖动的处理
-const preventScrollBounce = () => {
-  // 防止页面整体滚动抖动
-  document.addEventListener('wheel', (e) => {
-    const target = e.target
-    const scrollableElement = target.closest('.overflow-y-auto, [style*="overflow-y: auto"]')
-    
-    if (scrollableElement) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollableElement
-      
-      // 如果滚动到顶部，阻止向上滚动
-      if (scrollTop <= 0 && e.deltaY < 0) {
-        e.preventDefault()
-      }
-      
-      // 如果滚动到底部，阻止向下滚动
-      if (scrollTop + clientHeight >= scrollHeight && e.deltaY > 0) {
-        e.preventDefault()
-      }
-    }
-  }, { passive: false })
-  
-  // 防止触摸设备的滚动抖动
-  document.addEventListener('touchmove', (e) => {
-    const target = e.target
-    const scrollableElement = target.closest('.overflow-y-auto, [style*="overflow-y: auto"]')
-    
-    if (scrollableElement) {
-      const { scrollTop, scrollHeight, clientHeight } = scrollableElement
-      
-      // 如果滚动到顶部或底部，阻止继续滚动
-      if ((scrollTop <= 0 && e.touches[0].clientY > e.touches[0].clientY) ||
-          (scrollTop + clientHeight >= scrollHeight && e.touches[0].clientY < e.touches[0].clientY)) {
-        e.preventDefault()
-      }
-    }
-  }, { passive: false })
-}
+const isAdminRoute = computed(() => route.path === '/admin')
 </script>
 
 <style>
@@ -755,53 +45,46 @@ const preventScrollBounce = () => {
   padding: 0;
 }
 
+/* 主题变量由 src/assets/styles/theme.css 根据 data-theme 提供 */
+
 #app {
   height: 100vh;
-  background-color: #1e1e1e;
-  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--app-bg);
+  color: var(--app-text);
   font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
 }
 
-/* 全局深色主题样式 */
-:root {
-  --el-color-primary: #409eff;
-  --el-color-success: #67c23a;
-  --el-color-warning: #e6a23c;
-  --el-color-danger: #f56c6c;
-  --el-color-info: #909399;
-  
-  --el-bg-color: #1e1e1e;
-  --el-bg-color-page: #1e1e1e;
-  --el-bg-color-overlay: #2d2d2d;
-  
-  --el-text-color-primary: #ffffff;
-  --el-text-color-regular: #ffffff;
-  --el-text-color-secondary: #909399;
-  --el-text-color-placeholder: #606266;
-  
-  --el-border-color: #404040;
-  --el-border-color-light: #404040;
-  --el-border-color-lighter: #404040;
-  --el-border-color-extra-light: #404040;
-  
-  --el-fill-color: #2d2d2d;
-  --el-fill-color-light: #2d2d2d;
-  --el-fill-color-lighter: #2d2d2d;
-  --el-fill-color-extra-light: #2d2d2d;
-  --el-fill-color-dark: #1e1e1e;
-  --el-fill-color-darker: #1e1e1e;
-  
-  /* 输入框专用变量 */
-  --el-input-bg-color: #2d2d2d;
-  --el-input-border-color: #404040;
-  --el-input-text-color: hwb(245 2% 66% / 0.4);
-  --el-input-placeholder-color: #909399;
-  
-  /* 对话框专用变量 */
-  --el-dialog-text-color: #ffffff;
+.app-main {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
-/* 自定义滚动条样式 */
+.top-toolbar-global {
+  flex-shrink: 0;
+}
+
+.nav-link {
+  color: var(--el-text-color-primary);
+  text-decoration: none;
+  margin-right: 16px;
+  font-size: 14px;
+}
+.nav-link:hover {
+  color: var(--el-color-primary);
+}
+.nav-link.router-link-active {
+  color: var(--el-color-primary);
+  font-weight: 500;
+}
+.nav-link .el-icon {
+  margin-right: 4px;
+  vertical-align: middle;
+}
+
+/* 自定义滚动条（随主题变化） */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -813,23 +96,22 @@ const preventScrollBounce = () => {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #606266;
+  background: var(--app-scrollbar-thumb);
   border-radius: 2px;
   transition: background-color 0.2s;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #909399;
+  background: var(--app-scrollbar-thumb-hover);
 }
 
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-/* Firefox 滚动条样式 */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #606266 transparent;
+  scrollbar-color: var(--app-scrollbar-thumb) transparent;
 }
 
 /* 防止滚动抖动 */
@@ -923,117 +205,137 @@ html, body {
 
 /* 深色主题下的按钮样式覆盖 */
 .el-button--info {
-  background-color: #606266 !important;
-  border-color: #606266 !important;
-  color: #ffffff !important;
+  background-color: var(--el-fill-color-dark) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--info:hover {
   background-color: #737373 !important;
   border-color: #737373 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--info:active {
-  background-color: #525252 !important;
-  border-color: #525252 !important;
-  color: #ffffff !important;
+  background-color: var(--el-fill-color-dark) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--info.is-disabled {
-  background-color: #404040 !important;
-  border-color: #404040 !important;
-  color: #909399 !important;
+  background-color: var(--el-border-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-secondary) !important;
 }
 
 /* 确保所有按钮类型在深色主题下都有良好的对比度 */
 .el-button--default {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--default:hover {
-  background-color: #404040 !important;
-  border-color: #606266 !important;
-  color: #ffffff !important;
+  background-color: var(--el-border-color) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--default:active {
-  background-color: #1e1e1e !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--default.is-disabled {
-  background-color: #1e1e1e !important;
-  border-color: #404040 !important;
-  color: #909399 !important;
+  background-color: var(--el-bg-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-secondary) !important;
 }
 
 /* 其他按钮类型的深色主题覆盖 */
 .el-button--warning {
   background-color: #e6a23c !important;
   border-color: #e6a23c !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--warning:hover {
   background-color: #ebb563 !important;
   border-color: #ebb563 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--warning:active {
   background-color: #cf9236 !important;
   border-color: #cf9236 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--danger {
   background-color: #f56c6c !important;
   border-color: #f56c6c !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--danger:hover {
   background-color: #f78989 !important;
   border-color: #f78989 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--danger:active {
   background-color: #dd6161 !important;
   border-color: #dd6161 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 确保成功和主要按钮类型也有良好的对比度 */
 .el-button--success {
   background-color: #67c23a !important;
   border-color: #67c23a !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--success:hover {
   background-color: #85ce61 !important;
   border-color: #85ce61 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--primary {
   background-color: #409eff !important;
   border-color: #409eff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-button--primary:hover {
   background-color: #66b1ff !important;
   border-color: #66b1ff !important;
-  color: #ffffff !important;
+  color: #fff !important;
 }
 
-/* 移除强制覆盖，使用Element Plus默认深色主题 */
+/* 有背景色的按钮保持白色文字，两种主题下均可读 */
+.el-button--primary,
+.el-button--primary:hover,
+.el-button--primary:active,
+.el-button--success,
+.el-button--success:hover,
+.el-button--success:active,
+.el-button--danger,
+.el-button--danger:hover,
+.el-button--danger:active,
+.el-button--warning,
+.el-button--warning:hover,
+.el-button--warning:active,
+.el-button--info,
+.el-button--info:hover,
+.el-button--info:active,
+.el-select-dropdown__item.selected {
+  color: #fff !important;
+}
+
+/* 移除强制覆盖，使用主题变量 */
 
 /* 强制覆盖所有输入框样式 - 最高优先级 */
 .el-input__inner,
@@ -1045,38 +347,38 @@ html, body {
 .el-date-editor .el-input__inner,
 .el-time-picker .el-input__inner,
 .el-color-picker .el-input__inner {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 强制覆盖所有输入框占位符 */
 .el-input__inner::placeholder,
 .el-textarea__inner::placeholder {
-  color: #909399 !important;
+  color: var(--el-text-color-secondary) !important;
 }
 
 /* 强制覆盖所有输入框包装器 */
 .el-input__wrapper,
 .el-textarea__wrapper {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
 }
 
 /* 强制覆盖所有select组件 */
 .el-select .el-input__inner,
 .el-select .el-input__wrapper {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 强制覆盖所有数字输入框 */
 .el-input-number .el-input__inner,
 .el-input-number .el-input__wrapper {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 强制覆盖对话框中的所有输入框 */
@@ -1085,14 +387,14 @@ html, body {
 .el-dialog .el-input-number .el-input__inner,
 .el-dialog .el-select .el-input__inner,
 .el-dialog .el-autocomplete .el-input__inner {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-input__inner::placeholder,
 .el-dialog .el-textarea__inner::placeholder {
-  color: #909399 !important;
+  color: var(--el-text-color-secondary) !important;
 }
 
 /* 强制覆盖所有可能的输入框场景 */
@@ -1103,9 +405,9 @@ input[type="email"],
 input[type="search"],
 input[type="tel"],
 input[type="url"] {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 强制覆盖所有输入框聚焦状态 */
@@ -1120,59 +422,59 @@ input[type="url"] {
 /* 强制覆盖所有输入框悬停状态 */
 .el-input__wrapper:hover,
 .el-textarea__wrapper:hover {
-  border-color: #606266 !important;
+  border-color: var(--el-fill-color-dark) !important;
 }
 
 /* 强制覆盖下拉菜单样式 */
 .el-select-dropdown {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
 }
 
 .el-select-dropdown__item {
-  color: #ffffff !important;
-  background-color: #2d2d2d !important;
+  color: var(--el-text-color-primary) !important;
+  background-color: var(--el-bg-color-overlay) !important;
 }
 
 .el-select-dropdown__item:hover {
-  background-color: #404040 !important;
+  background-color: var(--el-border-color) !important;
 }
 
 .el-select-dropdown__item.selected {
   background-color: #409eff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 强制覆盖数字输入框的按钮 */
 .el-input-number .el-input-number__decrease,
 .el-input-number .el-input-number__increase {
-  background-color: #404040 !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-border-color) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-input-number .el-input-number__decrease:hover,
 .el-input-number .el-input-number__increase:hover {
-  background-color: #606266 !important;
+  background-color: var(--el-fill-color-dark) !important;
 }
 
 /* 确保下拉选择框正确显示 */
 .el-select-dropdown {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
 }
 
 .el-select-dropdown__item {
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-select-dropdown__item:hover {
-  background-color: #404040 !important;
+  background-color: var(--el-border-color) !important;
 }
 
 .el-select-dropdown__item.selected {
   background-color: #409eff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 数字输入框按钮样式已由上面的强制覆盖处理 */
@@ -1211,25 +513,25 @@ input[type="url"] {
 .el-tag--success {
   background-color: var(--el-color-success) !important;
   border-color: var(--el-color-success) !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-tag--danger {
   background-color: var(--el-color-danger) !important;
   border-color: var(--el-color-danger) !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-tag--info {
-  background-color: #606266 !important;
-  border-color: #606266 !important;
-  color: #ffffff !important;
+  background-color: var(--el-fill-color-dark) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-tag--warning {
   background-color: var(--el-color-warning) !important;
   border-color: var(--el-color-warning) !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog {
@@ -1256,75 +558,75 @@ input[type="url"] {
 
 /* 对话框按钮的深色主题覆盖 */
 .el-dialog .el-button {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button:hover {
-  background-color: #404040 !important;
-  border-color: #606266 !important;
-  color: #ffffff !important;
+  background-color: var(--el-border-color) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--primary {
   background-color: #409eff !important;
   border-color: #409eff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--primary:hover {
   background-color: #66b1ff !important;
   border-color: #66b1ff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--success {
   background-color: #67c23a !important;
   border-color: #67c23a !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--success:hover {
   background-color: #85ce61 !important;
   border-color: #85ce61 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--warning {
   background-color: #e6a23c !important;
   border-color: #e6a23c !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--warning:hover {
   background-color: #ebb563 !important;
   border-color: #ebb563 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--danger {
   background-color: #f56c6c !important;
   border-color: #f56c6c !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--danger:hover {
   background-color: #f78989 !important;
   border-color: #f78989 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--info {
-  background-color: #606266 !important;
-  border-color: #606266 !important;
-  color: #ffffff !important;
+  background-color: var(--el-fill-color-dark) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-dialog .el-button--info:hover {
   background-color: #737373 !important;
   border-color: #737373 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-form-item__label {
@@ -1365,79 +667,79 @@ input[type="url"] {
 
 /* 消息框按钮的深色主题覆盖 */
 .el-message-box .el-button {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
-  color: #ffffff !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button:hover {
-  background-color: #404040 !important;
-  border-color: #606266 !important;
-  color: #ffffff !important;
+  background-color: var(--el-border-color) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--primary {
   background-color: #409eff !important;
   border-color: #409eff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--primary:hover {
   background-color: #66b1ff !important;
   border-color: #66b1ff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--success {
   background-color: #67c23a !important;
   border-color: #67c23a !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--success:hover {
   background-color: #85ce61 !important;
   border-color: #85ce61 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--warning {
   background-color: #e6a23c !important;
   border-color: #e6a23c !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--warning:hover {
   background-color: #ebb563 !important;
   border-color: #ebb563 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--danger {
   background-color: #f56c6c !important;
   border-color: #f56c6c !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--danger:hover {
   background-color: #f78989 !important;
   border-color: #f78989 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--info {
-  background-color: #606266 !important;
-  border-color: #606266 !important;
-  color: #ffffff !important;
+  background-color: var(--el-fill-color-dark) !important;
+  border-color: var(--el-fill-color-dark) !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-message-box .el-button--info:hover {
   background-color: #737373 !important;
   border-color: #737373 !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-loading-mask {
-  background-color: rgba(30, 30, 30, 0.8) !important;
+  background-color: var(--app-mask-bg) !important;
 }
 
 .el-skeleton__item {
@@ -1472,26 +774,26 @@ input[type="url"] {
 
 /* 自动完成下拉框 */
 .el-autocomplete-suggestion {
-  background-color: #2d2d2d !important;
-  border-color: #404040 !important;
+  background-color: var(--el-bg-color-overlay) !important;
+  border-color: var(--el-border-color) !important;
 }
 
 .el-autocomplete-suggestion__list {
-  background-color: #2d2d2d !important;
+  background-color: var(--el-bg-color-overlay) !important;
 }
 
 .el-autocomplete-suggestion__list li {
-  color: #ffffff !important;
-  background-color: #2d2d2d !important;
+  color: var(--el-text-color-primary) !important;
+  background-color: var(--el-bg-color-overlay) !important;
 }
 
 .el-autocomplete-suggestion__list li:hover {
-  background-color: #404040 !important;
+  background-color: var(--el-border-color) !important;
 }
 
 .el-autocomplete-suggestion__list li.highlighted {
   background-color: #409eff !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .el-switch__label {
@@ -1546,7 +848,7 @@ input[type="url"] {
 
 .el-pagination .el-pager li.is-active {
   background-color: var(--el-color-primary) !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 /* 确保工具提示文字清晰可见 */
@@ -1580,7 +882,7 @@ input[type="url"] {
 
 .el-cascader-node.is-active {
   background-color: var(--el-color-primary) !important;
-  color: #ffffff !important;
+  color: var(--el-text-color-primary) !important;
 }
 
 .app-container {
@@ -1591,8 +893,8 @@ input[type="url"] {
 
 .top-toolbar {
   height: 60px;
-  background-color: #2d2d2d;
-  border-bottom: 1px solid #404040;
+  background-color: var(--app-toolbar-bg);
+  border-bottom: 1px solid var(--app-border);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1628,13 +930,17 @@ input[type="url"] {
 }
 
 .toolbar-btn {
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   background: transparent;
   border: none;
 }
 
 .toolbar-btn:hover {
-  background-color: #404040;
+  background-color: var(--app-fill-hover);
+}
+
+.theme-toggle .theme-label {
+  margin-left: 4px;
 }
 
 .toolbar-center {
@@ -1644,7 +950,7 @@ input[type="url"] {
 }
 
 .connection-tab {
-  background-color: #404040;
+  background-color: var(--app-tab-bg);
   padding: 8px 16px;
   border-radius: 4px;
   display: flex;
@@ -1681,8 +987,8 @@ input[type="url"] {
 
 .left-sidebar {
   width: 300px;
-  background-color: #2d2d2d;
-  border-right: 1px solid #404040;
+  background-color: var(--app-sidebar-bg);
+  border-right: 1px solid var(--app-border);
   overflow: hidden;
   min-width: 300px;
   max-width: 300px;
@@ -1690,7 +996,7 @@ input[type="url"] {
 
 .right-content {
   flex: 1;
-  background-color: #1e1e1e;
+  background-color: var(--app-content-bg);
   overflow: hidden;
   padding: 0;
 }

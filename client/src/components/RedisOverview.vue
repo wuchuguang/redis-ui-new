@@ -15,12 +15,6 @@
           <el-icon><Refresh /></el-icon>
           刷新
         </el-button>
-        <el-switch
-          v-model="autoRefresh"
-          active-text="自动刷新"
-          inactive-text=""
-          class="auto-refresh-switch"
-        />
       </div>
     </div>
 
@@ -122,9 +116,8 @@
         <div class="db-stats-left">
           <el-table
             :data="leftDbStats"
+            class="theme-table"
             style="width: 100%"
-            :header-cell-style="{ backgroundColor: '#2d2d2d', color: '#ffffff' }"
-            :cell-style="{ backgroundColor: '#1e1e1e', color: '#ffffff' }"
           >
             <el-table-column prop="db" label="DB" width="60" />
             <el-table-column prop="keys" label="Keys" width="120" />
@@ -141,9 +134,8 @@
         <div class="db-stats-right">
           <el-table
             :data="rightDbStats"
+            class="theme-table"
             style="width: 100%"
-            :header-cell-style="{ backgroundColor: '#2d2d2d', color: '#ffffff' }"
-            :cell-style="{ backgroundColor: '#1e1e1e', color: '#ffffff' }"
           >
             <el-table-column prop="db" label="DB" width="60" />
             <el-table-column prop="keys" label="Keys" width="120" />
@@ -176,9 +168,8 @@
       
       <el-table
         :data="filteredRedisInfo"
+        class="theme-table"
         style="width: 100%"
-        :header-cell-style="{ backgroundColor: '#2d2d2d', color: '#ffffff' }"
-        :cell-style="{ backgroundColor: '#1e1e1e', color: '#ffffff' }"
         max-height="300"
       >
         <el-table-column prop="key" label="Key" width="200" />
@@ -218,8 +209,6 @@ const connectionStore = useConnectionStore()
 // 响应式数据
 const searchTerm = ref('')
 const loading = ref(false)
-const autoRefresh = ref(true)
-const autoRefreshTimer = ref(null)
 const quickConnectLoading = ref(false)
 const restoreLoading = ref(false)
 
@@ -327,41 +316,10 @@ const openConnectionManager = () => {
   emit('open-connection-manager')
 }
 
-const startAutoRefresh = () => {
-  stopAutoRefresh()
-  if (autoRefresh.value) {
-    autoRefreshTimer.value = setInterval(() => {
-      refreshInfo()
-    }, 10000) // 10秒
-  }
-}
-
-const stopAutoRefresh = () => {
-  if (autoRefreshTimer.value) {
-    clearInterval(autoRefreshTimer.value)
-    autoRefreshTimer.value = null
-  }
-}
-
-// 监听自动刷新开关
-watch(autoRefresh, (newValue) => {
-  if (newValue) {
-    startAutoRefresh()
-  } else {
-    stopAutoRefresh()
-  }
-})
-
-// 监听连接变化
+// 监听连接变化，有连接但无 Redis 信息时触发首次获取
 watch(() => props.connection, (newConnection) => {
-  if (newConnection) {
-    startAutoRefresh()
-    // 如果有连接但没有Redis信息，自动获取
-    if (!props.redisInfo && !loading.value) {
-      refreshInfo()
-    }
-  } else {
-    stopAutoRefresh()
+  if (newConnection && !props.redisInfo && !loading.value) {
+    refreshInfo()
   }
 }, { immediate: true })
 
@@ -417,7 +375,7 @@ const handleConnectionMerged = async (event) => {
     setTimeout(async () => {
       try {
         // 重新获取Redis信息
-        await loadRedisInfo()
+        await refreshInfo()
         ElMessage.success('连接已更新，Redis信息已重新加载')
       } catch (error) {
         console.error('RedisOverview - 重新获取Redis信息失败:', error)
@@ -429,15 +387,11 @@ const handleConnectionMerged = async (event) => {
 
 // 组件挂载和卸载
 onMounted(() => {
-  startAutoRefresh()
-  
   // 监听连接合并事件
   window.addEventListener('connection-merged', handleConnectionMerged)
 })
 
 onUnmounted(() => {
-  stopAutoRefresh()
-  
   // 移除连接合并事件监听
   window.removeEventListener('connection-merged', handleConnectionMerged)
 })
@@ -460,11 +414,11 @@ onUnmounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 15px;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--el-border-color);
 }
 
 .overview-title {
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   font-size: 20px;
   font-weight: 600;
   margin: 0;
@@ -505,19 +459,19 @@ onUnmounted(() => {
 }
 
 .info-panel {
-  background-color: #2d2d2d;
+  background-color: var(--el-bg-color-overlay);
   border-radius: 8px;
   padding: 15px;
-  border: 1px solid #404040;
+  border: 1px solid var(--el-border-color);
 }
 
 .panel-title {
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 15px 0;
   padding-bottom: 10px;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--el-border-color);
 }
 
 .panel-content {
@@ -533,24 +487,22 @@ onUnmounted(() => {
 }
 
 .info-label {
-  color: #909399;
+  color: var(--el-text-color-secondary);
   font-size: 14px;
 }
 
 .info-value {
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   font-size: 14px;
   font-weight: 500;
 }
 
-
-
 .keys-stats-panel,
 .redis-info-panel {
-  background-color: #2d2d2d;
+  background-color: var(--el-bg-color-overlay);
   border-radius: 8px;
   padding: 15px;
-  border: 1px solid #404040;
+  border: 1px solid var(--el-border-color);
   width: 100%;
   margin: 0 15px;
   margin-bottom: 10px;
@@ -567,12 +519,12 @@ onUnmounted(() => {
 }
 
 .db-section-title {
-  color: #ffffff;
+  color: var(--el-text-color-primary);
   font-size: 14px;
   font-weight: 600;
   margin: 0 0 10px 0;
   padding-bottom: 8px;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--el-border-color);
 }
 
 .panel-header {
@@ -581,7 +533,7 @@ onUnmounted(() => {
   align-items: center;
   margin-bottom: 15px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #404040;
+  border-bottom: 1px solid var(--el-border-color);
 }
 
 .panel-header .panel-title {
@@ -590,7 +542,17 @@ onUnmounted(() => {
   padding-bottom: 0;
 }
 
-/* 表格样式已由全局样式处理 */
+/* 表格随主题 */
+:deep(.theme-table th.el-table__cell),
+:deep(.theme-table .el-table__header th) {
+  background-color: var(--el-bg-color-overlay) !important;
+  color: var(--el-text-color-primary) !important;
+}
 
+:deep(.theme-table td.el-table__cell),
+:deep(.theme-table .el-table__body td) {
+  background-color: var(--el-bg-color) !important;
+  color: var(--el-text-color-primary) !important;
+}
 
 </style> 

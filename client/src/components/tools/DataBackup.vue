@@ -732,8 +732,8 @@ onMounted(() => {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
     overflow: hidden;
-    background: #2d2d2d;
-    border: 1px solid #404040;
+    background: var(--el-bg-color-overlay);
+    border: 1px solid var(--el-border-color);
   }
 
   .config-card:hover,
@@ -749,10 +749,10 @@ onMounted(() => {
     align-items: center;
     gap: 8px;
     font-weight: 600;
-    color: #ffffff;
+    color: var(--el-text-color-primary);
     padding: 16px 24px;
-    background: #2d2d2d;
-    border-bottom: 1px solid #404040;
+    background: var(--el-bg-color-overlay);
+    border-bottom: 1px solid var(--el-border-color);
   }
 
   .header-icon {
@@ -775,8 +775,8 @@ onMounted(() => {
     :deep(.el-input__inner),
     :deep(.el-textarea__inner) {
       background-color: #1a1a1a !important;
-      color: #ffffff !important;
-      border: 2px solid #404040;
+      color: var(--el-text-color-primary) !important;
+      border: 2px solid var(--el-border-color);
       border-radius: 12px;
       transition: all 0.3s ease;
       font-size: 14px;
@@ -784,7 +784,7 @@ onMounted(() => {
       &:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        background-color: #2d2d2d !important;
+        background-color: var(--el-bg-color-overlay) !important;
       }
       
       &:hover {
@@ -794,21 +794,21 @@ onMounted(() => {
 
     :deep(.el-select .el-input__inner) {
       background-color: #1a1a1a !important;
-      color: #ffffff !important;
-      border: 2px solid #404040;
+      color: var(--el-text-color-primary) !important;
+      border: 2px solid var(--el-border-color);
       border-radius: 12px;
       
       &:focus {
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
-        background-color: #2d2d2d !important;
+        background-color: var(--el-bg-color-overlay) !important;
       }
     }
 
     .config-checkbox {
       .checkbox-text {
         font-weight: 500;
-        color: #ffffff;
+        color: var(--el-text-color-primary);
       }
     }
 
@@ -840,16 +840,16 @@ onMounted(() => {
       align-items: center;
       margin-bottom: 20px;
       padding: 16px;
-      background: #404040;
+      background: var(--el-border-color);
       border-radius: 8px;
-      border: 1px solid #404040;
+      border: 1px solid var(--el-border-color);
 
       .backup-id {
         display: flex;
         align-items: center;
         gap: 8px;
         font-weight: 500;
-        color: #ffffff;
+        color: var(--el-text-color-primary);
       }
     }
 
@@ -876,9 +876,9 @@ onMounted(() => {
       .stat-item {
         text-align: center;
         padding: 12px;
-        background: #404040;
+        background: var(--el-border-color);
         border-radius: 8px;
-        border: 1px solid #404040;
+        border: 1px solid var(--el-border-color);
 
         .stat-label {
           font-size: 12px;
@@ -889,7 +889,7 @@ onMounted(() => {
         .stat-value {
           font-size: 20px;
           font-weight: 700;
-          color: #ffffff;
+          color: var(--el-text-color-primary);
         }
       }
     }
@@ -913,7 +913,7 @@ onMounted(() => {
 
     .empty-icon {
       font-size: 80px;
-      color: #404040;
+      color: var(--el-border-color);
     }
   }
 
@@ -936,24 +936,24 @@ onMounted(() => {
 
     :deep(.el-table__row) {
       transition: all 0.3s ease;
-      background: #2d2d2d;
-      color: #ffffff;
+      background: var(--el-bg-color-overlay);
+      color: var(--el-text-color-primary);
       
       &:hover {
-        background: #404040;
+        background: var(--el-border-color);
         transform: scale(1.01);
       }
     }
     
     :deep(.el-table__cell) {
       padding: 12px;
-      border-bottom: 1px solid #404040;
-      color: #ffffff;
+      border-bottom: 1px solid var(--el-border-color);
+      color: var(--el-text-color-primary);
     }
     
     :deep(.el-table) {
-      background: #2d2d2d;
-      color: #ffffff;
+      background: var(--el-bg-color-overlay);
+      color: var(--el-text-color-primary);
     }
   }
 }
